@@ -81,7 +81,7 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 | UTILISED.MIGRATED.CREDIT.LIMIT | Amount | **no** – migration only (monthly record) |
 | UTILISED.MIGRATED.DEBIT.LIMIT | Amount | **no** – migration only (monthly record) |
 
-### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – add two fields)*
+### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – add one field)*
 
 ID: **`<customer>-<AAA id>`**, e.g. `100234-AAACT2632400001` (written by the routine). The ID must allow this format (length ≥ customer id + 1 + AAA id).
 
@@ -92,9 +92,8 @@ ID: **`<customer>-<AAA id>`**, e.g. `100234-AAACT2632400001` (written by the rou
 | EFF.DATE | Date | effective date of the transaction |
 | TXN.AMOUNT | Amount | amount counted (limit currency) |
 | **SYSTEM.DATE** | **Date** | **NEW** – server date the amount was counted on |
-| **OVERRIDE.IDS** | **text (≈200)** | **NEW** – EB-ALBE.* overrides accepted on the transaction, space separated (for the "overridden transactions" report) |
 
-> ⚠ **SYSTEM.DATE and OVERRIDE.IDS must be added** and the JAR regenerated (step 2), otherwise the code does not compile (`getSystemDate()` / `setSystemDate()`, `getOverrideIds()` / `setOverrideIds()`).
+> ⚠ **SYSTEM.DATE must be added** and the JAR regenerated (step 2), otherwise the code does not compile (`getSystemDate()` / `setSystemDate()`).
 
 ---
 

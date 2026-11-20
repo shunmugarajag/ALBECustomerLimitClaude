@@ -34,7 +34,9 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *   getTransactions : the transactions currently counted for one or all customers, from
  *                     EB.ALBE.TXN.DETAILS.LIMIT, optionally by SYSTEM.DATE range.
  *   overLimitOnly   : keep only rows where something used is above its limit.
- *   overriddenOnly  : keep only transactions accepted with a limit-exceed override.
+ *   overriddenOnly  : keep only transactions accepted with a limit-exceed override. The overrides
+ *                     are read from each transaction's AA.ARRANGEMENT.ACTIVITY OVERRIDE field
+ *                     (one read per transaction listed); no field is added to the local tables.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -212,6 +214,23 @@ public class CustomerLimitEnquiryService {
         return rows;
     }
 
+    /**
+     * EB-ALBE.* override ids in the activity's OVERRIDE values, each once.
+     * A value is "<override id>}<message>..." (Constants.OVERRIDE_ID_END); only the id is kept.
+     */
+    private List<String> albeOverrideIds(List<String> overrideValues) {
+        List<String> ids = new ArrayList<>();
+        for (String raw : overrideValues) {
+            String value = ValidationUtil.nvl(raw);
+            int end = value.indexOf(Constants.OVERRIDE_ID_END);
+            String id = (end < 0 ? value : value.substring(0, end)).trim();
+            if (id.startsWith(Constants.OVERRIDE_ID_PREFIX) && !ids.contains(id)) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
     /** YYYYMM of every month from fromMonth to toMonth (inclusive). */
     private List<String> monthsBetween(YearMonth fromMonth, YearMonth toMonth) {
         List<String> months = new ArrayList<>();
@@ -236,7 +255,8 @@ public class CustomerLimitEnquiryService {
                 + " to=" + toDate + " overriddenOnly=" + overriddenOnly);
 
         List<LimitTxnRow> rows = new ArrayList<>();
-        for (String recordId : repository.selectTxnDetailsIds(customerId, fromDate, toDate, overriddenOnly)) {
+        String finMnemonic = repository.getFinancialMnemonic();   // once, for the AA.ARRANGEMENT.ACTIVITY reads
+        for (String recordId : repository.selectTxnDetailsIds(customerId, fromDate, toDate)) {
             EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
             if (txnRec == null) {
                 continue;
@@ -251,7 +271,9 @@ public class CustomerLimitEnquiryService {
             row.effectiveDate = ValidationUtil.nvl(txnRec.getEffDate().getValue());
             row.systemDate = ValidationUtil.nvl(txnRec.getSystemDate().getValue());
             row.amount = ValidationUtil.nvl(txnRec.getTxnAmount().getValue());
-            row.overrides = ValidationUtil.nvl(txnRec.getOverrideIds().getValue()).trim();
+            // Accepted overrides come from the activity itself (no extra field in EB.ALBE.TXN.DETAILS.LIMIT).
+            row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR,
+                    albeOverrideIds(repository.readActivityOverrides(finMnemonic, row.aaaId)));
             if (!overriddenOnly || row.isLimitOverridden()) {
                 rows.add(row);
             }

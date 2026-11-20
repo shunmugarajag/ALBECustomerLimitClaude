@@ -27,7 +27,7 @@ public class LimitTxnRow {
     public String systemDate;
     /** Amount counted, in the limit currency. */
     public String amount;
-    /** EB-ALBE.* overrides accepted on the transaction (OVERRIDE.IDS, space separated). */
+    /** EB-ALBE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
     public String overrides = "";
 
     /** True when the transaction was accepted with a limit-exceed override (daily, monthly, max CIF). */

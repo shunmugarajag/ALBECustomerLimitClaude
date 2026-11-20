@@ -317,6 +317,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 | 9 | Creation never overwrites, even on read failure | Amended customer limits must never be lost |
 | 10 | Technical failure does not block the transaction | Availability; monitored through logs |
 | 11 | MVC, single repository, validation once, LogUtil / ValidationUtil | Readability, one place per concern |
+| 12 | Local table structures are pre-approved: the code adds no fields (accepted overrides are read from AA.ARRANGEMENT.ACTIVITY at report time) | Table design is fixed |
 
 ### Deviations from the HLSD (to be reflected in the HLSD)
 
@@ -340,7 +341,7 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | `AaArrangementActivityRecord.getTxnAmount()` / `getEffectiveDate()` / `getActivity()` | AA controllers |
 | `AaArrangementRecord.getCurrency()`, `getCustomer()`, `getLinkedAppl()` | AA controllers |
 | `TField.setOverride(id FM p1 VM p2)` – parameter format | CustomerLimitOverride |
-| `AaArrangementActivityRecord.getOverride()` – accepted overrides at `postCoreTableUpdate`, value format `<id>}...` | DailyMonthlyLimitController (OVERRIDE.IDS for the overridden-transactions report) |
+| `AaArrangementActivityRecord.getOverride()` and reading AA.ARRANGEMENT.ACTIVITY live / `$NAU`; override value format `<id>}...` | repository `readActivityOverrides` (overridden-transactions report) |
 | `TransactionContext.getCurrentFunction()` | CustomerLimitCreationController (logged only) |
 | `DataAccess.getConcatValues("CUSTOMER.ACCOUNT", id)` | repository |
 | `AccountRecord.getWorkingBalance()` / `getCurrency()` | MaximumCifLimitService |
@@ -374,7 +375,7 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | # | Item | Owner |
 |---|---|---|
 | 1 | Exchange rate table / field and the read in `readExchangeRate` | bank / dev |
-| 2 | Add fields SYSTEM.DATE and OVERRIDE.IDS to EB.ALBE.TXN.DETAILS.LIMIT and regenerate its JAR | T24 |
+| 2 | Add field SYSTEM.DATE to EB.ALBE.TXN.DETAILS.LIMIT and regenerate its JAR | T24 |
 | 3 | HLSD update for the deviations in section 11 | BA |
 | 4 | DEV verification of the API calls in section 12 | dev |
 | 5 | One-off creation of EB.ALBE.CIF.LIMIT for customers that already exist (separate flow) | bank / dev |
@@ -396,4 +397,4 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | 20-Nov-2026 | GEN.PARAM record id CUSTOMER.LIMIT |
 | 20-Nov-2026 | Enquiries: limit summary and transaction report; strict date parsing |
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
-| 20-Nov-2026 | Accepted overrides stored in TXN.DETAILS OVERRIDE.IDS; transaction report OVERRIDDEN filter; separate REPORTS.md |
+| 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |

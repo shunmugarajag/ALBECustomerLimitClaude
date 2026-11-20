@@ -7,6 +7,8 @@ import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
 import com.temenos.t24.api.hook.system.Enquiry;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
+import com.temenos.api.TField;
+import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
@@ -30,6 +32,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
+ *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, for the transaction report)
  *
  *               Read methods return null (or an empty list) when nothing is found;
  *               write / delete methods return true on success. Callers decide what
@@ -299,10 +302,8 @@ public class CustomerLimitRepository {
      * @param customerId one customer (<customer>-...), or blank for all customers
      * @param fromDate   SYSTEM.DATE from (YYYYMMDD), blank = no lower bound
      * @param toDate     SYSTEM.DATE to (YYYYMMDD), blank = no upper bound
-     * @param overriddenOnly only records whose OVERRIDE.IDS has a limit-exceed override
      */
-    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate,
-            boolean overriddenOnly) {
+    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate) {
         List<String> conditions = new java.util.ArrayList<>();
         if (customerId != null && !customerId.isEmpty()) {
             conditions.add("@ID LIKE " + customerId + "-...");
@@ -312,9 +313,6 @@ public class CustomerLimitRepository {
         }
         if (toDate != null && !toDate.isEmpty()) {
             conditions.add("SYSTEM.DATE LE " + toDate);
-        }
-        if (overriddenOnly) {
-            conditions.add("OVERRIDE.IDS LIKE ..." + Constants.LIMIT_EXCEED_KEYWORD + "...");
         }
         String selection = (conditions.isEmpty() ? "" : "WITH " + String.join(" AND ", conditions) + " ")
                 + "BY SYSTEM.DATE BY @ID";
@@ -328,6 +326,36 @@ public class CustomerLimitRepository {
             LogUtil.error(CLASS_NAME, "selectTxnDetailsIds", "FAILED", Constants.TXN_DETAILS_TABLE, e);
             return List.of();
         }
+    }
+
+    // =========================================================================
+    // AA.ARRANGEMENT.ACTIVITY (read only, for the reports)
+    // =========================================================================
+
+    /**
+     * OVERRIDE values of AA.ARRANGEMENT.ACTIVITY <aaaId>: the overrides accepted on the activity.
+     * Reads the live record first, then the unauthorised one ($NAU) for activities not yet
+     * authorised. Empty list if the activity cannot be read or has no overrides.
+     */
+    public List<String> readActivityOverrides(String finMnemonic, String aaaId) {
+        LogUtil.detail(CLASS_NAME, "readActivityOverrides", "READ", Constants.AAA_TABLE + ">" + aaaId);
+        for (String suffix : new String[] { "", Constants.NAU_SUFFIX }) {
+            try {
+                AaArrangementActivityRecord aaaRec = new AaArrangementActivityRecord(
+                        daObj.getRecord(finMnemonic, Constants.AAA_TABLE, suffix, aaaId));
+                List<String> values = new java.util.ArrayList<>();
+                for (TField overrideField : aaaRec.getOverride()) {
+                    values.add(overrideField.getValue());
+                }
+                LogUtil.detail(CLASS_NAME, "readActivityOverrides", "FOUND", Constants.AAA_TABLE + suffix + ">"
+                        + aaaId + " overrides=" + values.size());
+                return values;
+            } catch (Exception e) {
+                LogUtil.detail(CLASS_NAME, "readActivityOverrides", "NOT FOUND", Constants.AAA_TABLE + suffix + ">"
+                        + aaaId);
+            }
+        }
+        return List.of();
     }
 
     /** New empty EB.ALBE.TXN.DETAILS.LIMIT record, to be filled and written. */

@@ -44,6 +44,9 @@ public final class Constants {
     public static final String ACCOUNT_TABLE = "ACCOUNT";
     public static final String CUSTOMER_ACCOUNT_FILE = "CUSTOMER.ACCOUNT";
     public static final String COMPANY_TABLE = "COMPANY";
+    public static final String AAA_TABLE = "AA.ARRANGEMENT.ACTIVITY";
+    /** File suffix of unauthorised records. */
+    public static final String NAU_SUFFIX = "$NAU";
 
     /** EB.ALBE.GEN.PARAM record holding the generic limits. */
     public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
@@ -130,17 +133,15 @@ public final class Constants {
     /** Exchange rate not available from & to & (transaction currency, limit currency) */
     public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
 
-    /** Prefix of this module's EB.OVERRIDE ids; only these are copied from the AAA OVERRIDE field. */
+    /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
     public static final String OVERRIDE_ID_PREFIX = "EB-ALBE.";
     /** End of the override id inside an AAA OVERRIDE value ("<id>}<message>..."). Confirm in DEV. */
     public static final String OVERRIDE_ID_END = "}";
-    /** Separator of the ids in EB.ALBE.TXN.DETAILS.LIMIT OVERRIDE.IDS. */
+    /** Separator of the override ids in the transaction report OVERRIDES column. */
     public static final String OVERRIDE_LIST_SEPARATOR = " ";
     /** Overrides that mean "accepted above a limit" (transaction report OVERRIDDEN = Y). */
     public static final String[] LIMIT_EXCEED_OVERRIDES = { OVR_DAILY_LIMIT_EXCEED, OVR_MONTHLY_LIMIT_EXCEED,
             OVR_MAX_CIF_BAL_EXCEED };
-    /** Common part of the limit-exceed override ids, used in the enquiry SELECT. */
-    public static final String LIMIT_EXCEED_KEYWORD = "EXCEED";
 
     // -------------------------------------------------------------------------
     // Messages (HLSD text, used for logging; %s = customer id, difference)

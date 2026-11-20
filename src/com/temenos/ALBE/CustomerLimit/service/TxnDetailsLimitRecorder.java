@@ -58,14 +58,11 @@ public class TxnDetailsLimitRecorder {
             txnRec.setEffDate(ValidationUtil.nvl(effectiveDate));
             txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
             txnRec.setSystemDate(request.getTransactionDate().format(Constants.DAILY_ID_FORMAT));
-            // Accepted EB-ALBE.* overrides, so reports can list the overridden transactions.
-            txnRec.setOverrideIds(String.join(Constants.OVERRIDE_LIST_SEPARATOR, request.getAcceptedOverrides()));
             repository.writeTxnDetails(recordId, txnRec);
             LogUtil.info(CLASS_NAME, "record", "WRITTEN", "id=" + recordId + " account=" + accountNo + " flag="
                     + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate
                     + " systemDate=" + request.getTransactionDate() + " amount="
-                    + (credit ? request.getCreditAmount() : request.getDebitAmount())
-                    + " overrides=" + request.getAcceptedOverrides());
+                    + (credit ? request.getCreditAmount() : request.getDebitAmount()));
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
         }

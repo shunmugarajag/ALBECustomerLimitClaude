@@ -175,7 +175,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 |---|---|---|
 | CUSTOMER | customer **or** a date | blank = all customers |
 | DATE.FROM / DATE.TO | | on SYSTEM.DATE (the day the amount was counted) |
-| OVERRIDDEN | no | `Y` = only transactions accepted with a **limit-exceed** override (daily, monthly or max CIF) |
+| OVERRIDDEN | no | `Y` = only transactions accepted with a **limit-exceed** override (daily, monthly or max CIF), read from the activity |
 
 - Without CUSTOMER: a missing DATE.TO = today, a missing DATE.FROM = DATE.TO; at most 92 days.
 - "Limit not defined" and "exchange rate missing" are **shown** in the OVERRIDES column but do **not** make a transaction "overridden" (`Constants.LIMIT_EXCEED_OVERRIDES`).
@@ -192,16 +192,17 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | 6 | EFF.DATE | effective date |
 | 7 | SYSTEM.DATE | server date it was counted on |
 | 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
-| 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (space separated) |
+| 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (from AA.ARRANGEMENT.ACTIVITY OVERRIDE, space separated) |
 
-### How overrides are recorded
+### Where the overrides come from
 
-When the transaction is counted (`postCoreTableUpdate`, status UNAUTH), `DailyMonthlyLimitController` reads the activity's **OVERRIDE** field (the overrides the user accepted), keeps the `EB-ALBE.*` ids once each (`getAlbeOverrides`), and `TxnDetailsLimitRecorder` stores them in the new field **OVERRIDE.IDS** of EB.ALBE.TXN.DETAILS.LIMIT. This needs no extra reads and also catches the maximum CIF override (raised by the other routine on the same activity). A re-input replaces the record with the new overrides; a rejection or reversal deletes it.
+No field is added to the (pre-approved) local tables. At report time, for each transaction listed, the service reads its **AA.ARRANGEMENT.ACTIVITY** record (the AAA id is part of the EB.ALBE.TXN.DETAILS.LIMIT id) – live first, `$NAU` for activities not yet authorised – and takes the `EB-ALBE.*` ids from its **OVERRIDE** field (the overrides the user accepted), each once. This also shows the maximum CIF override (raised by the other routine on the same activity). Cost: **one extra read per transaction listed**.
 
 ### How it works
 
-1. **One SELECT** on EB.ALBE.TXN.DETAILS.LIMIT: `@ID LIKE <cust>-...` and/or `SYSTEM.DATE GE/LE`, and with OVERRIDDEN = Y `OVERRIDE.IDS LIKE ...EXCEED...`; `BY SYSTEM.DATE BY @ID`.
-2. One read per record; one row each (checked again in Java with `isLimitOverridden()`).
+1. **One SELECT** on EB.ALBE.TXN.DETAILS.LIMIT: `@ID LIKE <cust>-...` and/or `SYSTEM.DATE GE/LE`; `BY SYSTEM.DATE BY @ID`.
+2. Per record: one read of EB.ALBE.TXN.DETAILS.LIMIT and one of AA.ARRANGEMENT.ACTIVITY (overrides).
+3. With OVERRIDDEN = Y only rows where `isLimitOverridden()` is true are kept.
 
 ### Examples
 
@@ -229,9 +230,9 @@ B1 is left out (only "limit not defined"); a transaction that was overridden and
 
 ## T24 set-up
 
-### Table field (see T24_CONFIGURATION.md, step 1.4)
+### Tables
 
-EB.ALBE.TXN.DETAILS.LIMIT needs the new fields **SYSTEM.DATE** and **OVERRIDE.IDS** (text, ≈200). Regenerate the table JAR.
+No table change for the reports. They read EB.ALBE.CIF.LIMIT, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (incl. SYSTEM.DATE, see T24_CONFIGURATION.md step 1.4) and AA.ARRANGEMENT.ACTIVITY.
 
 ### EB.API
 
@@ -297,7 +298,7 @@ ENQ ALBE.CUSTOMER.LIMIT.TXN     DATE.FROM EQ 20261101 DATE.TO EQ 20261130 OVERRI
 | Summary, all customers | 1 SELECT + 3 reads per customer |
 | Period, all customers | 1 SELECT on UTILISED.LIMIT + 1 read per row + 1 CIF.LIMIT read per customer |
 | Period, one customer | 1 read per day / month + 1 CIF.LIMIT read |
-| Transactions | 1 SELECT on TXN.DETAILS + 1 read per row |
+| Transactions | 1 SELECT on TXN.DETAILS + 2 reads per row (TXN.DETAILS + AA.ARRANGEMENT.ACTIVITY) |
 
 - Range caps (92 days / 24 months) keep the online enquiries bounded; bigger extracts belong offline.
 - Per-row trace lines are `detail` level: with `LOG_DETAIL_ENABLED = false` a large report writes only a few log lines.
@@ -326,5 +327,6 @@ ENQ ALBE.CUSTOMER.LIMIT.TXN     DATE.FROM EQ 20261101 DATE.TO EQ 20261130 OVERRI
 
 | Point | How |
 |---|---|
-| The AAA OVERRIDE field is filled at `postCoreTableUpdate` (UNAUTH) and its value starts with the override id followed by `}` | log line `getAlbeOverrides \| FOUND \| overrides=[...]` after accepting an override; if the format differs, change `Constants.OVERRIDE_ID_END` |
-| `@ID LIKE`, `SYSTEM.DATE GE/LE` and `OVERRIDE.IDS LIKE` work on your TAFJ database | run R4, R9, R10 |
+| AA.ARRANGEMENT.ACTIVITY OVERRIDE values start with the override id followed by `}` | run R10 after accepting an override; if the OVERRIDES column is empty or wrong, change `Constants.OVERRIDE_ID_END` |
+| An unauthorised activity is found in `$NAU` | R10 with a transaction not yet authorised |
+| `@ID LIKE` and `SYSTEM.DATE GE/LE` work on your TAFJ database | run R4, R9 |

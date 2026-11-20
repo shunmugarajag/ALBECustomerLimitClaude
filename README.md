@@ -117,7 +117,7 @@ Create the tables with these field names so the generated getters match.
 
 Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 
-**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **add fields SYSTEM.DATE and OVERRIDE.IDS**
+**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **add field SYSTEM.DATE**
 
 Record id: `<customer>-<AAA id>` (AAA id from `arrangementContext.getArrangementActivityId()`), e.g. `100234-AAACT2632400001`.
 The id is known at every step, so the record is always read **directly by key** (no SELECT).
@@ -129,7 +129,6 @@ The id is known at every step, so the record is always read **directly by key** 
 | EFF.DATE | effective (value) date of the transaction |
 | TXN.AMOUNT | amount counted, in the limit currency |
 | **SYSTEM.DATE** (new, DATE) | server date the amount was counted on; a rejection / reversal subtracts from this day and month |
-| **OVERRIDE.IDS** (new, text) | EB-ALBE.* overrides accepted on the transaction (from the AAA OVERRIDE field), for the overridden-transactions report |
 
 Utilisation is counted when the transaction is initiated:
 
