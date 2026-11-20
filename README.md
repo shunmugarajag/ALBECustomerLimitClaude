@@ -2,6 +2,13 @@
 
 Eclipse **Java Project** for the ALBE Customer Limit implementation.
 
+## Documents
+
+| Document | For |
+|---|---|
+| [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md) | How the code works: architecture, classes, flows, data, overrides, logging, design decisions, HLSD deviations, open items |
+| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, logging, go-live data, DEV/SIT test cases |
+
 ## Project configuration
 
 - Project type: Eclipse Java Project
@@ -140,7 +147,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
 
-`override.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
+`view.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
 
 ## Logging standard
 
