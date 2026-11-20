@@ -97,7 +97,8 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **G5** REMARKS max length – confirm length
 - **G6** blank CIF.LIMIT CCY → use GEN.PARAM CCY – code only
 - **G7** accounts in other companies, **G8** ACCOUNT SELECT fallback, **G9** credit/debit by activity name
-- Not yet verified in DEV: API calls in `docs/TECHNICAL_REFERENCE.md` §12 (validateRecord/getValidationResponse, setOverride format, getArrangementActivityId, defaultFieldValues + setRemarks, getOverride, getConcatValues, generated getters, "record not found" exception text → `RECORD_NOT_FOUND_MARKERS`).
+- **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). Still open: the **ALBE table JAR** (must be generated in T24 – cannot be generated outside T24) and its getter/setter names; DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
+- To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
 - Last offer to the user not yet answered: fix G1, G4, G5, G6 now.
 

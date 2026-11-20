@@ -329,24 +329,35 @@ Controller `END` lines carry `elapsedMs` for timing.
 
 ---
 
-## 12. T24 API calls to verify in DEV
+## 12. T24 API calls – verification status
 
-These are used by the code but are **not** in the team's sample routines. Check each once in DEV (the log lines show the values).
+**Compile check against the real R25 libraries (21-Nov-2026).** The whole `src/` was compiled against the user's local `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext` and `T24\bnk\t24lib` JARs (only the 4 ALBE tables replaced by stand-ins, as their generated JAR does not exist yet): **0 errors**. `@Override` is checked against the real hook classes, so every method name and signature below exists in R25.
 
-| Call | Used in |
+JARs the code needs (all already on the Eclipse build path except the ALBE table JAR):
+
+| JAR | Classes used |
 |---|---|
-| `ActivityLifecycle.validateRecord` + `getValidationResponse()` | both AA controllers |
-| `ArrangementContext.getArrangementActivityId()`, `getActivityStatus()` | DailyMonthlyLimitController |
-| `AaArrangementActivityRecord.getTxnAmount()` / `getEffectiveDate()` / `getActivity()` | AA controllers |
-| `AaArrangementRecord.getCurrency()`, `getCustomer()`, `getLinkedAppl()` | AA controllers |
-| `TField.setOverride(id FM p1 VM p2)` – parameter format | CustomerLimitOverride |
-| `AaArrangementActivityRecord.getOverride()` and reading AA.ARRANGEMENT.ACTIVITY live / `$NAU`; override value format `<id>}...` | repository `readActivityOverrides` (overridden-transactions report) |
-| `TransactionContext.getCurrentFunction()` | CustomerLimitCreationController (logged only) |
-| `DataAccess.getConcatValues("CUSTOMER.ACCOUNT", id)` | repository |
-| `AccountRecord.getWorkingBalance()` / `getCurrency()` | MaximumCifLimitService |
-| Generated getters: `KeyNameClass.getKeyName/getKeyValue`, UTILISED.* getters | services |
-| `ActivityLifecycle.defaultFieldValues` can set `AaArrangementActivityRecord.setRemarks(...)` at input, and REMARKS is kept on the same AAA for DELETE / AUTH-REV | DailyMonthlyLimitController |
-| Text of the T24 "record not found" exception (`RECORD_NOT_FOUND_MARKERS`) | repository `cifLimitExists` |
+| TAFJ `lib/TAFJClient.jar`, `lib/TAFJAPICommon.jar` | `TField`, `TStructure`, `TValidationResponse`, `T24CoreException` |
+| TAFJ `lib/TAFJLogging.jar` | `com.temenos.logging.facade.Logger/LoggerFactory` |
+| TAFJ `ext/json.jar` | `org.json` (needed by the generated record classes) |
+| t24lib `AA_ActivityHook.jar` | `ActivityLifecycle`, `ArrangementContext` |
+| t24lib `EB_TemplateHook.jar`, `EB_EnquiryHook.jar` | `RecordLifecycle`, `TransactionContext/TransactionData`, `Enquiry`, `FilterCriteria`, `EnquiryContext` |
+| t24lib `EB_DataAccessApi.jar`, `EB_SessionApi.jar` | `DataAccess`, `Session` |
+| t24lib `AA_Framework.jar`, `AA_PaymentSchedule.jar`, `AA_ProductManagement.jar` | `AaArrangementActivityRecord`, `AaArrangementRecord`, `AaAccountDetailsRecord`, `AaProductCatalogRecord` |
+| t24lib `AC_AccountOpening.jar`, `ST_CompanyCreation.jar` | `AccountRecord`, `CompanyRecord` |
+| **ALBE table JAR (to generate)** | `EbAlbeCifLimitRecord/Table`, `EbAlbeGenParamRecord` (+ `KeyNameClass`), `EbAlbeUtilisedLimitRecord/Table`, `EbAlbeTxnDetailsLimitRecord/Table` |
+
+| Call | Status |
+|---|---|
+| Hook signatures: `ActivityLifecycle.defaultFieldValues / validateRecord / postCoreTableUpdate`, `RecordLifecycle.postUpdateRequest`, `Enquiry.setIds` | **verified (compile)** |
+| `ArrangementContext.getArrangementActivityId()`, `getActivityStatus()` | **verified (compile)** |
+| `AaArrangementActivityRecord.getTxnAmount / getEffectiveDate / getActivity / getRemarks / setRemarks / getOverride / getLinkedAppl`, `AaArrangementRecord.getCurrency / getCustomer` | **verified (compile)** |
+| `TField.getValue / setValue / setOverride(String) / setError(String)` | **verified (compile)** – parameter format `id FM p1 VM p2` still to see in DEV |
+| `DataAccess.getRecord(app, id)` / `getRecord(mne, app, suffix, id)`, `selectRecords`, `getConcatValues`; `Session.getCompanyId`; `CompanyRecord.getFinancialMne`; `AccountRecord.getWorkingBalance / getCurrency` | **verified (compile)** |
+| `TransactionContext.getCurrentFunction()`; `T24CoreException(String, String)`; `FilterCriteria.getFieldname / getValue` | **verified (compile)** |
+| Generated table class pattern `XxxTable.read(id)` (throws if missing) / `write(id, rec)` / `delete(id)` | **matches** the team's sample `FfPostScheduleUpdate` (`EbFfCollectionDetsTable`) |
+| Generated ALBE getters / setters (`getDailyCreditLimit`, `KeyNameClass.getKeyName`, `setUtilisedCreditLimit`, …) | **open** – check once the ALBE table JAR is generated (compile in Eclipse) |
+| Behaviour (not visible at compile time): REMARKS kept on the same AAA for DELETE / AUTH-REV; override value format `<id>}...`; AAA `$NAU` read; "record not found" text (`RECORD_NOT_FOUND_MARKERS`); `postCoreTableUpdate` fired for UNAUTH / DELETE / AUTH-REV | **DEV** |
 
 ---
 
