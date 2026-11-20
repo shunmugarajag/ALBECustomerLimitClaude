@@ -68,18 +68,35 @@ public class TxnDetailsLimitRecorder {
     }
 
     /**
-     * Finds the original transaction(s) recorded for this customer and transaction id,
-     * whatever the booking date. Each result carries the original date, flag and amount.
+     * Finds what was recorded for this transaction (customer + AAA id).
+     * Normal case: the booking date is known (AAA REMARKS tag), so the record id
+     * <customer>-<date>-<AAA id> is read directly by key - no select.
+     * Only when the date is not known (AAA input before this routine went live) the table
+     * is searched with a SELECT on the id.
+     * @return 0 or 1 entries (list kept for the select fallback)
      */
-    public List<CustomerLimitDTO> findOriginal(String customerId, String transactionId) {
+    public List<CustomerLimitDTO> findOriginal(CustomerLimitDTO request) {
+        String customerId = request.getCustomerId();
+        String transactionId = request.getTransactionId();
         List<CustomerLimitDTO> originals = new ArrayList<>();
         try {
-            // The booking date in the id is not known at reversal time, so match on customer + AAA id.
-            List<String> recordIds = repository.selectTxnDetailsIds(customerId, transactionId);
-            for (String recordId : recordIds) {
+            if (request.isBookingDateFromRemarks()) {
+                // Direct read by key.
+                String recordId = recordId(request);
+                logger.info(LOG_PREFIX + "findOriginal DIRECT READ id=" + recordId);
                 CustomerLimitDTO original = toRequest(recordId, customerId, transactionId);
                 if (original != null) {
                     originals.add(original);
+                }
+            } else {
+                // Fallback: date unknown, search on customer + AAA id.
+                logger.info(LOG_PREFIX + "findOriginal SELECT fallback (no booking date on AAA) customer="
+                        + customerId + " aaa=" + transactionId);
+                for (String recordId : repository.selectTxnDetailsIds(customerId, transactionId)) {
+                    CustomerLimitDTO original = toRequest(recordId, customerId, transactionId);
+                    if (original != null) {
+                        originals.add(original);
+                    }
                 }
             }
             logger.info(LOG_PREFIX + "findOriginal END customer=" + customerId + " aaa=" + transactionId

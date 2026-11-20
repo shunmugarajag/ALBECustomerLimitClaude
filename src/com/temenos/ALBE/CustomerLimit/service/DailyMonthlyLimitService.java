@@ -82,8 +82,7 @@ public class DailyMonthlyLimitService {
 
         // On re-input of an amended transaction its earlier input is already in utilisation;
         // leave it out so the transaction is not checked against itself.
-        List<CustomerLimitDTO> earlierInputs =
-                recorder.findOriginal(request.getCustomerId(), request.getTransactionId());
+        List<CustomerLimitDTO> earlierInputs = recorder.findOriginal(request);
         logger.info(LOG_PREFIX + "validate earlierInputs=" + earlierInputs.size()
                 + (earlierInputs.isEmpty() ? " (first input)" : " (re-input of an amended transaction)"));
 
@@ -243,8 +242,7 @@ public class DailyMonthlyLimitService {
      * EB.ALBE.TXN.DETAILS.LIMIT) on its original day and month, and deletes those records.
      */
     private int reverseCounted(CustomerLimitDTO request) {
-        List<CustomerLimitDTO> originals =
-                recorder.findOriginal(request.getCustomerId(), request.getTransactionId());
+        List<CustomerLimitDTO> originals = recorder.findOriginal(request);
         logger.info(LOG_PREFIX + "reverseCounted customer=" + request.getCustomerId() + " aaa="
                 + request.getTransactionId() + " found=" + originals.size());
         for (CustomerLimitDTO original : originals) {
