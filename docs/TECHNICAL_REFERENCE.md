@@ -372,6 +372,8 @@ These are used by the code but are **not** in the team's sample routines. Check 
 
 ## 15. Open items
 
+Known code gaps with proposed fixes (no table change) and the exchange-rate questions: **[GAPS.md](GAPS.md)**.
+
 | # | Item | Owner |
 |---|---|---|
 | 1 | Exchange rate table / field and the read in `readExchangeRate` | bank / dev |
