@@ -30,7 +30,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.CIF.LIMIT          read, write, select   (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
  *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
- *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-AAA id)
+ *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
  *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, for the transaction report)
  *
@@ -287,8 +287,7 @@ public class CustomerLimitRepository {
             EbAlbeTxnDetailsLimitRecord txnRec =
                     new EbAlbeTxnDetailsLimitRecord(daObj.getRecord(Constants.TXN_DETAILS_TABLE, recordId));
             LogUtil.detail(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
-                    + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue()
-                    + " systemDate=" + txnRec.getSystemDate().getValue());
+                    + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue());
             return txnRec;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
@@ -297,26 +296,24 @@ public class CustomerLimitRepository {
     }
 
     /**
-     * Ids of EB.ALBE.TXN.DETAILS.LIMIT records, sorted by SYSTEM.DATE then id. Used by the
-     * enquiry only, never in a transaction.
-     * @param customerId one customer (<customer>-...), or blank for all customers
-     * @param fromDate   SYSTEM.DATE from (YYYYMMDD), blank = no lower bound
-     * @param toDate     SYSTEM.DATE to (YYYYMMDD), blank = no upper bound
+     * Ids of EB.ALBE.TXN.DETAILS.LIMIT records (<customer>-<YYYYMMDD>-<AAA id>), sorted by id.
+     * Used by the enquiry only, never in a transaction.
+     * @param customerId one customer, or blank for all customers
+     * @param days       counted dates YYYYMMDD to select; empty = any date (only with a customer)
      */
-    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate) {
+    public List<String> selectTxnDetailsIds(String customerId, List<String> days) {
+        String customerPart = (customerId == null || customerId.isEmpty()) ? "..." : customerId;
         List<String> conditions = new java.util.ArrayList<>();
-        if (customerId != null && !customerId.isEmpty()) {
-            conditions.add("@ID LIKE " + customerId + "-...");
+        if (days.isEmpty()) {
+            conditions.add("@ID LIKE " + customerPart + "-...");
+        } else {
+            for (String day : days) {
+                conditions.add("@ID LIKE " + customerPart + "-" + day + "-...");
+            }
         }
-        if (fromDate != null && !fromDate.isEmpty()) {
-            conditions.add("SYSTEM.DATE GE " + fromDate);
-        }
-        if (toDate != null && !toDate.isEmpty()) {
-            conditions.add("SYSTEM.DATE LE " + toDate);
-        }
-        String selection = (conditions.isEmpty() ? "" : "WITH " + String.join(" AND ", conditions) + " ")
-                + "BY SYSTEM.DATE BY @ID";
-        LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "SELECT", Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
+        String selection = "WITH " + String.join(" OR ", conditions) + " BY @ID";
+        LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "SELECT",
+                Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
         try {
             List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection);
             List<String> result = ids == null ? List.of() : ids;

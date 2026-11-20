@@ -23,8 +23,8 @@ public class LimitTxnRow {
     /** CR / DR */
     public String creditDebitFlag;
     public String effectiveDate;
-    /** Server date the amount was counted on (YYYYMMDD). */
-    public String systemDate;
+    /** Server date the amount was counted on (YYYYMMDD, from the record id). */
+    public String countedDate;
     /** Amount counted, in the limit currency. */
     public String amount;
     /** EB-ALBE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
@@ -45,6 +45,6 @@ public class LimitTxnRow {
     @Override
     public String toString() {
         return "LimitTxnRow[id=" + recordId + ", flag=" + creditDebitFlag + ", amount=" + amount
-                + ", systemDate=" + systemDate + ", overrides=" + overrides + "]";
+                + ", countedDate=" + countedDate + ", overrides=" + overrides + "]";
     }
 }

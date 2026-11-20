@@ -52,11 +52,11 @@ public class CustomerLimitEnquiryView {
 
     /**
      * Transaction columns:
-     *  1 CUSTOMER  2 AAA.ID  3 ACCOUNT.NO  4 CR.DR  5 TXN.AMOUNT  6 EFF.DATE  7 SYSTEM.DATE  8 RECORD.ID
+     *  1 CUSTOMER  2 AAA.ID  3 ACCOUNT.NO  4 CR.DR  5 TXN.AMOUNT  6 EFF.DATE  7 COUNTED.DATE  8 RECORD.ID
      *  9 OVERRIDES (accepted EB-ALBE.* overrides, space separated)
      */
     public static final String TXN_COLUMNS =
-            "CUSTOMER*AAA.ID*ACCOUNT.NO*CR.DR*TXN.AMOUNT*EFF.DATE*SYSTEM.DATE*RECORD.ID*OVERRIDES";
+            "CUSTOMER*AAA.ID*ACCOUNT.NO*CR.DR*TXN.AMOUNT*EFF.DATE*COUNTED.DATE*RECORD.ID*OVERRIDES";
 
     private CustomerLimitEnquiryView() {
         // Static methods only.
@@ -99,7 +99,7 @@ public class CustomerLimitEnquiryView {
         for (LimitTxnRow row : rows) {
             lines.add(join(row.customerId, row.aaaId, row.accountNo, row.creditDebitFlag,
                     amount(ValidationUtil.toAmount(row.amount)),
-                    row.effectiveDate, row.systemDate, row.recordId, row.overrides));
+                    row.effectiveDate, row.countedDate, row.recordId, row.overrides));
         }
         return lines;
     }

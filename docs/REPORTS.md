@@ -174,7 +174,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | Field | Required | Meaning |
 |---|---|---|
 | CUSTOMER | customer **or** a date | blank = all customers |
-| DATE.FROM / DATE.TO | | on SYSTEM.DATE (the day the amount was counted) |
+| DATE.FROM / DATE.TO | | on the counted date (the date in the record id `<customer>-<YYYYMMDD>-<AAA>`) |
 | OVERRIDDEN | no | `Y` = only transactions accepted with a **limit-exceed** override (daily, monthly or max CIF), read from the activity |
 
 - Without CUSTOMER: a missing DATE.TO = today, a missing DATE.FROM = DATE.TO; at most 92 days.
@@ -190,17 +190,17 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | 4 | CR.DR | CR / DR |
 | 5 | TXN.AMOUNT | amount counted (limit currency) |
 | 6 | EFF.DATE | effective date |
-| 7 | SYSTEM.DATE | server date it was counted on |
+| 7 | COUNTED.DATE | server date it was counted on (from the record id) |
 | 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
 | 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (from AA.ARRANGEMENT.ACTIVITY OVERRIDE, space separated) |
 
 ### Where the overrides come from
 
-No field is added to the (pre-approved) local tables. At report time, for each transaction listed, the service reads its **AA.ARRANGEMENT.ACTIVITY** record (the AAA id is part of the EB.ALBE.TXN.DETAILS.LIMIT id) – live first, `$NAU` for activities not yet authorised – and takes the `EB-ALBE.*` ids from its **OVERRIDE** field (the overrides the user accepted), each once. This also shows the maximum CIF override (raised by the other routine on the same activity). Cost: **one extra read per transaction listed**.
+No field is added to the (pre-approved) local tables. At report time, for each transaction listed, the service reads its **AA.ARRANGEMENT.ACTIVITY** record (the AAA id is the last part of the EB.ALBE.TXN.DETAILS.LIMIT id) – live first, `$NAU` for activities not yet authorised – and takes the `EB-ALBE.*` ids from its **OVERRIDE** field (the overrides the user accepted), each once. This also shows the maximum CIF override (raised by the other routine on the same activity). Cost: **one extra read per transaction listed**.
 
 ### How it works
 
-1. **One SELECT** on EB.ALBE.TXN.DETAILS.LIMIT: `@ID LIKE <cust>-...` and/or `SYSTEM.DATE GE/LE`; `BY SYSTEM.DATE BY @ID`.
+1. **One SELECT** on EB.ALBE.TXN.DETAILS.LIMIT by id: one customer `@ID LIKE <cust>-...` (dates then filtered in Java); all customers `@ID LIKE ...-<YYYYMMDD>-...` for each day of the range (max 92). Rows sorted oldest first.
 2. Per record: one read of EB.ALBE.TXN.DETAILS.LIMIT and one of AA.ARRANGEMENT.ACTIVITY (overrides).
 3. With OVERRIDDEN = Y only rows where `isLimitOverridden()` is true are kept.
 
@@ -211,17 +211,17 @@ Data for this section: 100234 – A1 CR 250,000 (no override), A2 CR 300,000 (da
 `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ 20261119 DATE.TO EQ 20261120`
 
 ```
-100234*A1*ACC1*CR*250000.00*20261119*20261119*100234-A1*
-100234*A2*ACC1*CR*300000.00*20261119*20261119*100234-A2*EB-ALBE.DAILY.LIMIT.EXCEED
-100234*A3*ACC1*CR*90000.00*20261120*20261120*100234-A3*EB-ALBE.MAX.CIF.BAL.EXCEED
-100456*B1*ACC9*CR*5000.00*20261120*20261120*100456-B1*EB-ALBE.CIF.LIMIT.NOT.DEFINED
+100234*A1*ACC1*CR*250000.00*20261119*20261119*100234-20261119-A1*
+100234*A2*ACC1*CR*300000.00*20261119*20261119*100234-20261119-A2*EB-ALBE.DAILY.LIMIT.EXCEED
+100234*A3*ACC1*CR*90000.00*20261120*20261120*100234-20261120-A3*EB-ALBE.MAX.CIF.BAL.EXCEED
+100456*B1*ACC9*CR*5000.00*20261120*20261120*100456-20261120-B1*EB-ALBE.CIF.LIMIT.NOT.DEFINED
 ```
 
 `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ 20261119 DATE.TO EQ 20261120 OVERRIDDEN EQ Y` – **only overridden transactions**:
 
 ```
-100234*A2*ACC1*CR*300000.00*20261119*20261119*100234-A2*EB-ALBE.DAILY.LIMIT.EXCEED
-100234*A3*ACC1*CR*90000.00*20261120*20261120*100234-A3*EB-ALBE.MAX.CIF.BAL.EXCEED
+100234*A2*ACC1*CR*300000.00*20261119*20261119*100234-20261119-A2*EB-ALBE.DAILY.LIMIT.EXCEED
+100234*A3*ACC1*CR*90000.00*20261120*20261120*100234-20261120-A3*EB-ALBE.MAX.CIF.BAL.EXCEED
 ```
 
 B1 is left out (only "limit not defined"); a transaction that was overridden and then **rejected** (A4 in the test) is gone.
@@ -232,7 +232,7 @@ B1 is left out (only "limit not defined"); a transaction that was overridden and
 
 ### Tables
 
-No table change for the reports. They read EB.ALBE.CIF.LIMIT, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (incl. SYSTEM.DATE, see T24_CONFIGURATION.md step 1.4) and AA.ARRANGEMENT.ACTIVITY.
+No table change for the reports. They read EB.ALBE.CIF.LIMIT, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (id `<customer>-<YYYYMMDD>-<AAA>`) and AA.ARRANGEMENT.ACTIVITY.
 
 ### EB.API
 
@@ -329,4 +329,4 @@ ENQ ALBE.CUSTOMER.LIMIT.TXN     DATE.FROM EQ 20261101 DATE.TO EQ 20261130 OVERRI
 |---|---|
 | AA.ARRANGEMENT.ACTIVITY OVERRIDE values start with the override id followed by `}` | run R10 after accepting an override; if the OVERRIDES column is empty or wrong, change `Constants.OVERRIDE_ID_END` |
 | An unauthorised activity is found in `$NAU` | R10 with a transaction not yet authorised |
-| `@ID LIKE` and `SYSTEM.DATE GE/LE` work on your TAFJ database | run R4, R9 |
+| `@ID LIKE` selections work on your TAFJ database | run R4, R9 |

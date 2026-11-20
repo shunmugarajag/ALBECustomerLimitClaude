@@ -26,8 +26,8 @@ import com.temenos.t24.api.hook.system.Enquiry;
  *               Rejected / reversed transactions are not shown (their record is deleted).
  *               Selection:
  *                 CUSTOMER   optional when a date is given (blank = all customers)
- *                 DATE.FROM  SYSTEM.DATE from (YYYYMMDD)
- *                 DATE.TO    SYSTEM.DATE to   (YYYYMMDD)
+ *                 DATE.FROM  counted date from (YYYYMMDD, the date in the record id)
+ *                 DATE.TO    counted date to   (YYYYMMDD)
  *                 OVERRIDDEN Y = only transactions accepted with a limit-exceed override
  *               Customer or at least one date is mandatory. Without a customer the range is
  *               completed (missing DATE.TO = today, missing DATE.FROM = DATE.TO) and may cover

@@ -105,7 +105,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | user (one-off) | creation |
 | EB.ALBE.CIF.LIMIT | customer id | creation; user (amend via version) | all checks |
 | EB.ALBE.UTILISED.LIMIT | daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` | utilisation update | daily / monthly check |
-| EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<AAA id>` | utilisation update (input) | rejection / reversal / re-input |
+| EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<YYYYMMDD>-<AAA id>` (date = counted date from the activity REMARKS) | utilisation update (input) | rejection / reversal / re-input |
 | ACCOUNT, CUSTOMER.ACCOUNT, COMPANY | core | – | maximum CIF check |
 
 Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-tables).
@@ -116,7 +116,7 @@ Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-table
 |---|---|
 | customerId | AA.ARRANGEMENT CUSTOMER (first) |
 | transactionId | AAA id (`arrangementContext.getArrangementActivityId()`); arrangement id as fallback. Maximum CIF check: arrangement id |
-| transactionDate | server date (`LocalDate.now()`); for a reversal the original SYSTEM.DATE |
+| transactionDate | counted date from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input = server date); today if the tag is missing |
 | creditAmount / debitAmount | TXN.AMOUNT; credit or debit decided by the activity name containing `CREDIT` / `DEBIT` |
 | transactionCurrency | AA.ARRANGEMENT CURRENCY |
 | limitCurrency, exchangeRate, originalAmount | set by `CurrencyConversionService` |
@@ -170,7 +170,7 @@ Equal to the limit is allowed; only **above** is a breach. Utilised minus earlie
 | AUTH-REV (authorised reversed) | reverse | as DELETE; if no TXN.DETAILS record exists (counted before go-live) the amount is subtracted from today's records | read, then deleted |
 
 - Counted at **input**, so accepted-override transactions count and other unauthorised transactions see them.
-- The original day/month comes from TXN.DETAILS **SYSTEM.DATE**, so a reversal on a later day subtracts from the right records.
+- The original day/month comes from the activity **REMARKS** (`ALBE.LIMIT.DATE=YYYYMMDD`, written by `defaultFieldValues` at first input), so a reversal on a later day subtracts from the right records and finds TXN.DETAILS `<customer>-<date>-<AAA>` directly.
 - Amounts are stored in the **limit currency**; a reversal uses the stored amount, no new conversion.
 - UTILISED.MIGRATED.* fields are **never written**.
 - A total never goes below 0.
@@ -205,7 +205,7 @@ Full description, columns, examples and T24 set-up: **[REPORTS.md](REPORTS.md)**
 |---|---|---|
 | Summary | CUSTOMER (opt.), DATE (opt., default today), OVER.LIMIT | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of CIF.LIMIT ids |
 | Period | DATE.FROM–DATE.TO **or** MONTH.FROM–MONTH.TO, CUSTOMER (opt.), OVER.LIMIT | all customers: **one** SELECT on UTILISED.LIMIT (`@ID LIKE ...-YYYYMM...` per month), then one read per row; one customer: direct reads per day/month. CIF.LIMIT read once per customer (cached in the service for the run) |
-| Transactions | CUSTOMER and/or DATE.FROM / DATE.TO (on SYSTEM.DATE) | one SELECT on TXN.DETAILS, then one read per record |
+| Transactions | CUSTOMER and/or DATE.FROM / DATE.TO (counted date in the id) | one SELECT on TXN.DETAILS (`@ID LIKE <cust>-...` or `...-<day>-...` per day), then reads |
 
 - Only days / months **with usage** appear in the period report (no UTILISED.LIMIT record = no row).
 - Available = limit − used (negative = over the limit after an accepted override; blank when the limit is not defined).
@@ -291,7 +291,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 
 | Point | Status |
 |---|---|
-| EB.ALBE.TXN.DETAILS.LIMIT read **by key** (`<customer>-<AAA>`), no SELECT | done |
+| EB.ALBE.TXN.DETAILS.LIMIT read **by key** (`<customer>-<date>-<AAA>`, date from REMARKS), no SELECT | done |
 | One request validation per hook call | done |
 | DB trace lines switchable (`LOG_DETAIL_ENABLED=false` in production) | done |
 | Per-transaction read cache (CIF.LIMIT, UTILISED.LIMIT and COMPANY are read more than once) | possible next step |
@@ -309,8 +309,8 @@ Controller `END` lines carry `elapsedMs` for timing.
 | 1 | Limits only from EB.ALBE.CIF.LIMIT; GEN.PARAM only for creation | One source of truth per customer |
 | 2 | Missing record / blank limit -> acceptable override (not error) | Business decision |
 | 3 | Count utilisation at **input**, reverse at rejection and at reversal | Unauthorised transactions must count; accepted-override transactions count |
-| 4 | Server date for counting; original SYSTEM.DATE for reversal | Day/month buckets follow when the amount was counted |
-| 5 | TXN.DETAILS id `<customer>-<AAA id>` + SYSTEM.DATE field | Direct read, no SELECT |
+| 4 | Server date for counting, kept in the activity REMARKS; reversal uses that date | Day/month buckets follow when the amount was counted |
+| 5 | TXN.DETAILS id `<customer>-<YYYYMMDD>-<AAA id>` (HLSD), date from REMARKS | Direct read, no SELECT, no table change |
 | 6 | Re-input subtracts its own earlier input first | An amended transaction is not counted twice or checked against itself |
 | 7 | Compare and store in limit currency; transaction CCY = AA.ARRANGEMENT CURRENCY | Consistent totals |
 | 8 | Creation as **Auth** routine (HLSD says After Unau) | No delete flow needed |
@@ -325,7 +325,6 @@ Controller `END` lines carry `elapsedMs` for timing.
 |---|---|---|
 | Creation routine: After Unau on CUSTOMER,ALBE.CORP; delete CIF.LIMIT when the unauthorised customer is deleted | Auth routine; no delete flow | 20-Nov-2026 |
 | Table EB.ALBE.GEN.CIF.LIMIT for generic limits | EB.ALBE.GEN.PARAM record `CUSTOMER.LIMIT` (KEY.NAME / KEY.VALUE) | yes |
-| TXN.DETAILS id `<customer>-YYYYMMDD-<txn id>` | `<customer>-<AAA id>` + new field SYSTEM.DATE | yes |
 | – | Currency conversion to the limit currency | added |
 
 ---
@@ -345,7 +344,8 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | `TransactionContext.getCurrentFunction()` | CustomerLimitCreationController (logged only) |
 | `DataAccess.getConcatValues("CUSTOMER.ACCOUNT", id)` | repository |
 | `AccountRecord.getWorkingBalance()` / `getCurrency()` | MaximumCifLimitService |
-| Generated getters: `KeyNameClass.getKeyName/getKeyValue`, `getSystemDate/setSystemDate`, UTILISED.* getters | services |
+| Generated getters: `KeyNameClass.getKeyName/getKeyValue`, UTILISED.* getters | services |
+| `ActivityLifecycle.defaultFieldValues` can set `AaArrangementActivityRecord.setRemarks(...)` at input, and REMARKS is kept on the same AAA for DELETE / AUTH-REV | DailyMonthlyLimitController |
 | Text of the T24 "record not found" exception (`RECORD_NOT_FOUND_MARKERS`) | repository `cifLimitExists` |
 
 ---
@@ -375,7 +375,7 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | # | Item | Owner |
 |---|---|---|
 | 1 | Exchange rate table / field and the read in `readExchangeRate` | bank / dev |
-| 2 | Add field SYSTEM.DATE to EB.ALBE.TXN.DETAILS.LIMIT and regenerate its JAR | T24 |
+| 2 | Attach `defaultFieldValues` of ALBE.CL.DAILY.MONTHLY in ACTIVITY.API (counted date into REMARKS) | T24 |
 | 3 | HLSD update for the deviations in section 11 | BA |
 | 4 | DEV verification of the API calls in section 12 | dev |
 | 5 | One-off creation of EB.ALBE.CIF.LIMIT for customers that already exist (separate flow) | bank / dev |
@@ -390,7 +390,8 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | 20-Nov-2026 | Initial implementation (creation, daily/monthly, utilisation, maximum CIF, overrides) |
 | 20-Nov-2026 | Repository layer, MVC, Constants, LimitBreach model |
 | 20-Nov-2026 | Currency conversion |
-| 20-Nov-2026 | TXN.DETAILS keyed by customer-AAA + SYSTEM.DATE (no SELECT) |
+| 20-Nov-2026 | TXN.DETAILS read by key (no SELECT) |
+| 21-Nov-2026 | Counted date in activity REMARKS; TXN.DETAILS id `<customer>-<date>-<AAA>` (HLSD); SYSTEM.DATE removed – no table change |
 | 20-Nov-2026 | Validation once in controllers; ValidationUtil; LogUtil logging standard |
 | 20-Nov-2026 | Readability refactor (credit/debit merged) |
 | 20-Nov-2026 | Creation as Auth routine, no delete flow, never overwrite |

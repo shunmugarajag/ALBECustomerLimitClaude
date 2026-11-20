@@ -32,7 +32,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *                     customers with usage have records), or direct reads for one customer;
  *                     each customer's limits are read once and reused for all their rows.
  *   getTransactions : the transactions currently counted for one or all customers, from
- *                     EB.ALBE.TXN.DETAILS.LIMIT, optionally by SYSTEM.DATE range.
+ *                     EB.ALBE.TXN.DETAILS.LIMIT, optionally by counted-date range (date in the id).
  *   overLimitOnly   : keep only rows where something used is above its limit.
  *   overriddenOnly  : keep only transactions accepted with a limit-exceed override. The overrides
  *                     are read from each transaction's AA.ARRANGEMENT.ACTIVITY OVERRIDE field
@@ -247,29 +247,43 @@ public class CustomerLimitEnquiryService {
 
     /**
      * Transactions counted for one customer (customerId given) or all customers (blank),
-     * optionally between fromDate and toDate (SYSTEM.DATE, YYYYMMDD; blank = no bound), oldest first.
+     * optionally between fromDate and toDate (counted date in the id, YYYYMMDD; blank = no bound),
+     * oldest first.
      */
     public List<LimitTxnRow> getTransactions(String customerId, String fromDate, String toDate,
             boolean overriddenOnly) {
         LogUtil.info(CLASS_NAME, "getTransactions", "START", "customer=" + customerId + " from=" + fromDate
                 + " to=" + toDate + " overriddenOnly=" + overriddenOnly);
 
+        // The counted date is part of the id (<customer>-<YYYYMMDD>-<AAA>):
+        // one customer -> select the customer's records and keep the dates in range here;
+        // all customers -> select only the days of the range (the controller limits it).
+        boolean oneCustomer = !ValidationUtil.isBlank(customerId);
+        List<String> days = oneCustomer ? List.of() : daysBetween(fromDate, toDate);
+        LocalDate from = ValidationUtil.toDate(fromDate);
+        LocalDate to = ValidationUtil.toDate(toDate);
+
         List<LimitTxnRow> rows = new ArrayList<>();
         String finMnemonic = repository.getFinancialMnemonic();   // once, for the AA.ARRANGEMENT.ACTIVITY reads
-        for (String recordId : repository.selectTxnDetailsIds(customerId, fromDate, toDate)) {
+        for (String recordId : repository.selectTxnDetailsIds(oneCustomer ? customerId.trim() : "", days)) {
+            String[] parts = recordId.split("-", 3);   // customer, YYYYMMDD, AAA id
+            LocalDate countedOn = parts.length == 3 ? ValidationUtil.toDate(parts[1]) : null;
+            if (countedOn == null || (from != null && countedOn.isBefore(from))
+                    || (to != null && countedOn.isAfter(to))) {
+                continue;
+            }
             EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
             if (txnRec == null) {
                 continue;
             }
             LimitTxnRow row = new LimitTxnRow();
             row.recordId = recordId;
-            int dash = recordId.indexOf('-');
-            row.customerId = dash < 0 ? recordId : recordId.substring(0, dash);
-            row.aaaId = dash < 0 ? "" : recordId.substring(dash + 1);
+            row.customerId = parts[0];
+            row.countedDate = parts[1];
+            row.aaaId = parts[2];
             row.accountNo = ValidationUtil.nvl(txnRec.getAccountNo().getValue());
             row.creditDebitFlag = ValidationUtil.nvl(txnRec.getCreditDebitFlag().getValue());
             row.effectiveDate = ValidationUtil.nvl(txnRec.getEffDate().getValue());
-            row.systemDate = ValidationUtil.nvl(txnRec.getSystemDate().getValue());
             row.amount = ValidationUtil.nvl(txnRec.getTxnAmount().getValue());
             // Accepted overrides come from the activity itself (no extra field in EB.ALBE.TXN.DETAILS.LIMIT).
             row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR,
@@ -278,7 +292,24 @@ public class CustomerLimitEnquiryService {
                 rows.add(row);
             }
         }
+        // Oldest first, then by id.
+        rows.sort((a, b) -> a.countedDate.equals(b.countedDate) ? a.recordId.compareTo(b.recordId)
+                : a.countedDate.compareTo(b.countedDate));
         LogUtil.info(CLASS_NAME, "getTransactions", "END", "customer=" + customerId + " rows=" + rows.size());
         return rows;
+    }
+
+    /** YYYYMMDD of every day from fromDate to toDate (inclusive); empty if either is blank. */
+    private List<String> daysBetween(String fromDate, String toDate) {
+        List<String> days = new ArrayList<>();
+        LocalDate from = ValidationUtil.toDate(fromDate);
+        LocalDate to = ValidationUtil.toDate(toDate);
+        if (from == null || to == null) {
+            return days;
+        }
+        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {
+            days.add(day.format(Constants.DAILY_ID_FORMAT));
+        }
+        return days;
     }
 }

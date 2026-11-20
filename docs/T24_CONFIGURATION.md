@@ -81,9 +81,9 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 | UTILISED.MIGRATED.CREDIT.LIMIT | Amount | **no** – migration only (monthly record) |
 | UTILISED.MIGRATED.DEBIT.LIMIT | Amount | **no** – migration only (monthly record) |
 
-### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – add one field)*
+### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – no change)*
 
-ID: **`<customer>-<AAA id>`**, e.g. `100234-AAACT2632400001` (written by the routine). The ID must allow this format (length ≥ customer id + 1 + AAA id).
+ID (HLSD): **`<customer>-<YYYYMMDD>-<AAA id>`**, e.g. `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = server date the amount was counted on, kept in the activity REMARKS (see step 8).
 
 | Field | Type | Value |
 |---|---|---|
@@ -91,9 +91,7 @@ ID: **`<customer>-<AAA id>`**, e.g. `100234-AAACT2632400001` (written by the rou
 | CREDIT.DEBIT.FLAG | text | `CR` / `DR` |
 | EFF.DATE | Date | effective date of the transaction |
 | TXN.AMOUNT | Amount | amount counted (limit currency) |
-| **SYSTEM.DATE** | **Date** | **NEW** – server date the amount was counted on |
-
-> ⚠ **SYSTEM.DATE must be added** and the JAR regenerated (step 2), otherwise the code does not compile (`getSystemDate()` / `setSystemDate()`).
+The table structure is the approved one; the code writes only these four fields.
 
 ---
 
@@ -199,13 +197,16 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 | Activity | Routine | Hook | Must run for |
 |---|---|---|---|
+| ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `defaultFieldValues` | input (UNAUTH) – writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
+| ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `defaultFieldValues` | input (UNAUTH) – writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS |
 | ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
 | ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.MAX.CIF | `validateRecord` | input (UNAUTH) |
 
 - Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
+- **REMARKS:** `defaultFieldValues` appends `ALBE.LIMIT.DATE=YYYYMMDD` to the activity REMARKS at first input (user text is kept; a re-input keeps the first date). Users should not delete this tag. Without it a rejection / reversal uses today's date.
 - Credit or debit is taken from the **activity name**: it must contain `CREDIT` or `DEBIT`. If other activities are added, their names must too.
 - The maximum CIF check is for **credit** activities only.
 - ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).
@@ -264,7 +265,7 @@ Set up a test customer with an EB.ALBE.CIF.LIMIT record, e.g. daily credit 5000,
 |---|---|---|---|
 | 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMIT `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
-| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<AAA>` with SYSTEM.DATE | `checkLimit \| OK`, `addToRecord \| UPDATED` |
+| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<AAA>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
 | 4 | Credit 4000 (input) | override EB-ALBE.DAILY.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `postCoreTableUpdate \| ACTION \| COUNT` |
 | 6 | **Reject / delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| REVERSE rejected input` |

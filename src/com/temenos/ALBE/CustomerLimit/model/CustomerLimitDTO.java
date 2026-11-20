@@ -25,7 +25,7 @@ public class CustomerLimitDTO {
     private String customerId;
     /** AAA id (daily/monthly routine) or arrangement id (maximum CIF routine). */
     private String transactionId;
-    /** Server date the transaction is counted on (for a reversal: the original SYSTEM.DATE). */
+    /** Server date the transaction is counted on (from the activity REMARKS tag ALBE.LIMIT.DATE; else today). */
     private LocalDate transactionDate;
     /** Credit amount (in the limit currency once converted); zero for a debit. */
     private BigDecimal creditAmount = BigDecimal.ZERO;

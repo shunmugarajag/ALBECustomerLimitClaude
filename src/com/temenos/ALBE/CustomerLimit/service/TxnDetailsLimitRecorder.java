@@ -1,8 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,14 +16,19 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  *               EB.ALBE.UTILISED.LIMIT (written at input), so a re-input, a rejected
  *               input or a reversal subtracts from the original day and month.
  *
- *               Record id : <customer id>-<AAA id>   (known at every step => direct read)
+ *               Record id : <customer id>-<YYYYMMDD>-<AAA id>   (HLSD format)
+ *                           YYYYMMDD = server date the amount was counted on. It is kept
+ *                           in the activity's REMARKS (ALBE.LIMIT.DATE=YYYYMMDD, written by
+ *                           DailyMonthlyLimitController.defaultFieldValues), so every later
+ *                           step - also a reversal on another day - rebuilds the id and
+ *                           reads the record directly by key.
  *               Fields    : ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE (value date),
- *                           TXN.AMOUNT (in the limit currency),
- *                           SYSTEM.DATE (server date the amount was counted on)
+ *                           TXN.AMOUNT (in the limit currency). No other field is written.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 21-Nov-2026   Development      HLSD id <customer>-<date>-<AAA>; date from AAA REMARKS
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {
@@ -38,9 +41,10 @@ public class TxnDetailsLimitRecorder {
         this.repository = repository;
     }
 
-    /** <customer id>-<AAA id> */
+    /** <customer id>-<YYYYMMDD counted on>-<AAA id> */
     public static String recordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionId();
+        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT)
+                + "-" + request.getTransactionId();
     }
 
     /**
@@ -51,33 +55,32 @@ public class TxnDetailsLimitRecorder {
         String recordId = recordId(request);
         LogUtil.info(CLASS_NAME, "record", "START", "id=" + recordId);
         try {
-            boolean credit = request.getCreditAmount().signum() > 0;
+            boolean credit = request.isCredit();
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
             txnRec.setAccountNo(ValidationUtil.nvl(accountNo));
             txnRec.setCreditDebitFlag(credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT);
             txnRec.setEffDate(ValidationUtil.nvl(effectiveDate));
-            txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
-            txnRec.setSystemDate(request.getTransactionDate().format(Constants.DAILY_ID_FORMAT));
+            txnRec.setTxnAmount(request.getAmount().toPlainString());
             repository.writeTxnDetails(recordId, txnRec);
             LogUtil.info(CLASS_NAME, "record", "WRITTEN", "id=" + recordId + " account=" + accountNo + " flag="
                     + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate
-                    + " systemDate=" + request.getTransactionDate() + " amount="
-                    + (credit ? request.getCreditAmount() : request.getDebitAmount()));
+                    + " amount=" + request.getAmount());
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
         }
     }
 
     /**
-     * Finds what was recorded for this transaction: direct read of <customer>-<AAA id>.
-     * The returned entry carries the original SYSTEM.DATE, flag and amount.
+     * Finds what was recorded for this transaction: direct read of <customer>-<date>-<AAA id>,
+     * the date being the one the request carries (from the activity REMARKS).
+     * The returned entry carries the original date (from the id), flag and amount.
      * @return 0 or 1 entries
      */
     public List<CustomerLimitDTO> findOriginal(CustomerLimitDTO request) {
         List<CustomerLimitDTO> originals = new ArrayList<>();
         String recordId = recordId(request);
         LogUtil.info(CLASS_NAME, "findOriginal", "START", "direct read id=" + recordId);
-        CustomerLimitDTO original = toRequest(recordId, request.getCustomerId(), request.getTransactionId());
+        CustomerLimitDTO original = toRequest(recordId, request);
         if (original != null) {
             originals.add(original);
         }
@@ -96,36 +99,26 @@ public class TxnDetailsLimitRecorder {
         }
     }
 
-    /**
-     * Rebuilds the original transaction from its record: SYSTEM.DATE, flag and amount.
-     * Null if there is no record. A blank SYSTEM.DATE falls back to today's server date.
-     */
-    private CustomerLimitDTO toRequest(String recordId, String customerId, String transactionId) {
+    /** Rebuilds the original transaction from its record (flag, amount); the date is the id's. */
+    private CustomerLimitDTO toRequest(String recordId, CustomerLimitDTO request) {
         EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
         if (txnRec == null) {
             return null;
         }
         try {
             BigDecimal amount = ValidationUtil.toAmount(txnRec.getTxnAmount().getValue());
-            LocalDate countedOn = ValidationUtil.toDate(txnRec.getSystemDate().getValue());
-            if (countedOn == null) {
-                countedOn = LocalDate.now();
-                LogUtil.error(CLASS_NAME, "toRequest", "INVALID", "id=" + recordId
-                        + " SYSTEM.DATE blank/invalid, using today "
-                        + countedOn);
-            }
-
             CustomerLimitDTO original = new CustomerLimitDTO();
-            original.setCustomerId(customerId);
-            original.setTransactionId(transactionId);
-            original.setTransactionDate(countedOn);
+            original.setCustomerId(request.getCustomerId());
+            original.setTransactionId(request.getTransactionId());
+            original.setTransactionDate(request.getTransactionDate());
             if (Constants.FLAG_CREDIT.equalsIgnoreCase(txnRec.getCreditDebitFlag().getValue())) {
                 original.setCreditAmount(amount);
             } else {
                 original.setDebitAmount(amount);
             }
-            LogUtil.info(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " systemDate=" + countedOn
-                    + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + amount);
+            LogUtil.info(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " countedOn="
+                    + original.getTransactionDate() + " flag=" + txnRec.getCreditDebitFlag().getValue()
+                    + " amount=" + amount);
             return original;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "toRequest", "FAILED", "unable to use id=" + recordId, e);
