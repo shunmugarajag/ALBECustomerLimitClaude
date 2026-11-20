@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
+import com.temenos.ALBE.CustomerLimit.model.LimitPeriodRow;
 import com.temenos.ALBE.CustomerLimit.model.LimitSummaryRow;
 import com.temenos.ALBE.CustomerLimit.model.LimitTxnRow;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 /*-----------------------------------------------------------------------------
  * Description : Formats the enquiry rows as T24 NOFILE enquiry lines: one String per row,
@@ -30,14 +32,23 @@ public class CustomerLimitEnquiryView {
      *  7 DAILY.DR.LIMIT    8 DAILY.DR.UTILISED    9 DAILY.DR.AVAILABLE
      * 10 MONTHLY.CR.LIMIT 11 MONTHLY.CR.UTILISED 12 MONTHLY.CR.AVAILABLE
      * 13 MONTHLY.DR.LIMIT 14 MONTHLY.DR.UTILISED 15 MONTHLY.DR.AVAILABLE
-     * 16 MAX.CIF.BALANCE
+     * 16 MAX.CIF.BALANCE  17 OVER.LIMIT (Y / N)
      */
     public static final String SUMMARY_COLUMNS = "CUSTOMER*CCY*REPORT.DATE"
             + "*DAILY.CR.LIMIT*DAILY.CR.UTILISED*DAILY.CR.AVAILABLE"
             + "*DAILY.DR.LIMIT*DAILY.DR.UTILISED*DAILY.DR.AVAILABLE"
             + "*MONTHLY.CR.LIMIT*MONTHLY.CR.UTILISED*MONTHLY.CR.AVAILABLE"
             + "*MONTHLY.DR.LIMIT*MONTHLY.DR.UTILISED*MONTHLY.DR.AVAILABLE"
-            + "*MAX.CIF.BALANCE";
+            + "*MAX.CIF.BALANCE*OVER.LIMIT";
+
+    /**
+     * Period columns (one row per customer per day or month):
+     *  1 PERIOD.TYPE (DAILY / MONTHLY)  2 PERIOD (YYYYMMDD / YYYYMM)  3 CUSTOMER  4 CCY
+     *  5 CR.LIMIT  6 CR.UTILISED  7 CR.AVAILABLE  8 DR.LIMIT  9 DR.UTILISED  10 DR.AVAILABLE
+     * 11 OVER.LIMIT (Y / N)
+     */
+    public static final String PERIOD_COLUMNS = "PERIOD.TYPE*PERIOD*CUSTOMER*CCY"
+            + "*CR.LIMIT*CR.UTILISED*CR.AVAILABLE*DR.LIMIT*DR.UTILISED*DR.AVAILABLE*OVER.LIMIT";
 
     /**
      * Transaction columns:
@@ -64,7 +75,19 @@ public class CustomerLimitEnquiryView {
                     available(row.monthlyCreditLimit, row.monthlyCreditUtilised),
                     amount(row.monthlyDebitLimit), amount(row.monthlyDebitUtilised),
                     available(row.monthlyDebitLimit, row.monthlyDebitUtilised),
-                    amount(row.maxCifBalance)));
+                    amount(row.maxCifBalance), yesNo(row.isOverLimit())));
+        }
+        return lines;
+    }
+
+    /** One enquiry line per customer per period, in the PERIOD_COLUMNS order. */
+    public static List<String> toPeriodLines(List<LimitPeriodRow> rows) {
+        List<String> lines = new ArrayList<>(rows.size());
+        for (LimitPeriodRow row : rows) {
+            lines.add(join(row.periodType, row.period, row.customerId, row.ccy,
+                    amount(row.creditLimit), amount(row.creditUtilised), available(row.creditLimit, row.creditUtilised),
+                    amount(row.debitLimit), amount(row.debitUtilised), available(row.debitLimit, row.debitUtilised),
+                    yesNo(row.isOverLimit())));
         }
         return lines;
     }
@@ -73,10 +96,15 @@ public class CustomerLimitEnquiryView {
     public static List<String> toTxnLines(List<LimitTxnRow> rows) {
         List<String> lines = new ArrayList<>(rows.size());
         for (LimitTxnRow row : rows) {
-            lines.add(join(row.customerId, row.aaaId, row.accountNo, row.creditDebitFlag, row.amount,
+            lines.add(join(row.customerId, row.aaaId, row.accountNo, row.creditDebitFlag,
+                    amount(ValidationUtil.toAmount(row.amount)),
                     row.effectiveDate, row.systemDate, row.recordId));
         }
         return lines;
+    }
+
+    private static String yesNo(boolean value) {
+        return value ? Constants.ENQ_YES : Constants.ENQ_NO;
     }
 
     /** Amount with 2 decimals; "" when not defined. */

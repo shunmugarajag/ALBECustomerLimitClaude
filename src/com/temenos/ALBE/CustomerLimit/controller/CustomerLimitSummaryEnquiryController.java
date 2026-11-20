@@ -24,7 +24,8 @@ import com.temenos.t24.api.hook.system.Enquiry;
  *               today (or on DATE) and in that month, and what is still available.
  *               Selection (both optional):
  *                 CUSTOMER  one customer; blank = every customer with an EB.ALBE.CIF.LIMIT
- *                 DATE      report date YYYYMMDD; blank = server date
+ *                 DATE        report date YYYYMMDD; blank = server date
+ *                 OVER.LIMIT  Y = only customers with a used amount above its limit
  *               Columns: see CustomerLimitEnquiryView.SUMMARY_COLUMNS.
  *               No business rules and no DB access here.
  *------------------------------------------------------------------------------
@@ -43,6 +44,7 @@ public class CustomerLimitSummaryEnquiryController extends Enquiry {
         // Selection
         String customerId = "";
         String dateText = "";
+        String overLimit = "";
         if (filterCriteria != null) {
             for (FilterCriteria filter : filterCriteria) {
                 String field = filter.getFieldname();
@@ -50,10 +52,13 @@ public class CustomerLimitSummaryEnquiryController extends Enquiry {
                     customerId = ValidationUtil.nvl(filter.getValue()).trim();
                 } else if (Constants.ENQ_SEL_DATE.equals(field)) {
                     dateText = ValidationUtil.nvl(filter.getValue()).trim();
+                } else if (Constants.ENQ_SEL_OVER_LIMIT.equals(field)) {
+                    overLimit = ValidationUtil.nvl(filter.getValue()).trim();
                 }
             }
         }
-        LogUtil.info(CLASS_NAME, "setIds", "START", "customer=" + customerId + " date=" + dateText);
+        LogUtil.info(CLASS_NAME, "setIds", "START", "customer=" + customerId + " date=" + dateText
+                + " overLimit=" + overLimit);
 
         String error = CustomerLimitEnquiryValidator.checkDate(Constants.ENQ_SEL_DATE, dateText);
         if (error != null) {
@@ -64,7 +69,8 @@ public class CustomerLimitSummaryEnquiryController extends Enquiry {
         List<String> lines;
         try {
             CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(new CustomerLimitRepository(this));
-            List<LimitSummaryRow> rows = service.getLimitSummary(customerId, reportDate);
+            List<LimitSummaryRow> rows = service.getLimitSummary(customerId, reportDate,
+                    CustomerLimitEnquiryValidator.isYes(overLimit));
             lines = CustomerLimitEnquiryView.toSummaryLines(rows);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "setIds", "ERROR", "customer=" + customerId + " date=" + reportDate, e);

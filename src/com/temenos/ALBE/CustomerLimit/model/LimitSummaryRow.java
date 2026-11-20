@@ -32,6 +32,16 @@ public class LimitSummaryRow {
 
     public BigDecimal maxCifBalance;
 
+    /** True when any used amount (daily / monthly, credit / debit) is above its defined limit. */
+    public boolean isOverLimit() {
+        return isOver(dailyCreditLimit, dailyCreditUtilised) || isOver(dailyDebitLimit, dailyDebitUtilised)
+                || isOver(monthlyCreditLimit, monthlyCreditUtilised) || isOver(monthlyDebitLimit, monthlyDebitUtilised);
+    }
+
+    private static boolean isOver(BigDecimal limit, BigDecimal utilised) {
+        return limit != null && utilised != null && utilised.compareTo(limit) > 0;
+    }
+
     @Override
     public String toString() {
         return "LimitSummaryRow[customer=" + customerId + ", ccy=" + ccy + ", date=" + reportDate

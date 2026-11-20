@@ -1,9 +1,14 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
+import com.temenos.ALBE.CustomerLimit.model.LimitPeriodRow;
 import com.temenos.ALBE.CustomerLimit.model.LimitSummaryRow;
 import com.temenos.ALBE.CustomerLimit.model.LimitTxnRow;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
@@ -21,8 +26,14 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *   getLimitSummary : per customer, the limits from EB.ALBE.CIF.LIMIT and the utilised
  *                     amounts of the report day (<customer>-YYYYMMDD) and its month
  *                     (<customer>-YYYYMM, migrated + utilised) from EB.ALBE.UTILISED.LIMIT.
- *   getTransactions : the transactions currently counted for a customer, from
+ *   getDailyRows    : per customer per day with usage in a date range (daily records).
+ *   getMonthlyRows  : per customer per month with usage in a month range (monthly records).
+ *                     Both: one SELECT on EB.ALBE.UTILISED.LIMIT for all customers (only
+ *                     customers with usage have records), or direct reads for one customer;
+ *                     each customer's limits are read once and reused for all their rows.
+ *   getTransactions : the transactions currently counted for one or all customers, from
  *                     EB.ALBE.TXN.DETAILS.LIMIT, optionally by SYSTEM.DATE range.
+ *   overLimitOnly   : keep only rows where something used is above its limit.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -43,9 +54,11 @@ public class CustomerLimitEnquiryService {
     /**
      * Limit summary for one customer (customerId given) or for every customer that has an
      * EB.ALBE.CIF.LIMIT record (customerId blank). Customers without a record are left out.
+     * overLimitOnly: only customers with at least one used amount above its limit.
      */
-    public List<LimitSummaryRow> getLimitSummary(String customerId, LocalDate reportDate) {
-        LogUtil.info(CLASS_NAME, "getLimitSummary", "START", "customer=" + customerId + " date=" + reportDate);
+    public List<LimitSummaryRow> getLimitSummary(String customerId, LocalDate reportDate, boolean overLimitOnly) {
+        LogUtil.info(CLASS_NAME, "getLimitSummary", "START", "customer=" + customerId + " date=" + reportDate
+                + " overLimitOnly=" + overLimitOnly);
 
         List<String> customerIds = ValidationUtil.isBlank(customerId) ? repository.selectCifLimitIds()
                 : List.of(customerId.trim());
@@ -53,7 +66,7 @@ public class CustomerLimitEnquiryService {
         List<LimitSummaryRow> rows = new ArrayList<>();
         for (String id : customerIds) {
             LimitSummaryRow row = buildSummaryRow(id, reportDate);
-            if (row != null) {
+            if (row != null && (!overLimitOnly || row.isOverLimit())) {
                 rows.add(row);
             }
         }
@@ -97,8 +110,124 @@ public class CustomerLimitEnquiryService {
     }
 
     /**
-     * Transactions counted for the customer, optionally between fromDate and toDate
-     * (SYSTEM.DATE, YYYYMMDD; blank = no bound), oldest first.
+     * One row per customer per day that has usage, from fromDate to toDate (inclusive):
+     * daily limits against UTILISED.CREDIT/DEBIT.LIMIT of <customer>-YYYYMMDD.
+     * customerId blank = all customers.
+     */
+    public List<LimitPeriodRow> getDailyRows(String customerId, LocalDate fromDate, LocalDate toDate,
+            boolean overLimitOnly) {
+        LogUtil.info(CLASS_NAME, "getDailyRows", "START", "customer=" + customerId + " from=" + fromDate
+                + " to=" + toDate + " overLimitOnly=" + overLimitOnly);
+        List<String> recordIds = new ArrayList<>();
+        if (ValidationUtil.isBlank(customerId)) {
+            for (String id : repository.selectUtilisedLimitIds(monthsBetween(YearMonth.from(fromDate),
+                    YearMonth.from(toDate)), true)) {
+                String period = periodOf(id);
+                if (period.length() != Constants.DAILY_PERIOD_LENGTH) {
+                    continue;   // the month pattern also matches the monthly record <customer>-YYYYMM
+                }
+                LocalDate day = ValidationUtil.toDate(period);
+                if (day != null && !day.isBefore(fromDate) && !day.isAfter(toDate)) {
+                    recordIds.add(id);
+                }
+            }
+        } else {
+            for (LocalDate day = fromDate; !day.isAfter(toDate); day = day.plusDays(1)) {
+                recordIds.add(CustomerLimitUtilizationUpdater.dailyRecordId(customerId.trim(), day));
+            }
+        }
+        List<LimitPeriodRow> rows = buildPeriodRows(recordIds, true, overLimitOnly);
+        LogUtil.info(CLASS_NAME, "getDailyRows", "END", "records=" + recordIds.size() + " rows=" + rows.size());
+        return rows;
+    }
+
+    /**
+     * One row per customer per month that has usage, from fromMonth to toMonth (inclusive):
+     * monthly limits against UTILISED.MIGRATED.* + UTILISED.* of <customer>-YYYYMM.
+     * customerId blank = all customers.
+     */
+    public List<LimitPeriodRow> getMonthlyRows(String customerId, YearMonth fromMonth, YearMonth toMonth,
+            boolean overLimitOnly) {
+        LogUtil.info(CLASS_NAME, "getMonthlyRows", "START", "customer=" + customerId + " from=" + fromMonth
+                + " to=" + toMonth + " overLimitOnly=" + overLimitOnly);
+        List<String> months = monthsBetween(fromMonth, toMonth);
+        List<String> recordIds = new ArrayList<>();
+        if (ValidationUtil.isBlank(customerId)) {
+            for (String id : repository.selectUtilisedLimitIds(months, false)) {
+                if (months.contains(periodOf(id))) {
+                    recordIds.add(id);
+                }
+            }
+        } else {
+            for (String month : months) {
+                recordIds.add(customerId.trim() + "-" + month);
+            }
+        }
+        List<LimitPeriodRow> rows = buildPeriodRows(recordIds, false, overLimitOnly);
+        LogUtil.info(CLASS_NAME, "getMonthlyRows", "END", "records=" + recordIds.size() + " rows=" + rows.size());
+        return rows;
+    }
+
+    /** Rows for the given utilisation record ids; records that do not exist (no usage) are skipped. */
+    private List<LimitPeriodRow> buildPeriodRows(List<String> recordIds, boolean daily, boolean overLimitOnly) {
+        Map<String, Limits> limitsByCustomer = new HashMap<>();
+        List<LimitPeriodRow> rows = new ArrayList<>();
+        for (String recordId : recordIds) {
+            EbAlbeUtilisedLimitRecord utilRec = repository.readUtilisedLimit(recordId);
+            if (utilRec == null) {
+                continue;
+            }
+            String customerId = recordId.substring(0, recordId.lastIndexOf('-'));
+            if (!limitsByCustomer.containsKey(customerId)) {
+                limitsByCustomer.put(customerId, limitReader.getCustomerLimits(customerId));
+            }
+            Limits limits = limitsByCustomer.get(customerId);
+
+            LimitPeriodRow row = new LimitPeriodRow();
+            row.periodType = daily ? Constants.PERIOD_DAILY : Constants.PERIOD_MONTHLY;
+            row.period = periodOf(recordId);
+            row.customerId = customerId;
+            row.ccy = limits == null ? "" : limits.ccy;
+            if (daily) {
+                row.creditLimit = limits == null ? null : limits.dailyCreditLimit;
+                row.debitLimit = limits == null ? null : limits.dailyDebitLimit;
+                row.creditUtilised = CustomerLimitUtilizationUpdater.utilisedAmount(utilRec, true);
+                row.debitUtilised = CustomerLimitUtilizationUpdater.utilisedAmount(utilRec, false);
+            } else {
+                row.creditLimit = limits == null ? null : limits.monthlyCreditLimit;
+                row.debitLimit = limits == null ? null : limits.monthlyDebitLimit;
+                row.creditUtilised = CustomerLimitUtilizationUpdater.migratedAmount(utilRec, true)
+                        .add(CustomerLimitUtilizationUpdater.utilisedAmount(utilRec, true));
+                row.debitUtilised = CustomerLimitUtilizationUpdater.migratedAmount(utilRec, false)
+                        .add(CustomerLimitUtilizationUpdater.utilisedAmount(utilRec, false));
+            }
+            if (!overLimitOnly || row.isOverLimit()) {
+                rows.add(row);
+            }
+            LogUtil.detail(CLASS_NAME, "buildPeriodRows", "CALC", row);
+        }
+        LogUtil.info(CLASS_NAME, "buildPeriodRows", "CALC", "customers=" + limitsByCustomer.size()
+                + " (limits read once each)");
+        return rows;
+    }
+
+    /** YYYYMM of every month from fromMonth to toMonth (inclusive). */
+    private List<String> monthsBetween(YearMonth fromMonth, YearMonth toMonth) {
+        List<String> months = new ArrayList<>();
+        for (YearMonth month = fromMonth; !month.isAfter(toMonth); month = month.plusMonths(1)) {
+            months.add(month.format(Constants.MONTHLY_ID_FORMAT));
+        }
+        return months;
+    }
+
+    /** The YYYYMMDD / YYYYMM part of a utilisation record id <customer>-<period>. */
+    private String periodOf(String recordId) {
+        return recordId.substring(recordId.lastIndexOf('-') + 1);
+    }
+
+    /**
+     * Transactions counted for one customer (customerId given) or all customers (blank),
+     * optionally between fromDate and toDate (SYSTEM.DATE, YYYYMMDD; blank = no bound), oldest first.
      */
     public List<LimitTxnRow> getTransactions(String customerId, String fromDate, String toDate) {
         LogUtil.info(CLASS_NAME, "getTransactions", "START", "customer=" + customerId + " from=" + fromDate
@@ -112,8 +241,8 @@ public class CustomerLimitEnquiryService {
             }
             LimitTxnRow row = new LimitTxnRow();
             row.recordId = recordId;
-            row.customerId = customerId;
             int dash = recordId.indexOf('-');
+            row.customerId = dash < 0 ? recordId : recordId.substring(0, dash);
             row.aaaId = dash < 0 ? "" : recordId.substring(dash + 1);
             row.accountNo = ValidationUtil.nvl(txnRec.getAccountNo().getValue());
             row.creditDebitFlag = ValidationUtil.nvl(txnRec.getCreditDebitFlag().getValue());

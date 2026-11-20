@@ -21,7 +21,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 | 11 | Data before go-live (existing customers, migrated utilisation) | ☐ |
 | 12 | Exchange rate (pending) | ☐ |
 | 13 | DEV / SIT test cases | ☐ |
-| 14 | Enquiries (limit summary, transaction report) | ☐ |
+| 14 | Enquiries (summary, period report, transaction report) | ☐ |
 
 ---
 
@@ -289,24 +289,39 @@ Also note in the DEV log (once):
 
 ## 14. Enquiries – customer limit reports
 
-Two NOFILE enquiries (same set-up as the team's other NOFILE enquiries, e.g. NOFILE.FF.BM.OVERDUE.SM.RPT).
-Each routine returns one line per row with the columns separated by `*`; the ENQUIRY record shows each column by its position.
+Three NOFILE enquiries (same set-up as the team's other NOFILE enquiries). Each routine returns one line per row with the columns separated by `*`; the ENQUIRY record shows each column by its position.
+
+| Enquiry | Question it answers |
+|---|---|
+| ALBE.CUSTOMER.LIMIT.SUMMARY | Where does each customer stand **on one day** (that day + its month)? |
+| ALBE.CUSTOMER.LIMIT.PERIOD | How much did customers use **per day or per month over a period**? |
+| ALBE.CUSTOMER.LIMIT.TXN | **Which transactions** are counted, for one customer or for all customers in a date range? |
+
+All three work for **one customer or all customers**; SUMMARY and PERIOD can show **only rows over a limit** (OVER.LIMIT = Y).
 
 ### 14.1 EB.API
 
 | EB.API id | Java package | Java class | Method |
 |---|---|---|---|
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitSummaryEnquiryController` | `setIds` |
+| ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitPeriodEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitTxnEnquiryController` | `setIds` |
 
 ### 14.2 STANDARD.SELECTION
 
+Selection field names must be exactly as below (`Constants.ENQ_SEL_*`). Allow operand **EQ** only: the routines use the value as "equals".
+
 | STANDARD.SELECTION | Routine | Selection fields |
 |---|---|---|
-| NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `CUSTOMER` (optional, EQ), `DATE` (optional, EQ, YYYYMMDD; blank = today) |
-| NOFILE.ALBE.CUSTOMER.LIMIT.TXN | ALBE.E.CUSTOMER.LIMIT.TXN | `CUSTOMER` (**mandatory**, EQ), `DATE.FROM` (optional), `DATE.TO` (optional) |
+| NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `CUSTOMER` (optional), `DATE` (optional, YYYYMMDD, blank = today), `OVER.LIMIT` (optional, Y) |
+| NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | ALBE.E.CUSTOMER.LIMIT.PERIOD | `DATE.FROM`, `DATE.TO` (YYYYMMDD) **or** `MONTH.FROM`, `MONTH.TO` (YYYYMM); `CUSTOMER` (optional); `OVER.LIMIT` (optional, Y) |
+| NOFILE.ALBE.CUSTOMER.LIMIT.TXN | ALBE.E.CUSTOMER.LIMIT.TXN | `CUSTOMER`, `DATE.FROM`, `DATE.TO` – customer **or** at least one date |
 
-The selection field names must be exactly as above (`Constants.ENQ_SEL_*`).
+Rules:
+
+- **PERIOD**: give exactly one range (dates *or* months). A missing TO = FROM (one day / one month) and the other way round. At most **92 days** or **24 months** (`Constants.ENQ_MAX_DAYS`, `ENQ_MAX_MONTHS`).
+- **TXN** without CUSTOMER: missing DATE.TO = today, missing DATE.FROM = DATE.TO; at most 92 days.
+- OVER.LIMIT: `Y` = only rows where something used is above its limit; blank or anything else = all rows.
 
 ### 14.3 ENQUIRY records
 
@@ -317,25 +332,26 @@ The selection field names must be exactly as above (`Constants.ENQ_SEL_*`).
 | 1 | CUSTOMER | customer id |
 | 2 | CCY | limit currency |
 | 3 | REPORT.DATE | date reported (YYYYMMDD) |
-| 4 | DAILY.CR.LIMIT | daily credit limit |
-| 5 | DAILY.CR.UTILISED | credit used on that day |
-| 6 | DAILY.CR.AVAILABLE | limit − used |
-| 7 | DAILY.DR.LIMIT | daily debit limit |
-| 8 | DAILY.DR.UTILISED | debit used on that day |
-| 9 | DAILY.DR.AVAILABLE | limit − used |
-| 10 | MONTHLY.CR.LIMIT | monthly credit limit |
-| 11 | MONTHLY.CR.UTILISED | credit used in that month (migrated + counted) |
-| 12 | MONTHLY.CR.AVAILABLE | limit − used |
-| 13 | MONTHLY.DR.LIMIT | monthly debit limit |
-| 14 | MONTHLY.DR.UTILISED | debit used in that month (migrated + counted) |
-| 15 | MONTHLY.DR.AVAILABLE | limit − used |
+| 4 / 5 / 6 | DAILY.CR.LIMIT / .UTILISED / .AVAILABLE | daily credit: limit, used that day, limit − used |
+| 7 / 8 / 9 | DAILY.DR.LIMIT / .UTILISED / .AVAILABLE | daily debit |
+| 10 / 11 / 12 | MONTHLY.CR.LIMIT / .UTILISED / .AVAILABLE | monthly credit (used = migrated + counted) |
+| 13 / 14 / 15 | MONTHLY.DR.LIMIT / .UTILISED / .AVAILABLE | monthly debit (used = migrated + counted) |
 | 16 | MAX.CIF.BALANCE | maximum CIF balance limit |
+| 17 | OVER.LIMIT | Y if any used amount is above its limit |
 
-- A blank limit shows blank limit and blank available.
-- A **negative** available means the customer is over the limit (transactions accepted with the override).
-- Without CUSTOMER the report lists **every** customer that has an EB.ALBE.CIF.LIMIT record (3 reads per customer) – on a large customer base give a CUSTOMER, or run it as an offline report.
+**ALBE.CUSTOMER.LIMIT.PERIOD** (FILE.NAME = NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD) – one line per customer per day (or month) **with usage**, sorted by customer then period:
 
-**ALBE.CUSTOMER.LIMIT.TXN** (FILE.NAME = NOFILE.ALBE.CUSTOMER.LIMIT.TXN) – the transactions currently counted for the customer, oldest first:
+| Col | Field | Meaning |
+|---|---|---|
+| 1 | PERIOD.TYPE | DAILY or MONTHLY |
+| 2 | PERIOD | YYYYMMDD or YYYYMM |
+| 3 | CUSTOMER | customer id |
+| 4 | CCY | limit currency |
+| 5 / 6 / 7 | CR.LIMIT / CR.UTILISED / CR.AVAILABLE | credit: daily or monthly limit, used, limit − used |
+| 8 / 9 / 10 | DR.LIMIT / DR.UTILISED / DR.AVAILABLE | debit |
+| 11 | OVER.LIMIT | Y / N |
+
+**ALBE.CUSTOMER.LIMIT.TXN** (FILE.NAME = NOFILE.ALBE.CUSTOMER.LIMIT.TXN) – transactions currently counted, oldest first:
 
 | Col | Field | Meaning |
 |---|---|---|
@@ -348,29 +364,62 @@ The selection field names must be exactly as above (`Constants.ENQ_SEL_*`).
 | 7 | SYSTEM.DATE | server date it was counted on (DATE.FROM / DATE.TO filter on this) |
 | 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
 
-Rejected and reversed transactions are **not** listed: their record is deleted when the utilisation is reversed.
+Reading the numbers:
+
+- Blank limit = not defined in EB.ALBE.CIF.LIMIT (available is blank too). A customer with usage but **no** EB.ALBE.CIF.LIMIT record appears in PERIOD / TXN with blank limits.
+- **Negative available** = over the limit (transactions accepted with the override).
+- Rejected and reversed transactions are not in TXN, and not in any used amount.
 
 ### 14.4 EB.ERROR records
 
 | ID | Message (suggested) | When |
 |---|---|---|
 | EB-NO.REC.SELECT | No records selected | nothing to show (already used by other enquiries) |
-| EB-ALBE.ENQ.INVALID.DATE | Invalid date, enter YYYYMMDD | DATE / DATE.FROM / DATE.TO not a real date (e.g. 20261131) |
-| EB-ALBE.ENQ.DATE.RANGE | Date from cannot be after date to | DATE.FROM > DATE.TO |
-| EB-ALBE.ENQ.CUSTOMER.MANDATORY | Customer is mandatory | transaction report without CUSTOMER |
+| EB-ALBE.ENQ.INVALID.DATE | Invalid date, enter YYYYMMDD | not a real date (e.g. 20261131) |
+| EB-ALBE.ENQ.INVALID.MONTH | Invalid month, enter YYYYMM | not a real month (e.g. 202613) |
+| EB-ALBE.ENQ.DATE.RANGE | From cannot be after to | DATE.FROM > DATE.TO or MONTH.FROM > MONTH.TO |
+| EB-ALBE.ENQ.PERIOD.MANDATORY | Enter a date range or a month range | PERIOD: neither or both ranges given |
+| EB-ALBE.ENQ.RANGE.TOO.LONG | Period too long (max 92 days / 24 months) | range above the maximum |
+| EB-ALBE.ENQ.CUSTOMER.OR.DATE | Enter a customer or a date | TXN without customer and without date |
 
-### 14.5 Menu and tests
+### 14.5 How to run (examples)
 
-Add both enquiries to the relevant user menu. Test:
+```
+ENQ ALBE.CUSTOMER.LIMIT.SUMMARY CUSTOMER EQ 100234
+ENQ ALBE.CUSTOMER.LIMIT.SUMMARY OVER.LIMIT EQ Y
+ENQ ALBE.CUSTOMER.LIMIT.PERIOD  DATE.FROM EQ 20261101 DATE.TO EQ 20261130
+ENQ ALBE.CUSTOMER.LIMIT.PERIOD  MONTH.FROM EQ 202601 MONTH.TO EQ 202611 OVER.LIMIT EQ Y
+ENQ ALBE.CUSTOMER.LIMIT.PERIOD  MONTH.FROM EQ 202611 CUSTOMER EQ 100234
+ENQ ALBE.CUSTOMER.LIMIT.TXN     CUSTOMER EQ 100234
+ENQ ALBE.CUSTOMER.LIMIT.TXN     DATE.FROM EQ 20261119 DATE.TO EQ 20261120
+```
+
+### 14.6 Performance
+
+| Enquiry | DB work |
+|---|---|
+| SUMMARY, one customer | 3 reads |
+| SUMMARY, all customers | 1 SELECT (CIF.LIMIT ids) + 3 reads per customer |
+| PERIOD, all customers | **1 SELECT** on EB.ALBE.UTILISED.LIMIT for the months of the range (only customers with usage have records) + 1 read per row + 1 CIF.LIMIT read **per customer** (reused for all their rows) |
+| PERIOD, one customer | 1 read per day / month in the range + 1 CIF.LIMIT read |
+| TXN | 1 SELECT on EB.ALBE.TXN.DETAILS.LIMIT + 1 read per row |
+
+The range caps (92 days / 24 months) keep the online enquiries bounded. For bigger extracts run them offline.
+
+### 14.7 Tests
 
 | # | Test | Expected |
 |---|---|---|
-| E1 | Summary for a customer after tests 3–4 of §13 | daily CR used 7000, available −2000 |
-| E2 | Summary after the rejection (test 6) | daily CR used 3000, available 2000 |
-| E3 | Summary without CUSTOMER | one line per EB.ALBE.CIF.LIMIT record |
-| E4 | Summary DATE = 20261131 | error EB-ALBE.ENQ.INVALID.DATE |
-| E5 | Transaction report for the customer | one line per counted transaction; the rejected one is not shown |
-| E6 | Transaction report without CUSTOMER | error EB-ALBE.ENQ.CUSTOMER.MANDATORY |
-| E7 | Transaction report DATE.FROM > DATE.TO | error EB-ALBE.ENQ.DATE.RANGE |
+| E1 | SUMMARY for a customer after tests 3–4 of §13 | daily CR used 7000, available −2000, OVER.LIMIT Y |
+| E2 | SUMMARY after the rejection (test 6) | daily CR used 3000, available 2000, OVER.LIMIT N |
+| E3 | SUMMARY OVER.LIMIT EQ Y | only customers over a limit |
+| E4 | PERIOD DATE.FROM/DATE.TO over 3 days, all customers | one line per customer per day with usage |
+| E5 | PERIOD MONTH.FROM/MONTH.TO over 2 months | one line per customer per month; monthly used includes migrated |
+| E6 | PERIOD with both DATE.FROM and MONTH.FROM | EB-ALBE.ENQ.PERIOD.MANDATORY |
+| E7 | PERIOD DATE.FROM 20260101 DATE.TO 20261120 | EB-ALBE.ENQ.RANGE.TOO.LONG |
+| E8 | TXN for a customer | counted transactions; the rejected one not shown |
+| E9 | TXN DATE.FROM/DATE.TO, no customer | all customers' counted transactions in the range |
+| E10 | TXN with no customer and no date | EB-ALBE.ENQ.CUSTOMER.OR.DATE |
+| E11 | Any date 20261131 / month 202613 | INVALID.DATE / INVALID.MONTH |
 
-The transaction report uses one SELECT on EB.ALBE.TXN.DETAILS.LIMIT (`WITH @ID LIKE <customer>-... [AND SYSTEM.DATE GE/LE ...] BY SYSTEM.DATE BY @ID`); check in DEV that SYSTEM.DATE is selectable (it is a normal field once added).
+The SELECTs use `@ID LIKE` and SYSTEM.DATE; check in DEV that both work on your TAFJ database.

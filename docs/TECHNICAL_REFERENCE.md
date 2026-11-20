@@ -23,7 +23,7 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
 | 5 | **Overrides** | After each check | Acceptable overrides from EB.OVERRIDE, raised on TXN.AMOUNT |
-| 6 | **Enquiries** | On demand | Limit summary (limits, used, available per customer) and transaction report (what is counted) |
+| 6 | **Enquiries** | On demand | Summary (one day), period report (per day / month over a range), transaction report; one or all customers, optionally over-limit only |
 
 All limit breaches are **acceptable overrides**, not errors: the user can accept and continue.
 
@@ -71,10 +71,11 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
 | `controller` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
 | `controller` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
+| `controller` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
 | `controller` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
-| `validation` | `CustomerLimitEnquiryValidator` | Enquiry selection checks: valid dates, date range, customer mandatory |
+| `validation` | `CustomerLimitEnquiryValidator` | Enquiry selection checks: dates, months, ranges, range length, period given, customer or date |
 | `service` | `CustomerLimitEnquiryService` | Builds the report rows (read only) |
-| `model` | `LimitSummaryRow`, `LimitTxnRow` | One report row each |
+| `model` | `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` | One report row each (`isOverLimit()` on summary / period) |
 | `view` | `CustomerLimitEnquiryView` | Formats the rows as `*`-separated enquiry lines (column order documented in the class) |
 | `validation` | `CustomerLimitRequestValidator` | `isValidForDailyMonthly`, `isValidForMaxCif`, `isValidCustomerId` |
 | `service` | `CustomerLimitCreationService` | `create(customerId)` – never overwrites an existing record |
@@ -200,12 +201,15 @@ Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
 
 | Enquiry | Selection | Reads |
 |---|---|---|
-| Limit summary | CUSTOMER (optional), DATE (optional, default today) | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of all CIF.LIMIT ids |
-| Transaction report | CUSTOMER (mandatory), DATE.FROM / DATE.TO (optional, on SYSTEM.DATE) | one SELECT on TXN.DETAILS by `<customer>-...`, then a read per record |
+| Summary | CUSTOMER (opt.), DATE (opt., default today), OVER.LIMIT | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of CIF.LIMIT ids |
+| Period | DATE.FROM–DATE.TO **or** MONTH.FROM–MONTH.TO, CUSTOMER (opt.), OVER.LIMIT | all customers: **one** SELECT on UTILISED.LIMIT (`@ID LIKE ...-YYYYMM...` per month), then one read per row; one customer: direct reads per day/month. CIF.LIMIT read once per customer (cached in the service for the run) |
+| Transactions | CUSTOMER and/or DATE.FROM / DATE.TO (on SYSTEM.DATE) | one SELECT on TXN.DETAILS, then one read per record |
 
-Available = limit − used (negative = over the limit after an accepted override; blank when the limit is not defined).
-Bad selection raises an EB.ERROR (`EB-ALBE.ENQ.*`); nothing found raises `EB-NO.REC.SELECT`, as in the team's other NOFILE enquiries.
-Enquiries never write. Dates are parsed strictly (`Constants.DATE_PARSE_FORMAT`), so 20261131 is rejected.
+- Only days / months **with usage** appear in the period report (no UTILISED.LIMIT record = no row).
+- Available = limit − used (negative = over the limit after an accepted override; blank when the limit is not defined).
+- Ranges are capped (`ENQ_MAX_DAYS` = 92, `ENQ_MAX_MONTHS` = 24); the transaction report needs a customer or a date and, without a customer, a range of at most 92 days.
+- Bad selection raises an EB.ERROR (`EB-ALBE.ENQ.*`); nothing found raises `EB-NO.REC.SELECT`.
+- Enquiries never write. Dates and months are parsed strictly (`DATE_PARSE_FORMAT`, `MONTH_PARSE_FORMAT`): 20261131 and 202613 are rejected.
 
 ---
 
@@ -388,3 +392,4 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | 20-Nov-2026 | Creation as Auth routine, no delete flow, never overwrite |
 | 20-Nov-2026 | GEN.PARAM record id CUSTOMER.LIMIT |
 | 20-Nov-2026 | Enquiries: limit summary and transaction report; strict date parsing |
+| 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |

@@ -94,6 +94,11 @@ public final class Constants {
     /** Strict YYYYMMDD for reading dates: an impossible date such as 20261131 is rejected, not adjusted. */
     public static final DateTimeFormatter DATE_PARSE_FORMAT =
             DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
+    /** Length of the YYYYMMDD part of a daily utilisation id. */
+    public static final int DAILY_PERIOD_LENGTH = 8;
+    /** Strict YYYYMM for reading months (enquiry MONTH.FROM / MONTH.TO). */
+    public static final DateTimeFormatter MONTH_PARSE_FORMAT =
+            DateTimeFormatter.ofPattern("uuuuMM").withResolverStyle(ResolverStyle.STRICT);
 
     // -------------------------------------------------------------------------
     // Currency conversion
@@ -144,11 +149,26 @@ public final class Constants {
     public static final String ENQ_SEL_DATE = "DATE";
     public static final String ENQ_SEL_DATE_FROM = "DATE.FROM";
     public static final String ENQ_SEL_DATE_TO = "DATE.TO";
+    public static final String ENQ_SEL_MONTH_FROM = "MONTH.FROM";
+    public static final String ENQ_SEL_MONTH_TO = "MONTH.TO";
+    /** OVER.LIMIT = Y: only rows where something used is above its limit. */
+    public static final String ENQ_SEL_OVER_LIMIT = "OVER.LIMIT";
+    public static final String ENQ_YES = "Y";
+    public static final String ENQ_NO = "N";
+    /** Period report row types. */
+    public static final String PERIOD_DAILY = "DAILY";
+    public static final String PERIOD_MONTHLY = "MONTHLY";
+    /** Longest ranges an enquiry accepts (protects the online system). */
+    public static final int ENQ_MAX_DAYS = 92;
+    public static final int ENQ_MAX_MONTHS = 24;
     /** EB.ERROR ids raised by the enquiries. */
     public static final String ERR_NO_RECORDS = "EB-NO.REC.SELECT";
     public static final String ERR_INVALID_DATE = "EB-ALBE.ENQ.INVALID.DATE";
     public static final String ERR_DATE_RANGE = "EB-ALBE.ENQ.DATE.RANGE";
-    public static final String ERR_CUSTOMER_MANDATORY = "EB-ALBE.ENQ.CUSTOMER.MANDATORY";
+    public static final String ERR_CUSTOMER_OR_DATE = "EB-ALBE.ENQ.CUSTOMER.OR.DATE";
+    public static final String ERR_INVALID_MONTH = "EB-ALBE.ENQ.INVALID.MONTH";
+    public static final String ERR_PERIOD_MANDATORY = "EB-ALBE.ENQ.PERIOD.MANDATORY";
+    public static final String ERR_RANGE_TOO_LONG = "EB-ALBE.ENQ.RANGE.TOO.LONG";
 
     // -------------------------------------------------------------------------
     // T24 dynamic array marks (override id FM param1 VM param2)

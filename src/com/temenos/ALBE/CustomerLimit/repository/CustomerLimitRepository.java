@@ -27,7 +27,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *               Tables / files used:
  *                 EB.ALBE.CIF.LIMIT          read, write, select   (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
- *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
+ *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
  *
@@ -219,8 +219,34 @@ public class CustomerLimitRepository {
                     + " migratedDebit=" + utilRec.getUtilisedMigratedDebitLimit().getValue());
             return utilRec;
         } catch (Exception e) {
-            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "NOT FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
+            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "NOT FOUND",
+                    Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
             return null;
+        }
+    }
+
+    /**
+     * Ids of EB.ALBE.UTILISED.LIMIT records of all customers for the given months, in one SELECT.
+     * daily=true : daily records <customer>-YYYYMMDD of those months
+     * daily=false: monthly records <customer>-YYYYMM
+     * Used by the period enquiry only. The caller filters the exact days.
+     */
+    public List<String> selectUtilisedLimitIds(List<String> months, boolean daily) {
+        List<String> conditions = new java.util.ArrayList<>();
+        for (String month : months) {
+            conditions.add("@ID LIKE ...-" + month + (daily ? "..." : ""));
+        }
+        String selection = "WITH " + String.join(" OR ", conditions) + " BY @ID";
+        LogUtil.info(CLASS_NAME, "selectUtilisedLimitIds", "SELECT", Constants.UTILISED_LIMIT_TABLE + " ["
+                + selection + "]");
+        try {
+            List<String> ids = daObj.selectRecords("", Constants.UTILISED_LIMIT_TABLE, "", selection);
+            List<String> result = ids == null ? List.of() : ids;
+            LogUtil.info(CLASS_NAME, "selectUtilisedLimitIds", "FOUND", result.size() + " records");
+            return result;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "selectUtilisedLimitIds", "FAILED", Constants.UTILISED_LIMIT_TABLE, e);
+            return List.of();
         }
     }
 
@@ -268,22 +294,28 @@ public class CustomerLimitRepository {
     }
 
     /**
-     * Ids of the customer's EB.ALBE.TXN.DETAILS.LIMIT records (<customer>-...), optionally only
-     * those counted between fromDate and toDate (SYSTEM.DATE, YYYYMMDD, either may be blank),
-     * sorted by SYSTEM.DATE then id. Used by the enquiry only, never in a transaction.
+     * Ids of EB.ALBE.TXN.DETAILS.LIMIT records, sorted by SYSTEM.DATE then id. Used by the
+     * enquiry only, never in a transaction.
+     * @param customerId one customer (<customer>-...), or blank for all customers
+     * @param fromDate   SYSTEM.DATE from (YYYYMMDD), blank = no lower bound
+     * @param toDate     SYSTEM.DATE to (YYYYMMDD), blank = no upper bound
      */
     public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate) {
-        StringBuilder selection = new StringBuilder("WITH @ID LIKE ").append(customerId).append("-...");
+        List<String> conditions = new java.util.ArrayList<>();
+        if (customerId != null && !customerId.isEmpty()) {
+            conditions.add("@ID LIKE " + customerId + "-...");
+        }
         if (fromDate != null && !fromDate.isEmpty()) {
-            selection.append(" AND SYSTEM.DATE GE ").append(fromDate);
+            conditions.add("SYSTEM.DATE GE " + fromDate);
         }
         if (toDate != null && !toDate.isEmpty()) {
-            selection.append(" AND SYSTEM.DATE LE ").append(toDate);
+            conditions.add("SYSTEM.DATE LE " + toDate);
         }
-        selection.append(" BY SYSTEM.DATE BY @ID");
+        String selection = (conditions.isEmpty() ? "" : "WITH " + String.join(" AND ", conditions) + " ")
+                + "BY SYSTEM.DATE BY @ID";
         LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "SELECT", Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
         try {
-            List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection.toString());
+            List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection);
             List<String> result = ids == null ? List.of() : ids;
             LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "FOUND", result.size() + " records");
             return result;

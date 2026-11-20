@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -20,12 +21,16 @@ import com.temenos.t24.api.hook.system.Enquiry;
  * EB.API      : ALBE.E.CUSTOMER.LIMIT.TXN
  * Attached to : STANDARD.SELECTION > NOFILE.ALBE.CUSTOMER.LIMIT.TXN
  * Description : Customer limit transaction report: the transactions currently counted
- *               in a customer's utilisation (EB.ALBE.TXN.DETAILS.LIMIT), oldest first.
+ *               in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), oldest first, for one customer
+ *               or for all customers in a date range.
  *               Rejected / reversed transactions are not shown (their record is deleted).
  *               Selection:
- *                 CUSTOMER   mandatory
- *                 DATE.FROM  optional, SYSTEM.DATE from (YYYYMMDD)
- *                 DATE.TO    optional, SYSTEM.DATE to   (YYYYMMDD)
+ *                 CUSTOMER   optional when a date is given (blank = all customers)
+ *                 DATE.FROM  SYSTEM.DATE from (YYYYMMDD)
+ *                 DATE.TO    SYSTEM.DATE to   (YYYYMMDD)
+ *               Customer or at least one date is mandatory. Without a customer the range is
+ *               completed (missing DATE.TO = today, missing DATE.FROM = DATE.TO) and may cover
+ *               at most Constants.ENQ_MAX_DAYS days.
  *               Columns: see CustomerLimitEnquiryView.TXN_COLUMNS.
  *               No business rules and no DB access here.
  *------------------------------------------------------------------------------
@@ -60,7 +65,7 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
         }
         LogUtil.info(CLASS_NAME, "setIds", "START", "customer=" + customerId + " from=" + fromDate + " to=" + toDate);
 
-        String error = CustomerLimitEnquiryValidator.checkCustomerGiven(customerId);
+        String error = CustomerLimitEnquiryValidator.checkCustomerOrDate(customerId, fromDate, toDate);
         if (error == null) {
             error = CustomerLimitEnquiryValidator.checkDate(Constants.ENQ_SEL_DATE_FROM, fromDate);
         }
@@ -69,6 +74,20 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
         }
         if (error == null) {
             error = CustomerLimitEnquiryValidator.checkDateRange(fromDate, toDate);
+        }
+        if (error == null && ValidationUtil.isBlank(customerId)) {
+            // All customers: always a closed, limited range.
+            if (ValidationUtil.isBlank(toDate)) {
+                toDate = LocalDate.now().format(Constants.DAILY_ID_FORMAT);
+            }
+            if (ValidationUtil.isBlank(fromDate)) {
+                fromDate = toDate;
+            }
+            error = CustomerLimitEnquiryValidator.checkDateRange(fromDate, toDate);
+            if (error == null) {
+                error = CustomerLimitEnquiryValidator.checkDayCount(ValidationUtil.toDate(fromDate),
+                        ValidationUtil.toDate(toDate));
+            }
         }
         if (error != null) {
             throw new T24CoreException("", error);
