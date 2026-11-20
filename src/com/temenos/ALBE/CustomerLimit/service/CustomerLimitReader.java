@@ -7,6 +7,7 @@ import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
+import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 
 /*-----------------------------------------------------------------------------
@@ -14,7 +15,7 @@ import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
  *               getCustomerLimits : EB.ALBE.CIF.LIMIT, record id = customer id
  *                                   (used by the validators; no record => "limit not defined" override).
  *               getGenericLimits  : EB.ALBE.GEN.PARAM, record SYSTEM (used only by
- *                                   CustomerLimitCreation), KEY.NAME / KEY.VALUE pairs:
+ *                                   CustomerLimitCreationService), KEY.NAME / KEY.VALUE pairs:
  *                    CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT,
  *                    MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE
  *               A blank limit means "no limit".
@@ -41,18 +42,6 @@ public class CustomerLimitReader {
     public static final String KEY_MONTHLY_CREDIT_LIMIT = "MONTHLY.CREDIT.LIMIT";
     public static final String KEY_MONTHLY_DEBIT_LIMIT = "MONTHLY.DEBIT.LIMIT";
     public static final String KEY_MAX_CIF_BALANCE = "MAX.CIF.BALANCE";
-
-    /** Limit values of one customer; null = no limit configured. */
-    public static class Limits {
-        public String ccy;
-        public BigDecimal dailyCreditLimit;
-        public BigDecimal dailyDebitLimit;
-        public BigDecimal monthlyCreditLimit;
-        public BigDecimal monthlyDebitLimit;
-        public BigDecimal maxCifBalance;
-        /** Where the limits were read from, for logging (e.g. EB.ALBE.CIF.LIMIT>100234). */
-        public String source;
-    }
 
     private final CustomerLimitRepository repository;
 
@@ -91,7 +80,7 @@ public class CustomerLimitReader {
 
     /**
      * Generic limits from EB.ALBE.GEN.PARAM SYSTEM (KEY.NAME / KEY.VALUE pairs).
-     * Used only by CustomerLimitCreation to build a new customer's record.
+     * Used only by CustomerLimitCreationService to build a new customer's record.
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {

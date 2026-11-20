@@ -1,0 +1,85 @@
+package com.temenos.ALBE.CustomerLimit.service;
+
+import java.math.BigDecimal;
+
+import com.temenos.ALBE.CustomerLimit.model.Limits;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.logging.facade.Logger;
+import com.temenos.logging.facade.LoggerFactory;
+import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
+
+/*-----------------------------------------------------------------------------
+ * Description : Business rules for the customer limit creation (HLSD 7.2.1 - 1).
+ *               Called by CustomerLimitCreationController; all DB access goes through
+ *               CustomerLimitRepository.
+ *
+ *               create : copies EB.ALBE.GEN.PARAM SYSTEM into EB.ALBE.CIF.LIMIT <customer>
+ *                        if the customer has no record (an existing record is never
+ *                        overwritten, so limits amended for the customer stay).
+ *               delete : removes EB.ALBE.CIF.LIMIT <customer> (unauthorised customer deleted).
+ *------------------------------------------------------------------------------
+ * Modification History :
+ *-----------------------------------------------------------------------------
+ * 20-Nov-2026   Development      Initial Version
+ *-----------------------------------------------------------------------------
+ */
+public class CustomerLimitCreationService {
+
+    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final String LOG_PREFIX = "CustomerLimitCreationService:";
+
+    private final CustomerLimitRepository repository;
+    private final CustomerLimitReader limitReader;
+
+    public CustomerLimitCreationService(CustomerLimitRepository repository) {
+        this.repository = repository;
+        this.limitReader = new CustomerLimitReader(repository);
+    }
+
+    /**
+     * Creates the customer's limit record from the generic limits.
+     * @return true if a record was created; false if it already existed or could not be created
+     */
+    public boolean create(String customerId) {
+        logger.info(LOG_PREFIX + "create START customer=" + customerId);
+
+        // Never overwrite: limits may have been amended for this customer.
+        if (limitReader.getCustomerLimits(customerId) != null) {
+            logger.info(LOG_PREFIX + "create SKIP EB.ALBE.CIF.LIMIT already exists for " + customerId);
+            return false;
+        }
+
+        Limits genericLimits = limitReader.getGenericLimits();
+        if (genericLimits == null) {
+            logger.error(LOG_PREFIX + "create EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
+            return false;
+        }
+        logger.info(LOG_PREFIX + "create generic " + genericLimits);
+
+        // Copy the generic limits one-to-one into the customer's record.
+        EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
+        cifLimitRec.setCcy(genericLimits.ccy == null ? "" : genericLimits.ccy);
+        cifLimitRec.setDailyCreditLimit(toText(genericLimits.dailyCreditLimit));
+        cifLimitRec.setDailyDebitLimit(toText(genericLimits.dailyDebitLimit));
+        cifLimitRec.setMonthlyCreditLimit(toText(genericLimits.monthlyCreditLimit));
+        cifLimitRec.setMonthlyDebitLimit(toText(genericLimits.monthlyDebitLimit));
+        cifLimitRec.setMaxCifBalance(toText(genericLimits.maxCifBalance));
+
+        boolean written = repository.writeCifLimit(customerId, cifLimitRec);
+        logger.info(LOG_PREFIX + "create END customer=" + customerId + " created=" + written);
+        return written;
+    }
+
+    /** Removes the customer's limit record (unauthorised customer deleted). */
+    public boolean delete(String customerId) {
+        logger.info(LOG_PREFIX + "delete START customer=" + customerId);
+        boolean deleted = repository.deleteCifLimit(customerId);
+        logger.info(LOG_PREFIX + "delete END customer=" + customerId + " deleted=" + deleted);
+        return deleted;
+    }
+
+    /** Amount as text for the record; blank when the generic limit is not configured. */
+    private String toText(BigDecimal value) {
+        return value == null ? "" : value.toPlainString();
+    }
+}

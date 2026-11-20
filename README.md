@@ -23,25 +23,32 @@ Add the required TAFJ and generated Table JARs through **Project → Properties 
 
 The repository does not include proprietary TAFJ libraries. Configure the JARs from your local TAFJ installation.
 
-## Code structure
+## Code structure (MVC)
 
-| Package | Classes | Role |
-|---|---|---|
-| `Routine`, `validation` | CustomerLimitCreation, DailyMonthlyLimitValidator, MaximumCifLimitValidator | T24 hooks (entry points) and limit rules |
-| `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | business helpers, no direct DB calls |
-| `repository` | CustomerLimitRepository | **all** database reads / writes / selects / deletes, each logged |
-| `model` | CustomerLimitDTO | data passed between classes |
-| `override` | CustomerLimitOverride | builds and raises overrides |
+```
+T24 hook ──> controller ──> service ──> repository ──> T24 tables
+                 │             │
+                 │             └── model (CustomerLimitDTO, Limits)
+                 └── view (CustomerLimitOverride: overrides shown to the user)
+```
 
-## Routines (ACTIVITY.API)
+| Layer | Package | Classes | Role |
+|---|---|---|---|
+| Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, CustomerLimitCreationController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
+| Service | `service` | DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | Business rules (limit checks, utilisation count / reverse, limit creation). |
+| Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
+| Model | `model` | CustomerLimitDTO, Limits | Data passed between layers. |
+| View | `view` | CustomerLimitOverride | Builds and raises the overrides on TXN.AMOUNT. |
+
+## Routines to register (EB.API)
 
 | Class | Attach to | Hooks |
 |---|---|---|
-| `Routine.CustomerLimitCreation` (RecordLifecycle) | VERSION CUSTOMER,ALBE.CORP – After Unau | `postUpdateRequest`: creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM SYSTEM if not present; deletes it when the unauthorised customer is deleted. |
-| `validation.DailyMonthlyLimitValidator` | ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `validateRecord` (UNAUTH): daily + monthly check, raises override. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
-| `validation.MaximumCifLimitValidator` | ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + txn amount vs MAX.CIF.BALANCE, raises override. |
+| `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – After Unau | `postUpdateRequest`: creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM SYSTEM if not present; deletes it when the unauthorised customer is deleted. |
+| `com.temenos.ALBE.CustomerLimit.controller.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
+| `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
-The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM SYSTEM is used only by CustomerLimitCreation.
+The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM SYSTEM is used only by the creation service.
 
 Credit/debit is taken from the activity name (`CREDIT` / `DEBIT`). Dates use the server date; exchange rate is 1 (LCY).
 

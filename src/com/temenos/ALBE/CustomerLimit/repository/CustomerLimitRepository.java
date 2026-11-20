@@ -62,7 +62,7 @@ public class CustomerLimitRepository {
     private final ActivityLifecycle activityHook;
     private final RecordLifecycle recordHook;
 
-    /** Constructor for the ACTIVITY.API routines (DailyMonthlyLimitValidator, MaximumCifLimitValidator). */
+    /** Constructor for the ACTIVITY.API routines (DailyMonthlyLimitController, MaximumCifLimitController). */
     public CustomerLimitRepository(ActivityLifecycle hook) {
         this.daObj = new DataAccess(hook);
         this.ssObj = new Session(hook);
@@ -74,7 +74,7 @@ public class CustomerLimitRepository {
         logger.info(LOG_PREFIX + "created for ACTIVITY.API hook " + hook.getClass().getSimpleName());
     }
 
-    /** Constructor for the version routine (CustomerLimitCreation). */
+    /** Constructor for the version routine (CustomerLimitCreationController). */
     public CustomerLimitRepository(RecordLifecycle hook) {
         this.daObj = new DataAccess(hook);
         this.ssObj = new Session(hook);

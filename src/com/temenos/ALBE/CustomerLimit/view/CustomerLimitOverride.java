@@ -1,13 +1,16 @@
-package com.temenos.ALBE.CustomerLimit.override;
+package com.temenos.ALBE.CustomerLimit.view;
 
 import java.util.Arrays;
 
+import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
+import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO.LimitBreach;
 import com.temenos.api.TField;
 import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;
 
 /*-----------------------------------------------------------------------------
- * Description : Raises the HLSD customer limit overrides and errors on a field.
+ * Description : View layer: everything the user sees from the limit checks.
+ *               Raises the HLSD customer limit overrides (and errors) on a field.
  *
  *               EB.OVERRIDE records to create (message text from HLSD):
  *                 EB-ALBE.DAILY.LIMIT.EXCEED    Daily credit/debit exceed for Customer & by &
@@ -45,6 +48,30 @@ public final class CustomerLimitOverride {
 
     private CustomerLimitOverride() {
         // Utility class: static methods only.
+    }
+
+    /**
+     * Raises every override the validation produced for this request on the field:
+     * "limit not defined" (missing record or blank limit) once, then one per breached limit.
+     * @return number of overrides raised
+     */
+    public static int raiseFor(TField field, CustomerLimitDTO request) {
+        int raised = 0;
+        if (request.isLimitMissing() || request.isLimitNotDefined()) {
+            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " limit not defined"
+                    + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
+                            : " (blank " + request.getUndefinedLimits() + ")"));
+            raise(field, LIMIT_NOT_DEFINED, request.getCustomerId());
+            raised++;
+        }
+        for (LimitBreach breach : request.getBreaches()) {
+            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " breach "
+                    + breach.getMessage());
+            raise(field, breach.getOverrideId(), request.getCustomerId(), breach.getDifference().toPlainString());
+            raised++;
+        }
+        logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " overridesRaised=" + raised);
+        return raised;
     }
 
     /** Raises an override on the given field; the user can accept it and continue. */
