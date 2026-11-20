@@ -41,9 +41,17 @@ public class CustomerLimitCreationService {
     public boolean create(String customerId) {
         LogUtil.info(CLASS_NAME, "create", "START", "customer=" + customerId);
 
-        // Never overwrite: limits may have been amended for this customer.
-        if (limitReader.getCustomerLimits(customerId) != null) {
-            LogUtil.info(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId);
+        // Never overwrite: the customer is authorised again after every amendment, and the
+        // limits may have been changed for this customer. Create only when T24 says "no record".
+        Boolean exists = repository.cifLimitExists(customerId);
+        if (exists == null) {
+            LogUtil.error(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT read failed for " + customerId
+                    + ", not created so an existing record is not overwritten");
+            return false;
+        }
+        if (exists) {
+            LogUtil.info(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId
+                    + " (customer amendment, limits kept)");
             return false;
         }
 

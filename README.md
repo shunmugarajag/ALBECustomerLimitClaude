@@ -48,7 +48,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 | Class | Attach to | Hooks |
 |---|---|---|
-| `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM SYSTEM if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. (HLSD 7.2.1 says After Unau; changed to Auth.) |
+| `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM SYSTEM if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. On customer amendment (authorised again) an existing record is **never overwritten**; if the read fails for any reason other than "not found", nothing is written. (HLSD 7.2.1 says After Unau; changed to Auth.) |
 | `com.temenos.ALBE.CustomerLimit.controller.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
 | `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 

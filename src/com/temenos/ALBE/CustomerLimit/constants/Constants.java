@@ -57,6 +57,13 @@ public final class Constants {
     public static final String KEY_MONTHLY_DEBIT_LIMIT = "MONTHLY.DEBIT.LIMIT";
     public static final String KEY_MAX_CIF_BALANCE = "MAX.CIF.BALANCE";
 
+    /**
+     * Words in a T24 read exception that mean "record not found" (checked upper-case).
+     * Any other read exception is treated as a failure, so an existing EB.ALBE.CIF.LIMIT is
+     * never overwritten because of a read problem. Confirm the exact T24 text in DEV.
+     */
+    public static final String[] RECORD_NOT_FOUND_MARKERS = { "NOT FOUND", "NOTFOUND", "NO RECORD", "MISSING" };
+
     // -------------------------------------------------------------------------
     // AA activity statuses and activity name keywords
     // -------------------------------------------------------------------------

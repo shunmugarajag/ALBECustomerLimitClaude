@@ -99,6 +99,44 @@ public class CustomerLimitRepository {
         }
     }
 
+    /**
+     * Whether EB.ALBE.CIF.LIMIT <customer id> exists, used before creating one so an existing
+     * (possibly amended) record is never overwritten.
+     * @return TRUE  record exists
+     *         FALSE T24 reports no such record (or the record is empty)
+     *         null  the read failed for another reason: the caller must not create the record
+     */
+    public Boolean cifLimitExists(String customerId) {
+        LogUtil.detail(CLASS_NAME, "cifLimitExists", "READ", Constants.CIF_LIMIT_TABLE + ">" + customerId);
+        try {
+            EbAlbeCifLimitRecord cifLimitRec =
+                    new EbAlbeCifLimitRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
+            boolean exists = !cifLimitRec.toString().isEmpty();
+            LogUtil.info(CLASS_NAME, "cifLimitExists", exists ? "FOUND" : "NOT FOUND",
+                    Constants.CIF_LIMIT_TABLE + ">" + customerId);
+            return exists;
+        } catch (Exception e) {
+            if (isRecordNotFound(e)) {
+                LogUtil.info(CLASS_NAME, "cifLimitExists", "NOT FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
+                return Boolean.FALSE;
+            }
+            LogUtil.error(CLASS_NAME, "cifLimitExists", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId
+                    + " existence unknown", e);
+            return null;
+        }
+    }
+
+    /** True when the exception from a read means "record not found" rather than a real failure. */
+    private boolean isRecordNotFound(Exception e) {
+        String text = (e.getClass().getSimpleName() + " " + e.getMessage()).toUpperCase();
+        for (String marker : Constants.RECORD_NOT_FOUND_MARKERS) {
+            if (text.contains(marker)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** New empty EB.ALBE.CIF.LIMIT record, to be filled and written. */
     public EbAlbeCifLimitRecord newCifLimitRecord() {
         LogUtil.info(CLASS_NAME, "newCifLimitRecord", "NEW", Constants.CIF_LIMIT_TABLE + " record");
