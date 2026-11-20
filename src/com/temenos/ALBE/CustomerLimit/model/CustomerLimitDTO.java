@@ -39,23 +39,6 @@ public class CustomerLimitDTO {
     /** EB.ALBE.CIF.LIMIT fields that are blank; raised once as the "limit not defined" override. */
     private final List<String> undefinedLimits = new ArrayList<>();
 
-    /** One breached limit: override id, HLSD message and the amount by which it was exceeded. */
-    public static class LimitBreach {
-        private final String overrideId;
-        private final String message;
-        private final BigDecimal difference;
-
-        public LimitBreach(String overrideId, String message, BigDecimal difference) {
-            this.overrideId = overrideId;
-            this.message = message;
-            this.difference = difference;
-        }
-
-        public String getOverrideId() { return overrideId; }
-        public String getMessage() { return message; }
-        public BigDecimal getDifference() { return difference; }
-    }
-
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
 

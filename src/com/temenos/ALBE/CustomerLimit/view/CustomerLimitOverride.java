@@ -3,7 +3,7 @@ package com.temenos.ALBE.CustomerLimit.view;
 import java.util.Arrays;
 
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
-import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO.LimitBreach;
+import com.temenos.ALBE.CustomerLimit.model.LimitBreach;
 import com.temenos.api.TField;
 import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;

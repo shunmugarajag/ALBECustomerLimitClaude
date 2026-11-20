@@ -28,7 +28,7 @@ The repository does not include proprietary TAFJ libraries. Configure the JARs f
 ```
 T24 hook ──> controller ──> service ──> repository ──> T24 tables
                  │             │
-                 │             └── model (CustomerLimitDTO, Limits)
+                 │             └── model (CustomerLimitDTO, Limits, LimitBreach)
                  └── view (CustomerLimitOverride: overrides shown to the user)
 ```
 
@@ -37,7 +37,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, CustomerLimitCreationController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
 | Service | `service` | DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | Business rules (limit checks, utilisation count / reverse, limit creation). |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
-| Model | `model` | CustomerLimitDTO, Limits | Data passed between layers. |
+| Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
 | View | `view` | CustomerLimitOverride | Builds and raises the overrides on TXN.AMOUNT. |
 
 ## Routines to register (EB.API)
