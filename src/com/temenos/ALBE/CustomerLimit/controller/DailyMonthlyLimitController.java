@@ -151,13 +151,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             AaArrangementRecord arrangementRecord, ArrangementContext arrangementContext) {
 
         String activity = arrangementActivityRecord.getActivity().getValue();
-        BigDecimal amount = CustomerLimitUtilizationUpdater
-                .toAmount(arrangementActivityRecord.getTxnAmount().getValue()).multiply(Constants.EXCHANGE_RATE);
+        // Amount in the transaction (arrangement) currency; the service converts it to the limit currency.
+        BigDecimal amount = CustomerLimitUtilizationUpdater.toAmount(arrangementActivityRecord.getTxnAmount().getValue());
 
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
         request.setTransactionId(getAaaId(arrangementContext, arrangementActivityRecord));
         request.setTransactionDate(LocalDate.now()); // server date, as agreed
+        request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
 
         if (activity != null && activity.contains(Constants.ACTIVITY_CREDIT)) {
             request.setCreditAmount(amount);

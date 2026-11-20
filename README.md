@@ -51,7 +51,20 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM SYSTEM is used only by the creation service.
 
-Credit/debit is taken from the activity name (`CREDIT` / `DEBIT`). Dates use the server date; exchange rate is 1 (LCY).
+Credit/debit is taken from the activity name (`CREDIT` / `DEBIT`). Dates use the server date.
+
+### Currency conversion
+
+All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMIT `CCY`):
+
+- transaction currency = AA.ARRANGEMENT `CURRENCY`; if it differs from `CCY` the TXN.AMOUNT is converted;
+- for the maximum CIF check every account's working balance is converted from the ACCOUNT currency;
+- amounts are rounded to 2 decimals; EB.ALBE.UTILISED.LIMIT and EB.ALBE.TXN.DETAILS.LIMIT hold the converted amount;
+- no rate => override EB-ALBE.EXCH.RATE.MISSING ("Exchange rate not available from & to &") and the check is skipped.
+
+**To configure:** set `Constants.EXCH_RATE_TABLE` and `Constants.EXCH_RATE_FIELD`, and complete the read in
+`CustomerLimitRepository.readExchangeRate(fromCcy, toCcy)` (returns the rate for 1 unit of fromCcy in toCcy).
+Until then only same-currency transactions are checked.
 
 ## Local table field names assumed by the code
 
@@ -120,5 +133,6 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
 
 `override.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.

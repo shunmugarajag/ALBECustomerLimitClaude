@@ -17,6 +17,9 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *               Called by DailyMonthlyLimitController; all DB access goes through
  *               CustomerLimitRepository.
  *
+ *   All amounts are compared and counted in the limit currency (EB.ALBE.CIF.LIMIT CCY):
+ *   a transaction in another currency is converted first (CurrencyConversionService).
+ *
  *   validate      : daily  = UTILISED.CREDIT/DEBIT.LIMIT of <customer>-YYYYMMDD + txn
  *                            vs DAILY.CREDIT/DEBIT.LIMIT
  *                   monthly = UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT + UTILISED.CREDIT/DEBIT.LIMIT
@@ -40,12 +43,14 @@ public class DailyMonthlyLimitService {
     private final CustomerLimitReader limitReader;
     private final CustomerLimitUtilizationUpdater updater;
     private final TxnDetailsLimitRecorder recorder;
+    private final CurrencyConversionService currencyService;
 
     public DailyMonthlyLimitService(CustomerLimitRepository repository) {
         this.repository = repository;
         this.limitReader = new CustomerLimitReader(repository);
         this.updater = new CustomerLimitUtilizationUpdater(repository);
         this.recorder = new TxnDetailsLimitRecorder(repository);
+        this.currencyService = new CurrencyConversionService(repository);
     }
 
     // =========================================================================
@@ -67,6 +72,13 @@ public class DailyMonthlyLimitService {
             return;
         }
         logger.info(LOG_PREFIX + "validate limits=" + limits);
+
+        // Compare in the limit currency: convert the transaction amount if its currency differs.
+        if (!currencyService.convertRequest(request, limits.ccy)) {
+            logger.info(LOG_PREFIX + "validate END customer=" + request.getCustomerId()
+                    + " no exchange rate, checks not possible");
+            return;
+        }
 
         // On re-input of an amended transaction its earlier input is already in utilisation;
         // leave it out so the transaction is not checked against itself.
@@ -195,6 +207,7 @@ public class DailyMonthlyLimitService {
         logger.info(LOG_PREFIX + "countAtInput START " + request + " account=" + accountNo
                 + " effectiveDate=" + effectiveDate);
         int earlier = reverseCounted(request);
+        toLimitCurrency(request);
         updater.update(request);
         recorder.record(request, accountNo, effectiveDate);
         logger.info(LOG_PREFIX + "countAtInput END customer=" + request.getCustomerId() + " aaa="
@@ -214,6 +227,7 @@ public class DailyMonthlyLimitService {
         if (reversed == 0 && fallbackToToday) {
             logger.info(LOG_PREFIX + "reverse no EB.ALBE.TXN.DETAILS.LIMIT for aaa=" + request.getTransactionId()
                     + ", reversing on server date");
+            toLimitCurrency(request);
             updater.reverse(request);
             reversed = 1;
         } else if (reversed == 0) {
@@ -240,6 +254,24 @@ public class DailyMonthlyLimitService {
             recorder.delete(original);
         }
         return originals.size();
+    }
+
+    /**
+     * Converts the request amount to the customer's limit currency before it is counted.
+     * Reversals of recorded transactions do not need this: EB.ALBE.TXN.DETAILS.LIMIT already
+     * holds the converted amount. With no limit record or no rate the amount is counted as is.
+     */
+    private void toLimitCurrency(CustomerLimitDTO request) {
+        Limits limits = limitReader.getCustomerLimits(request.getCustomerId());
+        if (limits == null) {
+            logger.info(LOG_PREFIX + "toLimitCurrency no EB.ALBE.CIF.LIMIT record, amount counted in "
+                    + request.getTransactionCurrency());
+            return;
+        }
+        if (!currencyService.convertRequest(request, limits.ccy)) {
+            logger.error(LOG_PREFIX + "toLimitCurrency no rate from " + request.getTransactionCurrency() + " to "
+                    + limits.ccy + ", amount counted unconverted for aaa=" + request.getTransactionId());
+        }
     }
 
     private boolean isCredit(CustomerLimitDTO request) {

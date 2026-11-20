@@ -19,6 +19,8 @@ import com.temenos.logging.facade.LoggerFactory;
  *                 EB-ALBE.MAX.CIF.BAL.EXCEED    Overall credit/debit exceed for Customer & by &
  *                 EB-ALBE.CIF.LIMIT.NOT.DEFINED Customer limit not defined for Customer &
  *                                               (no EB.ALBE.CIF.LIMIT record, or a limit field is blank)
+ *                 EB-ALBE.EXCH.RATE.MISSING     Exchange rate not available from & to &
+ *                                               (transaction currency, limit currency)
  *
  *               Parameters are passed in the standard T24 format
  *               <id> FM <param1> VM <param2>, which fills the & placeholders in order.
@@ -49,6 +51,12 @@ public class CustomerLimitOverride {
                     + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
             raise(field, Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId());
+            raised++;
+        }
+        if (request.isRateMissing()) {
+            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " no exchange rate from "
+                    + request.getRateMissingCurrency() + " to " + request.getLimitCurrency());
+            raise(field, Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(), request.getLimitCurrency());
             raised++;
         }
         for (LimitBreach breach : request.getBreaches()) {

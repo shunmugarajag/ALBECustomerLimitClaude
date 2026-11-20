@@ -9,7 +9,8 @@ import java.util.List;
 
 /*-----------------------------------------------------------------------------
  * Description : Input and result data passed between the customer limit routines.
- *               Input  : customer, AAA id, server date, credit or debit amount (LCY).
+ *               Input  : customer, AAA id, server date, transaction currency, credit or debit
+ *                        amount (converted to the limit currency by the services).
  *               Result : valid flag, last message, limitMissing flag and one LimitBreach
  *                        per breached limit (override id + amount difference).
  *------------------------------------------------------------------------------
@@ -25,9 +26,9 @@ public class CustomerLimitDTO {
     private String transactionId;
     /** Server date the transaction is counted on. */
     private LocalDate transactionDate;
-    /** Credit amount in LCY; zero for a debit. */
+    /** Credit amount (in the limit currency once converted); zero for a debit. */
     private BigDecimal creditAmount = BigDecimal.ZERO;
-    /** Debit amount in LCY; zero for a credit. */
+    /** Debit amount (in the limit currency once converted); zero for a credit. */
     private BigDecimal debitAmount = BigDecimal.ZERO;
     /** Message of the last breach / error, for logging. */
     private String validationMessage;
@@ -37,6 +38,18 @@ public class CustomerLimitDTO {
     private boolean limitMissing = false;
     /** One entry per breached limit, raised as an override by the routine. */
     private final List<LimitBreach> breaches = new ArrayList<>();
+    /** Currency of the transaction (AA.ARRANGEMENT CURRENCY). */
+    private String transactionCurrency;
+    /** Currency of the customer's limits (EB.ALBE.CIF.LIMIT CCY); amounts are converted to it. */
+    private String limitCurrency;
+    /** Rate used to convert the amount from transactionCurrency to limitCurrency (1 if same). */
+    private BigDecimal exchangeRate = BigDecimal.ONE;
+    /** Credit / debit amount in the transaction currency, before conversion. */
+    private BigDecimal originalAmount = BigDecimal.ZERO;
+    /** True when no exchange rate was found between the two currencies. */
+    private boolean rateMissing = false;
+    /** Currency that has no rate to the limit currency (transaction or account currency). */
+    private String rateMissingCurrency;
     /** EB.ALBE.CIF.LIMIT fields that are blank; raised once as the "limit not defined" override. */
     private final List<String> undefinedLimits = new ArrayList<>();
 
@@ -57,6 +70,30 @@ public class CustomerLimitDTO {
     public BigDecimal getDebitAmount() { return debitAmount; }
     public void setDebitAmount(BigDecimal debitAmount) {
         this.debitAmount = debitAmount == null ? BigDecimal.ZERO : debitAmount;
+    }
+
+    public String getTransactionCurrency() { return transactionCurrency; }
+    public void setTransactionCurrency(String transactionCurrency) { this.transactionCurrency = transactionCurrency; }
+
+    public String getLimitCurrency() { return limitCurrency; }
+    public void setLimitCurrency(String limitCurrency) { this.limitCurrency = limitCurrency; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public BigDecimal getOriginalAmount() { return originalAmount; }
+    public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
+
+    /** True when no exchange rate was found from a currency to the limit currency. */
+    public boolean isRateMissing() { return rateMissing; }
+    public String getRateMissingCurrency() { return rateMissingCurrency; }
+
+    /** Records that fromCurrency has no exchange rate to the limit currency. */
+    public void setRateMissing(String fromCurrency) {
+        this.rateMissing = true;
+        this.rateMissingCurrency = fromCurrency;
+        valid = false;
+        validationMessage = String.format(Constants.MSG_EXCH_RATE_MISSING, fromCurrency, limitCurrency);
     }
 
     public String getValidationMessage() { return validationMessage; }
@@ -100,7 +137,9 @@ public class CustomerLimitDTO {
     @Override
     public String toString() {
         return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", date=" + transactionDate
-                + ", credit=" + creditAmount + ", debit=" + debitAmount + ", valid=" + valid
+                + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
+                + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount
+                + ", rateMissing=" + rateMissing + ", valid=" + valid
                 + ", limitMissing=" + limitMissing + ", undefinedLimits=" + undefinedLimits
                 + ", breaches=" + breaches.size() + "]";
     }

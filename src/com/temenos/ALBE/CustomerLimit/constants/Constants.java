@@ -82,10 +82,20 @@ public final class Constants {
     public static final DateTimeFormatter MONTHLY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMM");
 
     // -------------------------------------------------------------------------
-    // Currency
+    // Currency conversion
     // -------------------------------------------------------------------------
-    /** Exchange rate is fixed at 1 (LCY only) until currency conversion is confirmed. */
-    public static final BigDecimal EXCHANGE_RATE = BigDecimal.ONE;
+    /**
+     * Exchange rate table and field - TO BE CONFIGURED.
+     * While EXCH_RATE_TABLE is blank, only same-currency transactions can be checked;
+     * a different currency raises OVR_EXCH_RATE_MISSING.
+     */
+    public static final String EXCH_RATE_TABLE = "";
+    /** Field of EXCH_RATE_TABLE holding the rate - TO BE CONFIGURED. */
+    public static final String EXCH_RATE_FIELD = "";
+    /** Rate used when both currencies are the same. */
+    public static final BigDecimal SAME_CURRENCY_RATE = BigDecimal.ONE;
+    /** Decimals kept after converting an amount to the limit currency. */
+    public static final int AMOUNT_SCALE = 2;
 
     // -------------------------------------------------------------------------
     // EB.OVERRIDE ids
@@ -98,6 +108,8 @@ public final class Constants {
     public static final String OVR_MAX_CIF_BAL_EXCEED = "EB-ALBE.MAX.CIF.BAL.EXCEED";
     /** Customer limit not defined for Customer & (no EB.ALBE.CIF.LIMIT record or a blank limit) */
     public static final String OVR_LIMIT_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
+    /** Exchange rate not available from & to & (transaction currency, limit currency) */
+    public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
 
     // -------------------------------------------------------------------------
     // Messages (HLSD text, used for logging; %s = customer id, difference)
@@ -106,6 +118,7 @@ public final class Constants {
     public static final String MSG_MONTHLY_EXCEEDED = "Monthly credit/debit exceed for Customer %s by %s";
     public static final String MSG_MAX_CIF_EXCEEDED = "Overall credit/debit exceed for Customer %s by %s";
     public static final String MSG_LIMIT_NOT_DEFINED = "Customer limit not defined for Customer %s";
+    public static final String MSG_EXCH_RATE_MISSING = "Exchange rate not available from %s to %s";
 
     // -------------------------------------------------------------------------
     // T24 dynamic array marks (override id FM param1 VM param2)

@@ -272,6 +272,31 @@ public class CustomerLimitRepository {
     }
 
     // =========================================================================
+    // Exchange rate
+    // =========================================================================
+
+    /**
+     * Rate to convert 1 unit of fromCcy into toCcy, from the bank's exchange rate table.
+     * Table and field are set in Constants.EXCH_RATE_TABLE / EXCH_RATE_FIELD.
+     * @return the rate, or null if the table is not configured or no rate is found
+     */
+    public java.math.BigDecimal readExchangeRate(String fromCcy, String toCcy) {
+        logger.info(LOG_PREFIX + "readExchangeRate READ " + Constants.EXCH_RATE_TABLE + " field="
+                + Constants.EXCH_RATE_FIELD + " from=" + fromCcy + " to=" + toCcy);
+        if (Constants.EXCH_RATE_TABLE.isEmpty() || Constants.EXCH_RATE_FIELD.isEmpty()) {
+            logger.error(LOG_PREFIX + "readExchangeRate NOT CONFIGURED: set Constants.EXCH_RATE_TABLE and "
+                    + "EXCH_RATE_FIELD and read the rate here (from=" + fromCcy + " to=" + toCcy + ")");
+            return null;
+        }
+        // To be completed when the exchange rate table is confirmed: read the record for
+        // fromCcy / toCcy with daObj.getRecord(Constants.EXCH_RATE_TABLE, <record id>),
+        // wrap it in the table's generated record class, and return the EXCH_RATE_FIELD value.
+        logger.error(LOG_PREFIX + "readExchangeRate table " + Constants.EXCH_RATE_TABLE
+                + " configured but the read is not implemented yet");
+        return null;
+    }
+
+    // =========================================================================
     // COMPANY, CUSTOMER.ACCOUNT, ACCOUNT
     // =========================================================================
 

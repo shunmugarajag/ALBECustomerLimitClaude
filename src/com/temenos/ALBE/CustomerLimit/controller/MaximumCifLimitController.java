@@ -66,6 +66,7 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             CustomerLimitDTO request = new CustomerLimitDTO();
             request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
             request.setTransactionId(arrangementActivityRecord.getArrangement().getValue());
+            request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
             request.setCreditAmount(
                     CustomerLimitUtilizationUpdater.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
             logger.info(LOG_PREFIX + "validateRecord request=" + request);

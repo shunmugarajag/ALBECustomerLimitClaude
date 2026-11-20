@@ -13,7 +13,7 @@ import java.math.BigDecimal;
  *-----------------------------------------------------------------------------
  */
 public class Limits {
-    /** CCY (always LCY). */
+    /** CCY: currency of the limits; transaction amounts and balances are converted to it. */
     public String ccy;
     /** DAILY.CREDIT.LIMIT */
     public BigDecimal dailyCreditLimit;

@@ -20,7 +20,8 @@ import com.temenos.t24.api.records.account.AccountRecord;
  *               total working balance of all the customer's accounts + credit amount
  *               above MAX.CIF.BALANCE => breach by the difference.
  *               No EB.ALBE.CIF.LIMIT record => limitMissing; blank MAX.CIF.BALANCE =>
- *               limit not defined. Exchange rate is 1 (LCY only).
+ *               limit not defined. The credit amount and every account balance are converted
+ *               to the limit currency (EB.ALBE.CIF.LIMIT CCY) when their currency differs.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -34,10 +35,12 @@ public class MaximumCifLimitService {
 
     private final CustomerLimitRepository repository;
     private final CustomerLimitReader limitReader;
+    private final CurrencyConversionService currencyService;
 
     public MaximumCifLimitService(CustomerLimitRepository repository) {
         this.repository = repository;
         this.limitReader = new CustomerLimitReader(repository);
+        this.currencyService = new CurrencyConversionService(repository);
     }
 
     /** Maximum CIF balance check; records a breach with the HLSD message and amount difference. */
@@ -49,8 +52,7 @@ public class MaximumCifLimitService {
             logger.info(LOG_PREFIX + "validate SKIP customer id missing");
             return;
         }
-        BigDecimal transactionAmount = request.getCreditAmount().multiply(Constants.EXCHANGE_RATE);
-        if (transactionAmount.signum() <= 0) {
+        if (request.getCreditAmount().signum() <= 0) {
             logger.info(LOG_PREFIX + "validate SKIP customer=" + customerId + " no credit amount");
             return;
         }
@@ -69,9 +71,21 @@ public class MaximumCifLimitService {
             return;
         }
 
+        // Credit amount in the limit currency.
+        if (!currencyService.convertRequest(request, limits.ccy)) {
+            logger.info(LOG_PREFIX + "validate END customer=" + customerId + " no exchange rate for the credit");
+            return;
+        }
+        BigDecimal transactionAmount = request.getCreditAmount();
+
         // Step 2: total working balance of all the customer's accounts.
         String finMnemonic = repository.getFinancialMnemonic();
-        BigDecimal totalBalance = getTotalCifBalance(finMnemonic, customerId);
+        BigDecimal totalBalance = getTotalCifBalance(request, finMnemonic, limits.ccy);
+        if (totalBalance == null) {
+            logger.info(LOG_PREFIX + "validate END customer=" + customerId + " no exchange rate for account currency "
+                    + request.getRateMissingCurrency());
+            return;
+        }
 
         // Step 3: compare total + credit amount with the limit (equal to the limit is allowed).
         BigDecimal projectedBalance = totalBalance.add(transactionAmount);
@@ -90,14 +104,23 @@ public class MaximumCifLimitService {
         logger.info(LOG_PREFIX + "validate END " + request);
     }
 
-    /** Sums the working balances of every account belonging to the customer. */
-    private BigDecimal getTotalCifBalance(String finMnemonic, String customerId) {
+    /**
+     * Sums the working balances of every account belonging to the customer, each converted
+     * to the limit currency. Null if an account's currency has no exchange rate (rateMissing set).
+     */
+    private BigDecimal getTotalCifBalance(CustomerLimitDTO request, String finMnemonic, String limitCcy) {
+        String customerId = request.getCustomerId();
         BigDecimal total = BigDecimal.ZERO;
         List<String> accountIds = repository.getCustomerAccountIds(finMnemonic, customerId);
         int index = 0;
         for (String accountId : accountIds) {
             index++;
-            BigDecimal balance = getAccountBalance(finMnemonic, accountId).multiply(Constants.EXCHANGE_RATE);
+            BigDecimal balance = getAccountBalance(request, finMnemonic, accountId, limitCcy);
+            if (balance == null) {
+                logger.error(LOG_PREFIX + "getTotalCifBalance account=" + accountId + " no exchange rate to "
+                        + limitCcy);
+                return null;
+            }
             total = total.add(balance);
             logger.info(LOG_PREFIX + "getTotalCifBalance [" + index + "/" + accountIds.size() + "] account="
                     + accountId + " balance=" + balance + " runningTotal=" + total);
@@ -107,13 +130,26 @@ public class MaximumCifLimitService {
         return total;
     }
 
-    /** Working balance of one account; 0 if the account cannot be read. */
-    private BigDecimal getAccountBalance(String finMnemonic, String accountId) {
+    /**
+     * Working balance of one account in the limit currency; 0 if the account cannot be read,
+     * null if its currency has no exchange rate.
+     */
+    private BigDecimal getAccountBalance(CustomerLimitDTO request, String finMnemonic, String accountId,
+            String limitCcy) {
         AccountRecord accountRec = repository.readAccount(finMnemonic, accountId);
         if (accountRec == null) {
             logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " not readable, balance=0");
             return BigDecimal.ZERO;
         }
-        return CustomerLimitUtilizationUpdater.toAmount(accountRec.getWorkingBalance().getValue());
+        BigDecimal balance = CustomerLimitUtilizationUpdater.toAmount(accountRec.getWorkingBalance().getValue());
+        String accountCcy = accountRec.getCurrency().getValue();
+        BigDecimal converted = currencyService.convert(balance, accountCcy, limitCcy);
+        if (converted == null) {
+            request.setRateMissing(accountCcy);
+            return null;
+        }
+        logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " balance=" + balance + " " + accountCcy
+                + " inLimitCcy=" + converted + " " + limitCcy);
+        return converted;
     }
 }
