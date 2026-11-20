@@ -8,7 +8,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 |---|---|
 | [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md) | How the code works: architecture, classes, flows, data, overrides, logging, design decisions, HLSD deviations, open items |
 | [docs/REPORTS.md](docs/REPORTS.md) | The customer limit reports: summary, period report, transaction report (incl. overridden transactions) – selection, columns, examples, T24 set-up |
-| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, logging, go-live data, DEV/SIT test cases |
+| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **report enquiries (step 14) and user menu and access (step 15)** |
 
 ## Project configuration
 

@@ -230,49 +230,7 @@ B1 is left out (only "limit not defined"); a transaction that was overridden and
 
 ## T24 set-up
 
-### Tables
-
-No table change for the reports. They read EB.ALBE.CIF.LIMIT, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (id `<customer>-<YYYYMMDD>-<AAA>`) and AA.ARRANGEMENT.ACTIVITY.
-
-### EB.API
-
-| EB.API id | Java package | Java class | Method |
-|---|---|---|---|
-| ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitSummaryEnquiryController` | `setIds` |
-| ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitPeriodEnquiryController` | `setIds` |
-| ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitTxnEnquiryController` | `setIds` |
-
-### STANDARD.SELECTION
-
-Selection field names exactly as below (`Constants.ENQ_SEL_*`); allow operand **EQ** only (the value is used as "equals").
-
-| STANDARD.SELECTION | Routine | Selection fields |
-|---|---|---|
-| NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | ALBE.E.CUSTOMER.LIMIT.SUMMARY | CUSTOMER, DATE, OVER.LIMIT |
-| NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | ALBE.E.CUSTOMER.LIMIT.PERIOD | DATE.FROM, DATE.TO, MONTH.FROM, MONTH.TO, CUSTOMER, OVER.LIMIT |
-| NOFILE.ALBE.CUSTOMER.LIMIT.TXN | ALBE.E.CUSTOMER.LIMIT.TXN | CUSTOMER, DATE.FROM, DATE.TO, OVERRIDDEN |
-
-### ENQUIRY records
-
-| ENQUIRY | FILE.NAME | Columns |
-|---|---|---|
-| ALBE.CUSTOMER.LIMIT.SUMMARY | NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | 17 – see report 1 |
-| ALBE.CUSTOMER.LIMIT.PERIOD | NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | 11 – see report 2 |
-| ALBE.CUSTOMER.LIMIT.TXN | NOFILE.ALBE.CUSTOMER.LIMIT.TXN | 9 – see report 3 |
-
-Map each display field to its column number, as in the team's other NOFILE enquiries. Add the three enquiries to the user menu.
-
-### EB.ERROR records
-
-| ID | Message (suggested) | When |
-|---|---|---|
-| EB-NO.REC.SELECT | No records selected | nothing to show (already used by other enquiries) |
-| EB-ALBE.ENQ.INVALID.DATE | Invalid date, enter YYYYMMDD | not a real date (e.g. 20261131) |
-| EB-ALBE.ENQ.INVALID.MONTH | Invalid month, enter YYYYMM | not a real month (e.g. 202613) |
-| EB-ALBE.ENQ.DATE.RANGE | From cannot be after to | FROM after TO |
-| EB-ALBE.ENQ.PERIOD.MANDATORY | Enter a date range or a month range | period report: neither or both ranges |
-| EB-ALBE.ENQ.RANGE.TOO.LONG | Period too long (max 92 days / 24 months) | range above the maximum |
-| EB-ALBE.ENQ.CUSTOMER.OR.DATE | Enter a customer or a date | transaction report without customer and date |
+The T24 set-up for the reports – EB.API, STANDARD.SELECTION (selection fields), ENQUIRY records (column mapping and headings), EB.ERROR records – and the **user menu and access** are in [T24_CONFIGURATION.md](T24_CONFIGURATION.md), **steps 6, 14 and 15**. No table change is needed for the reports.
 
 ---
 
