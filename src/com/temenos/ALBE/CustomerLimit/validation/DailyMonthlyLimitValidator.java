@@ -99,9 +99,11 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             TStructure productPropertyRecord, AaProductCatalogRecord productRecord, TStructure currRecord) {
 
         String activityStatus = "";
+        long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
             logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus);
+            logActivity("validateRecord", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
             // Validation is only needed when the activity is input; AUTH / REVERSE are handled elsewhere.
             if (!STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
@@ -114,8 +116,10 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
                 logger.info(LOG_PREFIX + "validateRecord SKIP activity is neither credit nor debit");
                 return arrangementActivityRecord.getValidationResponse();
             }
+            logger.info(LOG_PREFIX + "validateRecord request=" + request);
 
             validate(request);
+            logger.info(LOG_PREFIX + "validateRecord result=" + request);
 
             // No EB.ALBE.CIF.LIMIT record: "limit not defined" override; nothing else can be checked.
             if (request.isLimitMissing()) {
@@ -145,7 +149,9 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             }
 
             logger.info(LOG_PREFIX + "validateRecord END customer=" + request.getCustomerId()
-                    + " aaa=" + request.getTransactionId() + " breaches=" + request.getBreaches().size());
+                    + " aaa=" + request.getTransactionId() + " breaches=" + request.getBreaches().size()
+                    + " limitNotDefined=" + request.isLimitNotDefined() + " elapsedMs="
+                    + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "validateRecord ERROR status=" + activityStatus + " " + e.getMessage());
@@ -166,9 +172,11 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             List<TransactionData> transactionData, List<TStructure> transactionRecord) {
 
         String activityStatus = "";
+        long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
             logger.info(LOG_PREFIX + "postCoreTableUpdate START status=" + activityStatus);
+            logActivity("postCoreTableUpdate", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
             boolean isInput = STATUS_UNAUTH.equalsIgnoreCase(activityStatus);
             boolean isDelete = STATUS_DELETE.equalsIgnoreCase(activityStatus);
@@ -190,6 +198,9 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
                 return;
             }
 
+            logger.info(LOG_PREFIX + "postCoreTableUpdate request=" + request + " action="
+                    + (isInput ? "COUNT" : isDelete ? "REVERSE (rejected input)" : "REVERSE (reversal)"));
+
             CustomerLimitUtilizationUpdater updater = new CustomerLimitUtilizationUpdater(this);
             TxnDetailsLimitRecorder recorder = new TxnDetailsLimitRecorder(this);
 
@@ -205,7 +216,8 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
                 recorder.record(request, getAccountNo(arrangementRecord),
                         arrangementActivityRecord.getEffectiveDate().getValue());
                 logger.info(LOG_PREFIX + "postCoreTableUpdate END UNAUTH counted customer=" + request.getCustomerId()
-                        + " aaa=" + request.getTransactionId() + " earlierInputReversed=" + reversed);
+                        + " aaa=" + request.getTransactionId() + " earlierInputReversed=" + reversed
+                        + " elapsedMs=" + (System.currentTimeMillis() - startTime));
                 return;
             }
 
@@ -217,8 +229,13 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
                 reversed = 1;
             }
 
+            if (isDelete && reversed == 0) {
+                logger.info(LOG_PREFIX + "postCoreTableUpdate DELETE nothing was counted for aaa="
+                        + request.getTransactionId());
+            }
             logger.info(LOG_PREFIX + "postCoreTableUpdate END " + activityStatus + " customer="
-                    + request.getCustomerId() + " aaa=" + request.getTransactionId() + " reversed=" + reversed);
+                    + request.getCustomerId() + " aaa=" + request.getTransactionId() + " reversed=" + reversed
+                    + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "postCoreTableUpdate ERROR status=" + activityStatus + " " + e.getMessage());
@@ -232,8 +249,11 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
      */
     private int reverseCounted(CustomerLimitDTO request, CustomerLimitUtilizationUpdater updater,
             TxnDetailsLimitRecorder recorder) {
+        logger.info(LOG_PREFIX + "reverseCounted START customer=" + request.getCustomerId() + " aaa="
+                + request.getTransactionId());
         List<CustomerLimitDTO> originals =
                 recorder.findOriginal(request.getCustomerId(), request.getTransactionId());
+        logger.info(LOG_PREFIX + "reverseCounted found=" + originals.size() + " record(s) to reverse");
         for (CustomerLimitDTO original : originals) {
             logger.info(LOG_PREFIX + "reverseCounted aaa=" + original.getTransactionId() + " originalDate="
                     + original.getTransactionDate() + " credit=" + original.getCreditAmount() + " debit="
@@ -241,6 +261,7 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             updater.reverse(original);
             recorder.delete(original);
         }
+        logger.info(LOG_PREFIX + "reverseCounted END reversed=" + originals.size());
         return originals.size();
     }
 
@@ -249,11 +270,15 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
      * a missing EB.ALBE.CIF.LIMIT record sets limitMissing.
      */
     public void validate(CustomerLimitDTO request) {
+        logger.info(LOG_PREFIX + "validate START customer=" + request.getCustomerId() + " aaa="
+                + request.getTransactionId());
         DataAccess daObj = new DataAccess(this);
 
         Limits limits = new CustomerLimitReader(daObj).getCustomerLimits(request.getCustomerId());
         if (limits == null) {
             // No EB.ALBE.CIF.LIMIT record: the caller raises the "limit not defined" override.
+            logger.info(LOG_PREFIX + "validate END customer=" + request.getCustomerId()
+                    + " no EB.ALBE.CIF.LIMIT record, checks not possible");
             request.setLimitMissing(true);
             return;
         }
@@ -264,9 +289,14 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
         // leave it out so the transaction is not checked against itself.
         List<CustomerLimitDTO> earlierInputs =
                 new TxnDetailsLimitRecorder(this).findOriginal(request.getCustomerId(), request.getTransactionId());
+        logger.info(LOG_PREFIX + "validate earlierInputs=" + earlierInputs.size()
+                + (earlierInputs.isEmpty() ? " (first input)" : " (re-input of an amended transaction)"));
 
         validateDailyLimit(daObj, request, limits, earlierInputs);
         validateMonthlyLimit(daObj, request, limits, earlierInputs);
+
+        logger.info(LOG_PREFIX + "validate END customer=" + request.getCustomerId() + " breaches="
+                + request.getBreaches().size() + " blankLimits=" + request.getUndefinedLimits());
     }
 
     /**
@@ -410,6 +440,7 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             AaArrangementActivityRecord arrangementActivityRecord) {
         String aaaId = arrangementContext.getArrangementActivityId();
         if (aaaId != null && !aaaId.trim().isEmpty()) {
+            logger.info(LOG_PREFIX + "getAaaId aaa=" + aaaId.trim());
             return aaaId.trim();
         }
         logger.error(LOG_PREFIX + "getAaaId AAA id not available, using arrangement id");
@@ -419,10 +450,27 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     /** First linked application id of the arrangement (the account number). */
     private String getAccountNo(AaArrangementRecord arrangementRecord) {
         try {
-            return arrangementRecord.getLinkedAppl().get(0).getLinkedApplId().getValue();
+            String accountNo = arrangementRecord.getLinkedAppl().get(0).getLinkedApplId().getValue();
+            logger.info(LOG_PREFIX + "getAccountNo account=" + accountNo);
+            return accountNo;
         } catch (Exception e) {
             logger.info(LOG_PREFIX + "getAccountNo linked account not found " + e.getMessage());
             return "";
+        }
+    }
+
+    /** Logs the raw activity fields received from T24, for tracing. */
+    private void logActivity(String hook, AaArrangementActivityRecord arrangementActivityRecord,
+            ArrangementContext arrangementContext, AaArrangementRecord arrangementRecord) {
+        try {
+            logger.info(LOG_PREFIX + hook + " activity=" + arrangementActivityRecord.getActivity().getValue()
+                    + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
+                    + " aaa=" + arrangementContext.getArrangementActivityId()
+                    + " customer=" + arrangementRecord.getCustomer().get(0).getCustomer().getValue()
+                    + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
+                    + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
+        } catch (Exception e) {
+            logger.info(LOG_PREFIX + hook + " unable to log activity fields " + e.getMessage());
         }
     }
 
@@ -433,7 +481,13 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     /** Reads a utilisation record; null when there is no utilisation yet for that day / month. */
     private EbAlbeUtilisedLimitRecord getUtilisedRecord(DataAccess daObj, String recordId) {
         try {
-            return new EbAlbeUtilisedLimitRecord(daObj.getRecord(UTILISED_LIMIT_TABLE, recordId));
+            EbAlbeUtilisedLimitRecord utilRec =
+                    new EbAlbeUtilisedLimitRecord(daObj.getRecord(UTILISED_LIMIT_TABLE, recordId));
+            logger.info(LOG_PREFIX + "getUtilisedRecord found " + recordId + " credit="
+                    + utilRec.getUtilisedCreditLimit().getValue() + " debit=" + utilRec.getUtilisedDebitLimit().getValue()
+                    + " migratedCredit=" + utilRec.getUtilisedMigratedCreditLimit().getValue()
+                    + " migratedDebit=" + utilRec.getUtilisedMigratedDebitLimit().getValue());
+            return utilRec;
         } catch (Exception e) {
             logger.info(LOG_PREFIX + "getUtilisedRecord no record " + recordId + ", utilised = 0");
             return null;

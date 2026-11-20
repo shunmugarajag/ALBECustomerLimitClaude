@@ -75,10 +75,14 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
             TStructure productPropertyRecord, AaProductCatalogRecord productRecord, TStructure currRecord) {
 
         String activityStatus = "";
+        long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
             String activity = arrangementActivityRecord.getActivity().getValue();
-            logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus + " activity=" + activity);
+            logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus + " activity=" + activity
+                    + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
+                    + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
+                    + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
 
             // Validation is only needed when the activity is input.
             if (!STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
@@ -100,6 +104,7 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
                     + request.getTransactionId() + " credit=" + request.getCreditAmount());
 
             validate(request);
+            logger.info(LOG_PREFIX + "validateRecord result=" + request);
 
             // No EB.ALBE.CIF.LIMIT record: "limit not defined" override; nothing else can be checked.
             if (request.isLimitMissing()) {
@@ -127,7 +132,8 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
             }
 
             logger.info(LOG_PREFIX + "validateRecord END customer=" + request.getCustomerId()
-                    + " breaches=" + request.getBreaches().size());
+                    + " breaches=" + request.getBreaches().size() + " limitNotDefined=" + request.isLimitNotDefined()
+                    + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "validateRecord ERROR status=" + activityStatus + " " + e.getMessage());
@@ -139,6 +145,7 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
     /** Maximum CIF balance check; records a breach with the HLSD message and amount difference. */
     public void validate(CustomerLimitDTO request) {
         String customerId = request.getCustomerId();
+        logger.info(LOG_PREFIX + "validate START customer=" + customerId + " credit=" + request.getCreditAmount());
         if (isBlank(customerId)) {
             logger.info(LOG_PREFIX + "validate SKIP customer id missing");
             return;
@@ -157,6 +164,7 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
         Limits limits = new CustomerLimitReader(daObj).getCustomerLimits(customerId);
         if (limits == null) {
             // No EB.ALBE.CIF.LIMIT record: the caller raises the "limit not defined" override.
+            logger.info(LOG_PREFIX + "validate END customer=" + customerId + " no EB.ALBE.CIF.LIMIT record");
             request.setLimitMissing(true);
             return;
         }
@@ -183,8 +191,10 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
             request.addBreach(CustomerLimitOverride.MAX_CIF_BAL_EXCEED,
                     String.format(MSG_LIMIT_EXCEEDED, customerId, difference.toPlainString()), difference);
         } else {
-            logger.info(LOG_PREFIX + "validate OK customer=" + customerId + " within maximum balance");
+            logger.info(LOG_PREFIX + "validate OK customer=" + customerId + " within maximum balance, headroom="
+                    + maximumCifLimit.subtract(projectedBalance));
         }
+        logger.info(LOG_PREFIX + "validate END customer=" + customerId + " breaches=" + request.getBreaches().size());
     }
 
     /** Financial mnemonic of the current company, used to read ACCOUNT (same as the FF enquiry routines). */
@@ -206,8 +216,13 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
     private BigDecimal getTotalCifBalance(DataAccess daObj, String finMnemonic, String customerId) {
         BigDecimal total = BigDecimal.ZERO;
         List<String> accountIds = getCustomerAccountIds(daObj, finMnemonic, customerId);
+        int index = 0;
         for (String accountId : accountIds) {
-            total = total.add(getAccountBalance(daObj, finMnemonic, accountId).multiply(EXCHANGE_RATE));
+            index++;
+            BigDecimal balance = getAccountBalance(daObj, finMnemonic, accountId).multiply(EXCHANGE_RATE);
+            total = total.add(balance);
+            logger.info(LOG_PREFIX + "getTotalCifBalance [" + index + "/" + accountIds.size() + "] account="
+                    + accountId + " balance=" + balance + " runningTotal=" + total);
         }
         logger.info(LOG_PREFIX + "getTotalCifBalance customer=" + customerId + " accounts=" + accountIds.size()
                 + " total=" + total);

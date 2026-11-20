@@ -49,14 +49,23 @@ public final class CustomerLimitOverride {
 
     /** Raises an override on the given field; the user can accept it and continue. */
     public static void raise(TField field, String overrideId, String... params) {
-        logger.info(LOG_PREFIX + "raise override=" + overrideId + " params=" + Arrays.toString(params));
-        field.setOverride(build(overrideId, params));
+        String overrideText = build(overrideId, params);
+        logger.info(LOG_PREFIX + "raise override=" + overrideId + " params=" + Arrays.toString(params)
+                + " sent=" + readable(overrideText));
+        field.setOverride(overrideText);
     }
 
     /** Raises an error on the given field; the transaction cannot be committed. Not used by the limit checks. */
     public static void raiseError(TField field, String errorId, String... params) {
-        logger.info(LOG_PREFIX + "raiseError error=" + errorId + " params=" + Arrays.toString(params));
-        field.setError(build(errorId, params));
+        String errorText = build(errorId, params);
+        logger.info(LOG_PREFIX + "raiseError error=" + errorId + " params=" + Arrays.toString(params)
+                + " sent=" + readable(errorText));
+        field.setError(errorText);
+    }
+
+    /** Shows FM as ^ and VM as ] so the exact text sent to T24 is readable in the log. */
+    private static String readable(String text) {
+        return text.replace(FM, '^').replace(VM, ']');
     }
 
     /** Builds <id> FM <param1> VM <param2> ...; just <id> when there are no parameters. */

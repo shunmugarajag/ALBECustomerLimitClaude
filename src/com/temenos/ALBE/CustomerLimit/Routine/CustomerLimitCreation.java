@@ -49,6 +49,7 @@ public class CustomerLimitCreation extends RecordLifecycle {
             List<TransactionData> transactionData, List<TStructure> currentRecords,
             TransactionContext transactionContext) {
 
+        long startTime = System.currentTimeMillis();
         try {
             String function = transactionContext == null ? null : transactionContext.getCurrentFunction();
             logger.info(LOG_PREFIX + "postUpdateRequest START customer=" + currentRecordId + " function=" + function);
@@ -87,12 +88,15 @@ public class CustomerLimitCreation extends RecordLifecycle {
             cifLimitRec.setMonthlyDebitLimit(toText(genericLimits.monthlyDebitLimit));
             cifLimitRec.setMaxCifBalance(toText(genericLimits.maxCifBalance));
 
+            logger.info(LOG_PREFIX + "postUpdateRequest writing EB.ALBE.CIF.LIMIT>" + currentRecordId
+                    + " from " + genericLimits.source);
             cifLimitTable.write(currentRecordId, cifLimitRec);
             logger.info(LOG_PREFIX + "postUpdateRequest CREATED EB.ALBE.CIF.LIMIT customer=" + currentRecordId
                     + " ccy=" + genericLimits.ccy + " dailyCredit=" + genericLimits.dailyCreditLimit
                     + " dailyDebit=" + genericLimits.dailyDebitLimit + " monthlyCredit="
                     + genericLimits.monthlyCreditLimit + " monthlyDebit=" + genericLimits.monthlyDebitLimit
-                    + " maxCifBalance=" + genericLimits.maxCifBalance);
+                    + " maxCifBalance=" + genericLimits.maxCifBalance + " elapsedMs="
+                    + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "postUpdateRequest ERROR customer=" + currentRecordId + " " + e.getMessage());

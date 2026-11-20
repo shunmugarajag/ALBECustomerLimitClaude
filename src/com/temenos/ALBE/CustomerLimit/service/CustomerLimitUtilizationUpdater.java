@@ -64,6 +64,8 @@ public class CustomerLimitUtilizationUpdater {
                 + " debit=" + request.getDebitAmount());
         updateDailyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
         updateMonthlyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
+        logger.info(LOG_PREFIX + "update END customer=" + request.getCustomerId() + " daily="
+                + dailyRecordId(request) + " monthly=" + monthlyRecordId(request));
     }
 
     /** Subtracts the original transaction amounts from the daily and monthly utilisation. */
@@ -75,6 +77,8 @@ public class CustomerLimitUtilizationUpdater {
                 originalTransaction.getDebitAmount().negate());
         updateMonthlyUtilization(originalTransaction, originalTransaction.getCreditAmount().negate(),
                 originalTransaction.getDebitAmount().negate());
+        logger.info(LOG_PREFIX + "reverse END customer=" + originalTransaction.getCustomerId() + " daily="
+                + dailyRecordId(originalTransaction) + " monthly=" + monthlyRecordId(originalTransaction));
     }
 
     /** Adds credit / debit (negative for a reversal) to the daily record's UTILISED.CREDIT/DEBIT.LIMIT. */
@@ -121,7 +125,9 @@ public class CustomerLimitUtilizationUpdater {
     /** Existing utilisation record, or a new empty one for the first transaction of the day / month. */
     private EbAlbeUtilisedLimitRecord readOrCreate(String recordId) {
         try {
-            return utilisedLimitTable.read(recordId);
+            EbAlbeUtilisedLimitRecord utilRec = utilisedLimitTable.read(recordId);
+            logger.info(LOG_PREFIX + "readOrCreate existing record " + recordId);
+            return utilRec;
         } catch (Exception e) {
             logger.info(LOG_PREFIX + "readOrCreate new record " + recordId);
             return new EbAlbeUtilisedLimitRecord(hook);

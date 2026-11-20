@@ -66,6 +66,7 @@ public class CustomerLimitReader {
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
+        logger.info(LOG_PREFIX + "getCustomerLimits START reading " + CIF_LIMIT_TABLE + ">" + customerId);
         try {
             EbAlbeCifLimitRecord cifLimitRec =
                     new EbAlbeCifLimitRecord(daObj.getRecord(CIF_LIMIT_TABLE, customerId));
@@ -95,6 +96,7 @@ public class CustomerLimitReader {
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {
+        logger.info(LOG_PREFIX + "getGenericLimits START reading " + GEN_PARAM_TABLE + ">" + GEN_PARAM_ID);
         try {
             EbAlbeGenParamRecord genParamRec =
                     new EbAlbeGenParamRecord(daObj.getRecord(GEN_PARAM_TABLE, GEN_PARAM_ID));

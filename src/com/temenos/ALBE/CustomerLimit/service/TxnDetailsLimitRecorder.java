@@ -60,6 +60,7 @@ public class TxnDetailsLimitRecorder {
      */
     public void record(CustomerLimitDTO request, String accountNo, String effectiveDate) {
         String recordId = recordId(request);
+        logger.info(LOG_PREFIX + "record START id=" + recordId);
         try {
             boolean credit = request.getCreditAmount().signum() > 0;
             EbAlbeTxnDetailsLimitRecord txnRec = new EbAlbeTxnDetailsLimitRecord(hook);
@@ -97,6 +98,8 @@ public class TxnDetailsLimitRecorder {
                     originals.add(original);
                 }
             }
+            logger.info(LOG_PREFIX + "findOriginal END customer=" + customerId + " aaa=" + transactionId
+                    + " matched=" + originals.size());
         } catch (Exception e) {
             logger.info(LOG_PREFIX + "findOriginal no record for customer=" + customerId + " aaa=" + transactionId
                     + " " + e.getMessage());
