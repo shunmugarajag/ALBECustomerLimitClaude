@@ -24,6 +24,15 @@ public final class Constants {
     /** Logger used by all classes (same as the team's L3 routines). */
     public static final String LOGGER_NAME = "L3API";
 
+    /** Tag at the start of every log line, so all Customer Limit lines can be found with one grep. */
+    public static final String LOG_APP_TAG = "ALBE.CUSTOMER.LIMIT";
+
+    /** Separator between the parts of a log line. */
+    public static final String LOG_SEPARATOR = " | ";
+
+    /** true = also log every DB READ / WRITE / DELETE before the call (DEV/SIT); false in production. */
+    public static final boolean LOG_DETAIL_ENABLED = true;
+
     // -------------------------------------------------------------------------
     // Tables / files
     // -------------------------------------------------------------------------

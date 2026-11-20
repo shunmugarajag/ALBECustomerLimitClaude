@@ -1,13 +1,12 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
@@ -31,9 +30,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitUtilizationUpdater {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitUtilizationUpdater:";
+    private static final String CLASS_NAME = "CustomerLimitUtilizationUpdater";
 
     private final CustomerLimitRepository repository;
 
@@ -54,25 +51,25 @@ public class CustomerLimitUtilizationUpdater {
 
     /** Adds the transaction amounts to the daily and monthly utilisation. */
     public void update(CustomerLimitDTO request) {
-        logger.info(LOG_PREFIX + "update customer=" + request.getCustomerId() + " aaa=" + request.getTransactionId()
+        LogUtil.info(CLASS_NAME, "update", "CALC", "customer=" + request.getCustomerId() + " aaa=" + request.getTransactionId()
                 + " date=" + request.getTransactionDate() + " credit=" + request.getCreditAmount()
                 + " debit=" + request.getDebitAmount());
         updateDailyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
         updateMonthlyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
-        logger.info(LOG_PREFIX + "update END customer=" + request.getCustomerId() + " daily="
+        LogUtil.info(CLASS_NAME, "update", "END", "customer=" + request.getCustomerId() + " daily="
                 + dailyRecordId(request) + " monthly=" + monthlyRecordId(request));
     }
 
     /** Subtracts the original transaction amounts from the daily and monthly utilisation. */
     public void reverse(CustomerLimitDTO originalTransaction) {
-        logger.info(LOG_PREFIX + "reverse customer=" + originalTransaction.getCustomerId()
+        LogUtil.info(CLASS_NAME, "reverse", "CALC", "customer=" + originalTransaction.getCustomerId()
                 + " aaa=" + originalTransaction.getTransactionId() + " date=" + originalTransaction.getTransactionDate()
                 + " credit=" + originalTransaction.getCreditAmount() + " debit=" + originalTransaction.getDebitAmount());
         updateDailyUtilization(originalTransaction, originalTransaction.getCreditAmount().negate(),
                 originalTransaction.getDebitAmount().negate());
         updateMonthlyUtilization(originalTransaction, originalTransaction.getCreditAmount().negate(),
                 originalTransaction.getDebitAmount().negate());
-        logger.info(LOG_PREFIX + "reverse END customer=" + originalTransaction.getCustomerId() + " daily="
+        LogUtil.info(CLASS_NAME, "reverse", "END", "customer=" + originalTransaction.getCustomerId() + " daily="
                 + dailyRecordId(originalTransaction) + " monthly=" + monthlyRecordId(originalTransaction));
     }
 
@@ -88,10 +85,10 @@ public class CustomerLimitUtilizationUpdater {
             utilRec.setUtilisedCreditLimit(newCredit);
             utilRec.setUtilisedDebitLimit(newDebit);
             repository.writeUtilisedLimit(recordId, utilRec);
-            logger.info(LOG_PREFIX + "updateDailyUtilization record=" + recordId + " credit " + oldCredit + " -> "
+            LogUtil.info(CLASS_NAME, "updateDailyUtilization", "UPDATED", "record=" + recordId + " credit " + oldCredit + " -> "
                     + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "updateDailyUtilization FAILED record=" + recordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "updateDailyUtilization", "FAILED", "record=" + recordId, e);
         }
     }
 
@@ -110,10 +107,10 @@ public class CustomerLimitUtilizationUpdater {
             utilRec.setUtilisedCreditLimit(newCredit);
             utilRec.setUtilisedDebitLimit(newDebit);
             repository.writeUtilisedLimit(recordId, utilRec);
-            logger.info(LOG_PREFIX + "updateMonthlyUtilization record=" + recordId + " credit " + oldCredit + " -> "
+            LogUtil.info(CLASS_NAME, "updateMonthlyUtilization", "UPDATED", "record=" + recordId + " credit " + oldCredit + " -> "
                     + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "updateMonthlyUtilization FAILED record=" + recordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "updateMonthlyUtilization", "FAILED", "record=" + recordId, e);
         }
     }
 
@@ -121,10 +118,10 @@ public class CustomerLimitUtilizationUpdater {
     private EbAlbeUtilisedLimitRecord readOrCreate(String recordId) {
         EbAlbeUtilisedLimitRecord utilRec = repository.readUtilisedLimit(recordId);
         if (utilRec != null) {
-            logger.info(LOG_PREFIX + "readOrCreate existing record " + recordId);
+            LogUtil.info(CLASS_NAME, "readOrCreate", "FOUND", "record=" + recordId);
             return utilRec;
         }
-        logger.info(LOG_PREFIX + "readOrCreate new record " + recordId);
+        LogUtil.info(CLASS_NAME, "readOrCreate", "NEW", "record=" + recordId);
         return repository.newUtilisedLimitRecord();
     }
 
@@ -132,7 +129,7 @@ public class CustomerLimitUtilizationUpdater {
     private String addAmount(String current, BigDecimal delta) {
         BigDecimal result = ValidationUtil.toAmount(current).add(delta);
         if (result.signum() < 0) {
-            logger.info(LOG_PREFIX + "addAmount result " + result + " below zero, set to 0");
+            LogUtil.info(CLASS_NAME, "addAmount", "ADJUSTED", "result " + result + " below zero, set to 0");
             result = BigDecimal.ZERO;
         }
         return result.toPlainString();

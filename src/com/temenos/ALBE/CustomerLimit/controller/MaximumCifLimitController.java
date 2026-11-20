@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -9,8 +10,6 @@ import com.temenos.ALBE.CustomerLimit.service.MaximumCifLimitService;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
 import com.temenos.t24.api.records.aaaccountdetails.AaAccountDetailsRecord;
@@ -32,9 +31,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "MaximumCifLimitController:";
+    private static final String CLASS_NAME = "MaximumCifLimitController";
 
     /** Input validation for credit activities: maximum CIF balance check, overrides on TXN.AMOUNT. */
     @Override
@@ -48,18 +45,18 @@ public class MaximumCifLimitController extends ActivityLifecycle {
         try {
             activityStatus = arrangementContext.getActivityStatus();
             String activity = arrangementActivityRecord.getActivity().getValue();
-            logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus + " activity=" + activity
+            LogUtil.info(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus + " activity=" + activity
                     + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
                     + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
                     + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
 
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                logger.info(LOG_PREFIX + "validateRecord SKIP status=" + activityStatus + " (not UNAUTH)");
+                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
             // HLSD: maximum balance check is for credit activities only.
             if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
-                logger.info(LOG_PREFIX + "validateRecord SKIP debit activity " + activity);
+                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "debit activity " + activity);
                 return arrangementActivityRecord.getValidationResponse();
             }
 
@@ -70,7 +67,7 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
             request.setCreditAmount(
                     ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
-            logger.info(LOG_PREFIX + "validateRecord request=" + request);
+            LogUtil.info(CLASS_NAME, "validateRecord", "CALC", "request=" + request);
             if (!CustomerLimitRequestValidator.isValidForMaxCif(request)) {
                 return arrangementActivityRecord.getValidationResponse();
             }
@@ -82,11 +79,11 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             // View
             int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
 
-            logger.info(LOG_PREFIX + "validateRecord END customer=" + request.getCustomerId() + " overridesRaised="
+            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId() + " overridesRaised="
                     + raised + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "validateRecord ERROR status=" + activityStatus + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "validateRecord", "ERROR", "status=" + activityStatus, e);
         }
         return arrangementActivityRecord.getValidationResponse();
     }

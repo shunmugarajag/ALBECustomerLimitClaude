@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -13,8 +14,6 @@ import com.temenos.ALBE.CustomerLimit.service.DailyMonthlyLimitService;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
 import com.temenos.t24.api.complex.aa.activityhook.TransactionData;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
@@ -43,9 +42,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "DailyMonthlyLimitController:";
+    private static final String CLASS_NAME = "DailyMonthlyLimitController";
 
     /** Input validation: daily and monthly limit check, overrides on TXN.AMOUNT. */
     @Override
@@ -58,11 +55,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
-            logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus);
+            LogUtil.info(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus);
             logActivity("validateRecord", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                logger.info(LOG_PREFIX + "validateRecord SKIP status=" + activityStatus + " (not UNAUTH)");
+                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
 
@@ -78,12 +75,12 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             // View
             int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
 
-            logger.info(LOG_PREFIX + "validateRecord END customer=" + request.getCustomerId() + " aaa="
+            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId() + " aaa="
                     + request.getTransactionId() + " overridesRaised=" + raised + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "validateRecord ERROR status=" + activityStatus + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "validateRecord", "ERROR", "status=" + activityStatus, e);
         }
         return arrangementActivityRecord.getValidationResponse();
     }
@@ -100,7 +97,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
-            logger.info(LOG_PREFIX + "postCoreTableUpdate START status=" + activityStatus);
+            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "START", "status=" + activityStatus);
             logActivity("postCoreTableUpdate", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
             boolean isInput = Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus);
@@ -108,11 +105,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             boolean isReversal = Constants.STATUS_AUTH_REV.equalsIgnoreCase(activityStatus);
 
             if (Constants.STATUS_AUTH.equalsIgnoreCase(activityStatus)) {
-                logger.info(LOG_PREFIX + "postCoreTableUpdate SKIP AUTH (utilisation already counted at input)");
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=AUTH (utilisation already counted at input)");
                 return;
             }
             if (!isInput && !isDelete && !isReversal) {
-                logger.info(LOG_PREFIX + "postCoreTableUpdate SKIP status=" + activityStatus
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=" + activityStatus
                         + " (only UNAUTH / DELETE / AUTH-REV change utilisation)");
                 return;
             }
@@ -124,23 +121,23 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
 
             DailyMonthlyLimitService service = new DailyMonthlyLimitService(new CustomerLimitRepository(this));
             if (isInput) {
-                logger.info(LOG_PREFIX + "postCoreTableUpdate action=COUNT");
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=COUNT");
                 service.countAtInput(request, getAccountNo(arrangementRecord),
                         arrangementActivityRecord.getEffectiveDate().getValue());
             } else if (isDelete) {
-                logger.info(LOG_PREFIX + "postCoreTableUpdate action=REVERSE (rejected input)");
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=REVERSE (rejected input)");
                 service.reverse(request, false);
             } else {
-                logger.info(LOG_PREFIX + "postCoreTableUpdate action=REVERSE (reversal)");
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=REVERSE (reversal)");
                 service.reverse(request, true);
             }
 
-            logger.info(LOG_PREFIX + "postCoreTableUpdate END status=" + activityStatus + " customer="
+            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "END", "status=" + activityStatus + " customer="
                     + request.getCustomerId() + " aaa=" + request.getTransactionId() + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "postCoreTableUpdate ERROR status=" + activityStatus + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "ERROR", "status=" + activityStatus, e);
         }
     }
 
@@ -167,10 +164,10 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         } else if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
             request.setDebitAmount(amount);
         } else {
-            logger.info(LOG_PREFIX + "buildRequest SKIP activity=" + activity + " is neither credit nor debit");
+            LogUtil.info(CLASS_NAME, "buildRequest", "SKIP", "activity=" + activity + " is neither credit nor debit");
             return null;
         }
-        logger.info(LOG_PREFIX + "buildRequest activity=" + activity + " request=" + request);
+        LogUtil.info(CLASS_NAME, "buildRequest", "CALC", "activity=" + activity + " request=" + request);
         return request;
     }
 
@@ -181,7 +178,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         if (!ValidationUtil.isBlank(aaaId)) {
             return aaaId.trim();
         }
-        logger.error(LOG_PREFIX + "getAaaId AAA id not available, using arrangement id");
+        LogUtil.error(CLASS_NAME, "getAaaId", "NOT FOUND", "AAA id not available, using arrangement id");
         return arrangementActivityRecord.getArrangement().getValue();
     }
 
@@ -189,10 +186,10 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
     private String getAccountNo(AaArrangementRecord arrangementRecord) {
         try {
             String accountNo = arrangementRecord.getLinkedAppl().get(0).getLinkedApplId().getValue();
-            logger.info(LOG_PREFIX + "getAccountNo account=" + accountNo);
+            LogUtil.info(CLASS_NAME, "getAccountNo", "FOUND", "account=" + accountNo);
             return accountNo;
         } catch (Exception e) {
-            logger.info(LOG_PREFIX + "getAccountNo linked account not found " + e.getMessage());
+            LogUtil.info(CLASS_NAME, "getAccountNo", "NOT FOUND", "linked account not found ", e);
             return "";
         }
     }
@@ -201,14 +198,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
     private void logActivity(String hook, AaArrangementActivityRecord arrangementActivityRecord,
             ArrangementContext arrangementContext, AaArrangementRecord arrangementRecord) {
         try {
-            logger.info(LOG_PREFIX + hook + " activity=" + arrangementActivityRecord.getActivity().getValue()
+            LogUtil.info(CLASS_NAME, hook, "CALC", "activity=" + arrangementActivityRecord.getActivity().getValue()
                     + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
                     + " aaa=" + arrangementContext.getArrangementActivityId()
                     + " customer=" + arrangementRecord.getCustomer().get(0).getCustomer().getValue()
                     + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
                     + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
         } catch (Exception e) {
-            logger.info(LOG_PREFIX + hook + " unable to log activity fields " + e.getMessage());
+            LogUtil.info(CLASS_NAME, hook, "SKIP", "unable to log activity fields ", e);
         }
     }
 }

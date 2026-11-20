@@ -37,6 +37,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, CustomerLimitCreationController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
 | Service | `service` | DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | Business rules (limit checks, utilisation count / reverse, limit creation). |
 | Validation | `validation` | CustomerLimitRequestValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
+| Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
 | Utility | `util` | ValidationUtil | Common value checks shared by every layer: `isBlank`, `nvl`, `isPositive`, `toAmount` (blank/invalid = 0), `toOptionalAmount` (blank = limit not defined), `toText`, `toDate` (YYYYMMDD), `sameCurrency`. No business rules. |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
 | Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
@@ -140,3 +141,33 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
 
 `override.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
+
+## Logging standard
+
+All logging goes through `util/LogUtil`. No class creates its own logger.
+
+```
+ALBE.CUSTOMER.LIMIT | <Class>.<method> | <EVENT> | key=value key=value [| Exception: message @ frame]
+INFO  ALBE.CUSTOMER.LIMIT | DailyMonthlyLimitService.checkLimit | OK | DAILY.CREDIT.LIMIT projected=3000.00 limit=5000 headroom=2000.00
+```
+
+Each class has `private static final String CLASS_NAME = "<ClassName>";` and calls:
+
+| Call | Use for |
+|---|---|
+| `LogUtil.info(CLASS_NAME, "method", "EVENT", details)` | normal flow |
+| `LogUtil.error(CLASS_NAME, "method", "EVENT", details[, e])` | failure or bad data |
+| `LogUtil.detail(CLASS_NAME, "method", "READ", details)` | DB trace before the call, written only when `Constants.LOG_DETAIL_ENABLED = true` (set `false` for production) |
+
+**Events** (use only these):
+
+| Group | Events |
+|---|---|
+| Flow | `START` `END` `STEP` `SKIP` `ACTION` |
+| Checks | `OK` `INVALID` `BREACH` `NOT DEFINED` `OVERRIDE` |
+| Calculations | `CALC` `UPDATED` `ADJUSTED` |
+| Data | `READ` `WRITE` `DELETE` `SELECT` (before the call) / `FOUND` `NOT FOUND` `NEW` `CREATED` `WRITTEN` `DELETED` (result) |
+| Problems | `FAILED` (DB call failed) `ERROR` (unexpected, caught in the controller) `NO RATE` `NOT CONFIGURED` |
+
+Useful greps on the TAFJ log: `grep "ALBE.CUSTOMER.LIMIT"` (everything), `grep "ALBE.CUSTOMER.LIMIT.*| BREACH\|OVERRIDE |"`, `grep "ALBE.CUSTOMER.LIMIT.*customer=100234"`.
+Logging never throws, so a logging problem cannot stop a transaction.

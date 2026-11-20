@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.view;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.Arrays;
@@ -7,8 +8,6 @@ import java.util.Arrays;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.LimitBreach;
 import com.temenos.api.TField;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 
 /*-----------------------------------------------------------------------------
  * Description : View layer: everything the user sees from the limit checks.
@@ -32,9 +31,7 @@ import com.temenos.logging.facade.LoggerFactory;
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitOverride:";
+    private static final String CLASS_NAME = "CustomerLimitOverride";
 
     private CustomerLimitOverride() {
         // Utility class: static methods only.
@@ -48,32 +45,32 @@ public class CustomerLimitOverride {
     public static int raiseFor(TField field, CustomerLimitDTO request) {
         int raised = 0;
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
-            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " limit not defined"
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " limit not defined"
                     + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
             raise(field, Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId());
             raised++;
         }
         if (request.isRateMissing()) {
-            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " no exchange rate from "
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " no exchange rate from "
                     + request.getRateMissingCurrency() + " to " + request.getLimitCurrency());
             raise(field, Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(), request.getLimitCurrency());
             raised++;
         }
         for (LimitBreach breach : request.getBreaches()) {
-            logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " breach "
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " breach "
                     + breach.getMessage());
             raise(field, breach.getOverrideId(), request.getCustomerId(), breach.getDifference().toPlainString());
             raised++;
         }
-        logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " overridesRaised=" + raised);
+        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised=" + raised);
         return raised;
     }
 
     /** Raises an override on the given field; the user can accept it and continue. */
     public static void raise(TField field, String overrideId, String... params) {
         String overrideText = build(overrideId, params);
-        logger.info(LOG_PREFIX + "raise override=" + overrideId + " params=" + Arrays.toString(params)
+        LogUtil.info(CLASS_NAME, "raise", "OVERRIDE", "override=" + overrideId + " params=" + Arrays.toString(params)
                 + " sent=" + readable(overrideText));
         field.setOverride(overrideText);
     }
@@ -81,7 +78,7 @@ public class CustomerLimitOverride {
     /** Raises an error on the given field; the transaction cannot be committed. Not used by the limit checks. */
     public static void raiseError(TField field, String errorId, String... params) {
         String errorText = build(errorId, params);
-        logger.info(LOG_PREFIX + "raiseError error=" + errorId + " params=" + Arrays.toString(params)
+        LogUtil.info(CLASS_NAME, "raiseError", "OVERRIDE", "error=" + errorId + " params=" + Arrays.toString(params)
                 + " sent=" + readable(errorText));
         field.setError(errorText);
     }

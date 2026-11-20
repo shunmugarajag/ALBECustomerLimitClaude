@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.List;
@@ -7,8 +8,6 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitCreationService;
 import com.temenos.api.TStructure;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.complex.eb.servicehook.TransactionData;
 import com.temenos.t24.api.complex.eb.templatehook.TransactionContext;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
@@ -27,9 +26,7 @@ import com.temenos.t24.api.hook.system.RecordLifecycle;
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitCreationController extends RecordLifecycle {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitCreationController:";
+    private static final String CLASS_NAME = "CustomerLimitCreationController";
 
     /** After Unau: create the customer's limit record, or delete it when the customer is deleted. */
     @Override
@@ -40,7 +37,7 @@ public class CustomerLimitCreationController extends RecordLifecycle {
         long startTime = System.currentTimeMillis();
         try {
             String function = transactionContext == null ? null : transactionContext.getCurrentFunction();
-            logger.info(LOG_PREFIX + "postUpdateRequest START application=" + application + " customer="
+            LogUtil.info(CLASS_NAME, "postUpdateRequest", "START", "application=" + application + " customer="
                     + currentRecordId + " function=" + function);
 
             if (!CustomerLimitRequestValidator.isValidCustomerId(currentRecordId)) {
@@ -52,18 +49,18 @@ public class CustomerLimitCreationController extends RecordLifecycle {
 
             boolean done;
             if (Constants.FUNCTION_DELETE.equalsIgnoreCase(function) || Constants.FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
-                logger.info(LOG_PREFIX + "postUpdateRequest action=DELETE");
+                LogUtil.info(CLASS_NAME, "postUpdateRequest", "ACTION", "action=DELETE");
                 done = service.delete(currentRecordId);
             } else {
-                logger.info(LOG_PREFIX + "postUpdateRequest action=CREATE");
+                LogUtil.info(CLASS_NAME, "postUpdateRequest", "ACTION", "action=CREATE");
                 done = service.create(currentRecordId);
             }
 
-            logger.info(LOG_PREFIX + "postUpdateRequest END customer=" + currentRecordId + " done=" + done
+            LogUtil.info(CLASS_NAME, "postUpdateRequest", "END", "customer=" + currentRecordId + " done=" + done
                     + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "postUpdateRequest ERROR customer=" + currentRecordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "postUpdateRequest", "ERROR", "customer=" + currentRecordId, e);
         }
     }
 }

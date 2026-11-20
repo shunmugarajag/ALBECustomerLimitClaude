@@ -1,12 +1,11 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 
 /*-----------------------------------------------------------------------------
@@ -25,9 +24,7 @@ import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitCreationService {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitCreationService:";
+    private static final String CLASS_NAME = "CustomerLimitCreationService";
 
     private final CustomerLimitRepository repository;
     private final CustomerLimitReader limitReader;
@@ -43,20 +40,20 @@ public class CustomerLimitCreationService {
      * @return true if a record was created; false if it already existed or could not be created
      */
     public boolean create(String customerId) {
-        logger.info(LOG_PREFIX + "create START customer=" + customerId);
+        LogUtil.info(CLASS_NAME, "create", "START", "customer=" + customerId);
 
         // Never overwrite: limits may have been amended for this customer.
         if (limitReader.getCustomerLimits(customerId) != null) {
-            logger.info(LOG_PREFIX + "create SKIP EB.ALBE.CIF.LIMIT already exists for " + customerId);
+            LogUtil.info(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId);
             return false;
         }
 
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
-            logger.error(LOG_PREFIX + "create EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
+            LogUtil.error(CLASS_NAME, "create", "NOT FOUND", "EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
             return false;
         }
-        logger.info(LOG_PREFIX + "create generic " + genericLimits);
+        LogUtil.info(CLASS_NAME, "create", "CALC", "generic " + genericLimits);
 
         // Copy the generic limits one-to-one into the customer's record.
         EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
@@ -68,15 +65,15 @@ public class CustomerLimitCreationService {
         cifLimitRec.setMaxCifBalance(ValidationUtil.toText(genericLimits.maxCifBalance));
 
         boolean written = repository.writeCifLimit(customerId, cifLimitRec);
-        logger.info(LOG_PREFIX + "create END customer=" + customerId + " created=" + written);
+        LogUtil.info(CLASS_NAME, "create", "END", "customer=" + customerId + " created=" + written);
         return written;
     }
 
     /** Removes the customer's limit record (unauthorised customer deleted). */
     public boolean delete(String customerId) {
-        logger.info(LOG_PREFIX + "delete START customer=" + customerId);
+        LogUtil.info(CLASS_NAME, "delete", "START", "customer=" + customerId);
         boolean deleted = repository.deleteCifLimit(customerId);
-        logger.info(LOG_PREFIX + "delete END customer=" + customerId + " deleted=" + deleted);
+        LogUtil.info(CLASS_NAME, "delete", "END", "customer=" + customerId + " deleted=" + deleted);
         return deleted;
     }
 }

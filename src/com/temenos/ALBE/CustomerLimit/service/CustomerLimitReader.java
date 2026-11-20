@@ -1,11 +1,10 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
@@ -28,9 +27,7 @@ import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitReader {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitReader:";
+    private static final String CLASS_NAME = "CustomerLimitReader";
 
     private final CustomerLimitRepository repository;
 
@@ -44,11 +41,11 @@ public class CustomerLimitReader {
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
-        logger.info(LOG_PREFIX + "getCustomerLimits START reading " + Constants.CIF_LIMIT_TABLE + ">" + customerId);
+        LogUtil.info(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
             EbAlbeCifLimitRecord cifLimitRec = repository.readCifLimit(customerId);
             if (cifLimitRec == null) {
-                logger.info(LOG_PREFIX + "getCustomerLimits no EB.ALBE.CIF.LIMIT record for " + customerId);
+                LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for " + customerId);
                 return null;
             }
             Limits limits = new Limits();
@@ -62,7 +59,7 @@ public class CustomerLimitReader {
             logLimits("getCustomerLimits", limits);
             return limits;
         } catch (Exception e) {
-            logger.info(LOG_PREFIX + "getCustomerLimits no EB.ALBE.CIF.LIMIT record for " + customerId);
+            LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for " + customerId);
             return null;
         }
     }
@@ -73,11 +70,11 @@ public class CustomerLimitReader {
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {
-        logger.info(LOG_PREFIX + "getGenericLimits START reading " + Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID);
+        LogUtil.info(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID);
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
             if (genParamRec == null) {
-                logger.error(LOG_PREFIX + "getGenericLimits no EB.ALBE.GEN.PARAM SYSTEM record");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no EB.ALBE.GEN.PARAM SYSTEM record");
                 return null;
             }
             Limits limits = new Limits();
@@ -88,7 +85,7 @@ public class CustomerLimitReader {
                 if (key == null) {
                     continue;
                 }
-                logger.info(LOG_PREFIX + "getGenericLimits key=" + key + " value=" + value);
+                LogUtil.info(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
                 found = true;
                 switch (key.trim()) {
                 case Constants.KEY_CCY:
@@ -114,20 +111,20 @@ public class CustomerLimitReader {
                 }
             }
             if (!found) {
-                logger.error(LOG_PREFIX + "getGenericLimits EB.ALBE.GEN.PARAM SYSTEM has no keys");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID", "EB.ALBE.GEN.PARAM SYSTEM has no keys");
                 return null;
             }
             limits.source = Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID;
             logLimits("getGenericLimits", limits);
             return limits;
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "getGenericLimits no EB.ALBE.GEN.PARAM SYSTEM record " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no EB.ALBE.GEN.PARAM SYSTEM record ", e);
             return null;
         }
     }
 
     private void logLimits(String method, Limits limits) {
-        logger.info(LOG_PREFIX + method + " source=" + limits.source + " ccy=" + limits.ccy
+        LogUtil.info(CLASS_NAME, method, "CALC", "source=" + limits.source + " ccy=" + limits.ccy
                 + " dailyCredit=" + limits.dailyCreditLimit + " dailyDebit=" + limits.dailyDebitLimit
                 + " monthlyCredit=" + limits.monthlyCreditLimit + " monthlyDebit=" + limits.monthlyDebitLimit
                 + " maxCifBalance=" + limits.maxCifBalance);

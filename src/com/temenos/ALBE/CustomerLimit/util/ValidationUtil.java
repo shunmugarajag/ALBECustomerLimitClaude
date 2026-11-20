@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 
 /*-----------------------------------------------------------------------------
  * Description : Common value checks and conversions used across the layers, so each
@@ -18,9 +16,7 @@ import com.temenos.logging.facade.LoggerFactory;
  *-----------------------------------------------------------------------------
  */
 public class ValidationUtil {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "ValidationUtil:";
+    private static final String CLASS_NAME = "ValidationUtil";
 
     private ValidationUtil() {
         // Static helpers only.
@@ -49,7 +45,7 @@ public class ValidationUtil {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
-            logger.error(LOG_PREFIX + "toAmount invalid amount '" + value + "', using 0");
+            LogUtil.error(CLASS_NAME, "toAmount", "INVALID", "invalid amount '" + value + "', using 0");
             return BigDecimal.ZERO;
         }
     }
@@ -65,7 +61,7 @@ public class ValidationUtil {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
-            logger.error(LOG_PREFIX + "toOptionalAmount invalid amount '" + value + "', treated as blank");
+            LogUtil.error(CLASS_NAME, "toOptionalAmount", "INVALID", "invalid amount '" + value + "', treated as blank");
             return null;
         }
     }
@@ -83,7 +79,7 @@ public class ValidationUtil {
         try {
             return LocalDate.parse(value.trim(), Constants.DAILY_ID_FORMAT);
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "toDate invalid date '" + value + "'");
+            LogUtil.error(CLASS_NAME, "toDate", "INVALID", "invalid date '" + value + "'");
             return null;
         }
     }

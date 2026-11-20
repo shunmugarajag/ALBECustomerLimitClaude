@@ -1,11 +1,10 @@
 package com.temenos.ALBE.CustomerLimit.validation;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 
 /*-----------------------------------------------------------------------------
  * Description : Single place where the input taken from T24 is checked, once, by the
@@ -27,9 +26,7 @@ import com.temenos.logging.facade.LoggerFactory;
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRequestValidator {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "CustomerLimitRequestValidator:";
+    private static final String CLASS_NAME = "CustomerLimitRequestValidator";
 
     private CustomerLimitRequestValidator() {
         // Static checks only.
@@ -68,10 +65,10 @@ public class CustomerLimitRequestValidator {
     /** Customer id for the limit creation / deletion (CustomerLimitCreationController). */
     public static boolean isValidCustomerId(String customerId) {
         if (ValidationUtil.isBlank(customerId)) {
-            logger.info(LOG_PREFIX + "isValidCustomerId INVALID customer id missing");
+            LogUtil.info(CLASS_NAME, "isValidCustomerId", "INVALID", "customer id missing");
             return false;
         }
-        logger.info(LOG_PREFIX + "isValidCustomerId OK customer=" + customerId);
+        LogUtil.info(CLASS_NAME, "isValidCustomerId", "OK", "customer=" + customerId);
         return true;
     }
 
@@ -88,10 +85,10 @@ public class CustomerLimitRequestValidator {
 
     private static boolean result(String check, CustomerLimitDTO request, String reason) {
         if (reason != null) {
-            logger.info(LOG_PREFIX + check + " INVALID reason=" + reason + " request=" + request);
+            LogUtil.info(CLASS_NAME, check, "INVALID", "reason=" + reason + " request=" + request);
             return false;
         }
-        logger.info(LOG_PREFIX + check + " OK customer=" + request.getCustomerId() + " txn="
+        LogUtil.info(CLASS_NAME, check, "OK", "customer=" + request.getCustomerId() + " txn="
                 + request.getTransactionId());
         return true;
     }

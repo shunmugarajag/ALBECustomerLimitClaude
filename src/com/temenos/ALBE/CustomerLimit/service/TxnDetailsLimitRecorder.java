@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
@@ -9,8 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
-import com.temenos.logging.facade.Logger;
-import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 
@@ -30,9 +29,7 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {
-
-    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
-    private static final String LOG_PREFIX = "TxnDetailsLimitRecorder:";
+    private static final String CLASS_NAME = "TxnDetailsLimitRecorder";
 
     private final CustomerLimitRepository repository;
 
@@ -52,7 +49,7 @@ public class TxnDetailsLimitRecorder {
      */
     public void record(CustomerLimitDTO request, String accountNo, String effectiveDate) {
         String recordId = recordId(request);
-        logger.info(LOG_PREFIX + "record START id=" + recordId);
+        LogUtil.info(CLASS_NAME, "record", "START", "id=" + recordId);
         try {
             boolean credit = request.getCreditAmount().signum() > 0;
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
@@ -62,12 +59,12 @@ public class TxnDetailsLimitRecorder {
             txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
             txnRec.setSystemDate(request.getTransactionDate().format(Constants.DAILY_ID_FORMAT));
             repository.writeTxnDetails(recordId, txnRec);
-            logger.info(LOG_PREFIX + "record WRITTEN id=" + recordId + " account=" + accountNo + " flag="
+            LogUtil.info(CLASS_NAME, "record", "WRITTEN", "id=" + recordId + " account=" + accountNo + " flag="
                     + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate
                     + " systemDate=" + request.getTransactionDate() + " amount="
                     + (credit ? request.getCreditAmount() : request.getDebitAmount()));
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "record FAILED id=" + recordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
         }
     }
 
@@ -79,12 +76,12 @@ public class TxnDetailsLimitRecorder {
     public List<CustomerLimitDTO> findOriginal(CustomerLimitDTO request) {
         List<CustomerLimitDTO> originals = new ArrayList<>();
         String recordId = recordId(request);
-        logger.info(LOG_PREFIX + "findOriginal DIRECT READ id=" + recordId);
+        LogUtil.info(CLASS_NAME, "findOriginal", "START", "direct read id=" + recordId);
         CustomerLimitDTO original = toRequest(recordId, request.getCustomerId(), request.getTransactionId());
         if (original != null) {
             originals.add(original);
         }
-        logger.info(LOG_PREFIX + "findOriginal END id=" + recordId + " found=" + originals.size());
+        LogUtil.info(CLASS_NAME, "findOriginal", "END", "id=" + recordId + " found=" + originals.size());
         return originals;
     }
 
@@ -93,9 +90,9 @@ public class TxnDetailsLimitRecorder {
         String recordId = recordId(original);
         try {
             repository.deleteTxnDetails(recordId);
-            logger.info(LOG_PREFIX + "delete DONE id=" + recordId);
+            LogUtil.info(CLASS_NAME, "delete", "DELETED", "id=" + recordId);
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "delete FAILED id=" + recordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "delete", "FAILED", "id=" + recordId, e);
         }
     }
 
@@ -113,7 +110,7 @@ public class TxnDetailsLimitRecorder {
             LocalDate countedOn = ValidationUtil.toDate(txnRec.getSystemDate().getValue());
             if (countedOn == null) {
                 countedOn = LocalDate.now();
-                logger.error(LOG_PREFIX + "toRequest id=" + recordId + " SYSTEM.DATE blank/invalid, using today "
+                LogUtil.error(CLASS_NAME, "toRequest", "INVALID", "id=" + recordId + " SYSTEM.DATE blank/invalid, using today "
                         + countedOn);
             }
 
@@ -126,11 +123,11 @@ public class TxnDetailsLimitRecorder {
             } else {
                 original.setDebitAmount(amount);
             }
-            logger.info(LOG_PREFIX + "toRequest id=" + recordId + " systemDate=" + countedOn
+            LogUtil.info(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " systemDate=" + countedOn
                     + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + amount);
             return original;
         } catch (Exception e) {
-            logger.error(LOG_PREFIX + "toRequest unable to use id=" + recordId + " " + e.getMessage());
+            LogUtil.error(CLASS_NAME, "toRequest", "FAILED", "unable to use id=" + recordId, e);
             return null;
         }
     }
