@@ -24,7 +24,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *               selects or deletes one thing and logs what it did.
  *
  *               Tables / files used:
- *                 EB.ALBE.CIF.LIMIT          read, write, delete   (id: customer id)
+ *                 EB.ALBE.CIF.LIMIT          read, write           (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: SYSTEM)
  *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete (id: customer-AAA id)
@@ -114,19 +114,6 @@ public class CustomerLimitRepository {
             return true;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "writeCifLimit", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
-            return false;
-        }
-    }
-
-    /** Deletes EB.ALBE.CIF.LIMIT <customer id>. */
-    public boolean deleteCifLimit(String customerId) {
-        LogUtil.detail(CLASS_NAME, "deleteCifLimit", "DELETE", Constants.CIF_LIMIT_TABLE + ">" + customerId);
-        try {
-            cifLimitTable.delete(customerId);
-            LogUtil.info(CLASS_NAME, "deleteCifLimit", "DELETED", Constants.CIF_LIMIT_TABLE + ">" + customerId);
-            return true;
-        } catch (Exception e) {
-            LogUtil.info(CLASS_NAME, "deleteCifLimit", "NOT FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
             return false;
         }
     }

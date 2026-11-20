@@ -15,7 +15,7 @@ import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
  *               create : copies EB.ALBE.GEN.PARAM SYSTEM into EB.ALBE.CIF.LIMIT <customer>
  *                        if the customer has no record (an existing record is never
  *                        overwritten, so limits amended for the customer stay).
- *               delete : removes EB.ALBE.CIF.LIMIT <customer> (unauthorised customer deleted).
+ *               Called at customer authorisation, so there is no delete flow.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -67,13 +67,5 @@ public class CustomerLimitCreationService {
         boolean written = repository.writeCifLimit(customerId, cifLimitRec);
         LogUtil.info(CLASS_NAME, "create", "END", "customer=" + customerId + " created=" + written);
         return written;
-    }
-
-    /** Removes the customer's limit record (unauthorised customer deleted). */
-    public boolean delete(String customerId) {
-        LogUtil.info(CLASS_NAME, "delete", "START", "customer=" + customerId);
-        boolean deleted = repository.deleteCifLimit(customerId);
-        LogUtil.info(CLASS_NAME, "delete", "END", "customer=" + customerId + " deleted=" + deleted);
-        return deleted;
     }
 }

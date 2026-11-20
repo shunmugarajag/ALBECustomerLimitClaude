@@ -71,12 +71,6 @@ public final class Constants {
     public static final String ACTIVITY_DEBIT = "DEBIT";
 
     // -------------------------------------------------------------------------
-    // Version function codes (customer delete)
-    // -------------------------------------------------------------------------
-    public static final String FUNCTION_DELETE = "D";
-    public static final String FUNCTION_DELETE_FULL = "DELETE";
-
-    // -------------------------------------------------------------------------
     // EB.ALBE.TXN.DETAILS.LIMIT CREDIT.DEBIT.FLAG values
     // -------------------------------------------------------------------------
     public static final String FLAG_CREDIT = "CR";

@@ -2,7 +2,6 @@ package com.temenos.ALBE.CustomerLimit.controller;
 
 import java.util.List;
 
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitCreationService;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
@@ -13,22 +12,25 @@ import com.temenos.t24.api.complex.eb.templatehook.TransactionContext;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
 
 /*-----------------------------------------------------------------------------
- * Attached as : After Unau routine
+ * Attached as : Auth routine
  * Attached to : VERSION CUSTOMER,ALBE.CORP
  * Description : Controller for the customer limit creation routine (HLSD 7.2.1 - 1).
- *               Customer input  : CustomerLimitCreationService.create
- *               Customer delete : CustomerLimitCreationService.delete
+ *               Customer authorised : CustomerLimitCreationService.create
+ *               The limit record is created only once the customer is authorised, so an
+ *               unauthorised customer that is deleted never had one: no delete flow needed.
+ *               (HLSD 7.2.1 says After Unau + delete on customer delete; changed to Auth.)
  *               No business rules and no DB access here.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version (was CustomerLimitCreation)
+ * 20-Nov-2026   Development      Moved from After Unau to Auth routine; delete flow removed
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitCreationController extends RecordLifecycle {
     private static final String CLASS_NAME = "CustomerLimitCreationController";
 
-    /** After Unau: create the customer's limit record, or delete it when the customer is deleted. */
+    /** Auth: create the customer's limit record from the generic limits (if it does not exist yet). */
     @Override
     public void postUpdateRequest(String application, String currentRecordId, TStructure currentRecord,
             List<TransactionData> transactionData, List<TStructure> currentRecords,
@@ -46,18 +48,9 @@ public class CustomerLimitCreationController extends RecordLifecycle {
 
             CustomerLimitCreationService service =
                     new CustomerLimitCreationService(new CustomerLimitRepository(this));
+            boolean created = service.create(currentRecordId);
 
-            boolean done;
-            if (Constants.FUNCTION_DELETE.equalsIgnoreCase(function)
-                    || Constants.FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
-                LogUtil.info(CLASS_NAME, "postUpdateRequest", "ACTION", "action=DELETE");
-                done = service.delete(currentRecordId);
-            } else {
-                LogUtil.info(CLASS_NAME, "postUpdateRequest", "ACTION", "action=CREATE");
-                done = service.create(currentRecordId);
-            }
-
-            LogUtil.info(CLASS_NAME, "postUpdateRequest", "END", "customer=" + currentRecordId + " done=" + done
+            LogUtil.info(CLASS_NAME, "postUpdateRequest", "END", "customer=" + currentRecordId + " created=" + created
                     + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
