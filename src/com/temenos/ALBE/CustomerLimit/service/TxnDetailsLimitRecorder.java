@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -55,9 +56,9 @@ public class TxnDetailsLimitRecorder {
         try {
             boolean credit = request.getCreditAmount().signum() > 0;
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
-            txnRec.setAccountNo(accountNo == null ? "" : accountNo);
+            txnRec.setAccountNo(ValidationUtil.nvl(accountNo));
             txnRec.setCreditDebitFlag(credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT);
-            txnRec.setEffDate(effectiveDate == null ? "" : effectiveDate);
+            txnRec.setEffDate(ValidationUtil.nvl(effectiveDate));
             txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
             txnRec.setSystemDate(request.getTransactionDate().format(Constants.DAILY_ID_FORMAT));
             repository.writeTxnDetails(recordId, txnRec);
@@ -108,14 +109,12 @@ public class TxnDetailsLimitRecorder {
             return null;
         }
         try {
-            BigDecimal amount = CustomerLimitUtilizationUpdater.toAmount(txnRec.getTxnAmount().getValue());
-            String systemDate = txnRec.getSystemDate().getValue();
-            LocalDate countedOn;
-            if (systemDate == null || systemDate.trim().isEmpty()) {
+            BigDecimal amount = ValidationUtil.toAmount(txnRec.getTxnAmount().getValue());
+            LocalDate countedOn = ValidationUtil.toDate(txnRec.getSystemDate().getValue());
+            if (countedOn == null) {
                 countedOn = LocalDate.now();
-                logger.error(LOG_PREFIX + "toRequest id=" + recordId + " SYSTEM.DATE blank, using today " + countedOn);
-            } else {
-                countedOn = LocalDate.parse(systemDate.trim(), Constants.DAILY_ID_FORMAT);
+                logger.error(LOG_PREFIX + "toRequest id=" + recordId + " SYSTEM.DATE blank/invalid, using today "
+                        + countedOn);
             }
 
             CustomerLimitDTO original = new CustomerLimitDTO();

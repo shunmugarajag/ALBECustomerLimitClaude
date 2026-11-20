@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
@@ -8,7 +9,6 @@ import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
 import com.temenos.ALBE.CustomerLimit.service.DailyMonthlyLimitService;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
@@ -153,7 +153,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
 
         String activity = arrangementActivityRecord.getActivity().getValue();
         // Amount in the transaction (arrangement) currency; the service converts it to the limit currency.
-        BigDecimal amount = CustomerLimitUtilizationUpdater.toAmount(arrangementActivityRecord.getTxnAmount().getValue());
+        BigDecimal amount = ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue());
 
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
@@ -178,7 +178,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
     private String getAaaId(ArrangementContext arrangementContext,
             AaArrangementActivityRecord arrangementActivityRecord) {
         String aaaId = arrangementContext.getArrangementActivityId();
-        if (aaaId != null && !aaaId.trim().isEmpty()) {
+        if (!ValidationUtil.isBlank(aaaId)) {
             return aaaId.trim();
         }
         logger.error(LOG_PREFIX + "getAaaId AAA id not available, using arrangement id");

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.view;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.Arrays;
 
@@ -100,7 +101,7 @@ public class CustomerLimitOverride {
             if (i > 0) {
                 sb.append(Constants.VM);
             }
-            sb.append(params[i] == null ? "" : params[i]);
+            sb.append(ValidationUtil.nvl(params[i]));
         }
         return sb.toString();
     }

@@ -1,7 +1,7 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-import java.math.BigDecimal;
 
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
@@ -60,12 +60,12 @@ public class CustomerLimitCreationService {
 
         // Copy the generic limits one-to-one into the customer's record.
         EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
-        cifLimitRec.setCcy(genericLimits.ccy == null ? "" : genericLimits.ccy);
-        cifLimitRec.setDailyCreditLimit(toText(genericLimits.dailyCreditLimit));
-        cifLimitRec.setDailyDebitLimit(toText(genericLimits.dailyDebitLimit));
-        cifLimitRec.setMonthlyCreditLimit(toText(genericLimits.monthlyCreditLimit));
-        cifLimitRec.setMonthlyDebitLimit(toText(genericLimits.monthlyDebitLimit));
-        cifLimitRec.setMaxCifBalance(toText(genericLimits.maxCifBalance));
+        cifLimitRec.setCcy(ValidationUtil.nvl(genericLimits.ccy));
+        cifLimitRec.setDailyCreditLimit(ValidationUtil.toText(genericLimits.dailyCreditLimit));
+        cifLimitRec.setDailyDebitLimit(ValidationUtil.toText(genericLimits.dailyDebitLimit));
+        cifLimitRec.setMonthlyCreditLimit(ValidationUtil.toText(genericLimits.monthlyCreditLimit));
+        cifLimitRec.setMonthlyDebitLimit(ValidationUtil.toText(genericLimits.monthlyDebitLimit));
+        cifLimitRec.setMaxCifBalance(ValidationUtil.toText(genericLimits.maxCifBalance));
 
         boolean written = repository.writeCifLimit(customerId, cifLimitRec);
         logger.info(LOG_PREFIX + "create END customer=" + customerId + " created=" + written);
@@ -78,10 +78,5 @@ public class CustomerLimitCreationService {
         boolean deleted = repository.deleteCifLimit(customerId);
         logger.info(LOG_PREFIX + "delete END customer=" + customerId + " deleted=" + deleted);
         return deleted;
-    }
-
-    /** Amount as text for the record; blank when the generic limit is not configured. */
-    private String toText(BigDecimal value) {
-        return value == null ? "" : value.toPlainString();
     }
 }

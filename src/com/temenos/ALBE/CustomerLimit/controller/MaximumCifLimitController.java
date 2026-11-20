@@ -1,10 +1,10 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
 import com.temenos.ALBE.CustomerLimit.service.MaximumCifLimitService;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
@@ -69,7 +69,7 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             request.setTransactionId(arrangementActivityRecord.getArrangement().getValue());
             request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
             request.setCreditAmount(
-                    CustomerLimitUtilizationUpdater.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
+                    ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
             logger.info(LOG_PREFIX + "validateRecord request=" + request);
             if (!CustomerLimitRequestValidator.isValidForMaxCif(request)) {
                 return arrangementActivityRecord.getValidationResponse();

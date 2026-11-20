@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -36,7 +37,7 @@ public class CurrencyConversionService {
      * otherwise the configured exchange rate; null when no rate is available.
      */
     public BigDecimal getRate(String fromCcy, String toCcy) {
-        if (isBlank(fromCcy) || isBlank(toCcy) || fromCcy.trim().equalsIgnoreCase(toCcy.trim())) {
+        if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy, toCcy)) {
             logger.info(LOG_PREFIX + "getRate from=" + fromCcy + " to=" + toCcy + " same currency, rate=1");
             return Constants.SAME_CURRENCY_RATE;
         }
@@ -92,7 +93,4 @@ public class CurrencyConversionService {
         return true;
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
 }

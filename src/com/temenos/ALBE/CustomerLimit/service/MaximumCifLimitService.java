@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.util.List;
@@ -135,7 +136,7 @@ public class MaximumCifLimitService {
             logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " not readable, balance=0");
             return BigDecimal.ZERO;
         }
-        BigDecimal balance = CustomerLimitUtilizationUpdater.toAmount(accountRec.getWorkingBalance().getValue());
+        BigDecimal balance = ValidationUtil.toAmount(accountRec.getWorkingBalance().getValue());
         String accountCcy = accountRec.getCurrency().getValue();
         BigDecimal converted = currencyService.convert(balance, accountCcy, limitCcy);
         if (converted == null) {

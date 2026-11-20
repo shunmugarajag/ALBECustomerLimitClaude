@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.util.List;
@@ -101,7 +102,7 @@ public class DailyMonthlyLimitService {
 
         if (isCredit(request)) {
             BigDecimal utilised = dailyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(dailyRec.getUtilisedCreditLimit().getValue());
+                    : ValidationUtil.toAmount(dailyRec.getUtilisedCreditLimit().getValue());
             utilised = utilised.subtract(earlierAmount(request, earlierInputs, true, false)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateDailyLimit CREDIT record=" + dailyId + " utilised=" + utilised
                     + " txn=" + request.getCreditAmount() + " limit=" + limits.dailyCreditLimit);
@@ -109,7 +110,7 @@ public class DailyMonthlyLimitService {
                     Constants.OVR_DAILY_LIMIT_EXCEED, Constants.MSG_DAILY_EXCEEDED);
         } else {
             BigDecimal utilised = dailyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(dailyRec.getUtilisedDebitLimit().getValue());
+                    : ValidationUtil.toAmount(dailyRec.getUtilisedDebitLimit().getValue());
             utilised = utilised.subtract(earlierAmount(request, earlierInputs, false, false)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateDailyLimit DEBIT record=" + dailyId + " utilised=" + utilised
                     + " txn=" + request.getDebitAmount() + " limit=" + limits.dailyDebitLimit);
@@ -125,9 +126,9 @@ public class DailyMonthlyLimitService {
 
         if (isCredit(request)) {
             BigDecimal migrated = monthlyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(monthlyRec.getUtilisedMigratedCreditLimit().getValue());
+                    : ValidationUtil.toAmount(monthlyRec.getUtilisedMigratedCreditLimit().getValue());
             BigDecimal monthly = monthlyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(monthlyRec.getUtilisedCreditLimit().getValue());
+                    : ValidationUtil.toAmount(monthlyRec.getUtilisedCreditLimit().getValue());
             monthly = monthly.subtract(earlierAmount(request, earlierInputs, true, true)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateMonthlyLimit CREDIT record=" + monthlyId + " migrated=" + migrated
                     + " utilised=" + monthly + " txn=" + request.getCreditAmount() + " limit="
@@ -136,9 +137,9 @@ public class DailyMonthlyLimitService {
                     request.getCreditAmount(), Constants.OVR_MONTHLY_LIMIT_EXCEED, Constants.MSG_MONTHLY_EXCEEDED);
         } else {
             BigDecimal migrated = monthlyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(monthlyRec.getUtilisedMigratedDebitLimit().getValue());
+                    : ValidationUtil.toAmount(monthlyRec.getUtilisedMigratedDebitLimit().getValue());
             BigDecimal monthly = monthlyRec == null ? BigDecimal.ZERO
-                    : CustomerLimitUtilizationUpdater.toAmount(monthlyRec.getUtilisedDebitLimit().getValue());
+                    : ValidationUtil.toAmount(monthlyRec.getUtilisedDebitLimit().getValue());
             monthly = monthly.subtract(earlierAmount(request, earlierInputs, false, true)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateMonthlyLimit DEBIT record=" + monthlyId + " migrated=" + migrated
                     + " utilised=" + monthly + " txn=" + request.getDebitAmount() + " limit="

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 
@@ -52,11 +53,11 @@ public class CustomerLimitReader {
             }
             Limits limits = new Limits();
             limits.ccy = cifLimitRec.getCcy().getValue();
-            limits.dailyCreditLimit = toLimit(cifLimitRec.getDailyCreditLimit().getValue());
-            limits.dailyDebitLimit = toLimit(cifLimitRec.getDailyDebitLimit().getValue());
-            limits.monthlyCreditLimit = toLimit(cifLimitRec.getMonthlyCreditLimit().getValue());
-            limits.monthlyDebitLimit = toLimit(cifLimitRec.getMonthlyDebitLimit().getValue());
-            limits.maxCifBalance = toLimit(cifLimitRec.getMaxCifBalance().getValue());
+            limits.dailyCreditLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getDailyCreditLimit().getValue());
+            limits.dailyDebitLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getDailyDebitLimit().getValue());
+            limits.monthlyCreditLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getMonthlyCreditLimit().getValue());
+            limits.monthlyDebitLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getMonthlyDebitLimit().getValue());
+            limits.maxCifBalance = ValidationUtil.toOptionalAmount(cifLimitRec.getMaxCifBalance().getValue());
             limits.source = Constants.CIF_LIMIT_TABLE + ">" + customerId;
             logLimits("getCustomerLimits", limits);
             return limits;
@@ -94,19 +95,19 @@ public class CustomerLimitReader {
                     limits.ccy = value;
                     break;
                 case Constants.KEY_DAILY_CREDIT_LIMIT:
-                    limits.dailyCreditLimit = toLimit(value);
+                    limits.dailyCreditLimit = ValidationUtil.toOptionalAmount(value);
                     break;
                 case Constants.KEY_DAILY_DEBIT_LIMIT:
-                    limits.dailyDebitLimit = toLimit(value);
+                    limits.dailyDebitLimit = ValidationUtil.toOptionalAmount(value);
                     break;
                 case Constants.KEY_MONTHLY_CREDIT_LIMIT:
-                    limits.monthlyCreditLimit = toLimit(value);
+                    limits.monthlyCreditLimit = ValidationUtil.toOptionalAmount(value);
                     break;
                 case Constants.KEY_MONTHLY_DEBIT_LIMIT:
-                    limits.monthlyDebitLimit = toLimit(value);
+                    limits.monthlyDebitLimit = ValidationUtil.toOptionalAmount(value);
                     break;
                 case Constants.KEY_MAX_CIF_BALANCE:
-                    limits.maxCifBalance = toLimit(value);
+                    limits.maxCifBalance = ValidationUtil.toOptionalAmount(value);
                     break;
                 default:
                     // Other keys in the parameter record are not limit values.
@@ -130,13 +131,5 @@ public class CustomerLimitReader {
                 + " dailyCredit=" + limits.dailyCreditLimit + " dailyDebit=" + limits.dailyDebitLimit
                 + " monthlyCredit=" + limits.monthlyCreditLimit + " monthlyDebit=" + limits.monthlyDebitLimit
                 + " maxCifBalance=" + limits.maxCifBalance);
-    }
-
-    /** Blank limit => null (not configured, check skipped); otherwise the amount. */
-    private BigDecimal toLimit(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-        return CustomerLimitUtilizationUpdater.toAmount(value);
     }
 }

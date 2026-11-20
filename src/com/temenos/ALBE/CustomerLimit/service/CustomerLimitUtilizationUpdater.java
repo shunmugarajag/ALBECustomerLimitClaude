@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
@@ -129,24 +130,11 @@ public class CustomerLimitUtilizationUpdater {
 
     /** current + delta, never below zero (protects against reversals on a later day). */
     private String addAmount(String current, BigDecimal delta) {
-        BigDecimal result = toAmount(current).add(delta);
+        BigDecimal result = ValidationUtil.toAmount(current).add(delta);
         if (result.signum() < 0) {
             logger.info(LOG_PREFIX + "addAmount result " + result + " below zero, set to 0");
             result = BigDecimal.ZERO;
         }
         return result.toPlainString();
-    }
-
-    /** Parses a T24 amount; blank or invalid gives 0. Shared by the limit routines. */
-    public static BigDecimal toAmount(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-        try {
-            return new BigDecimal(value.trim());
-        } catch (NumberFormatException e) {
-            logger.error(LOG_PREFIX + "toAmount invalid amount '" + value + "', using 0");
-            return BigDecimal.ZERO;
-        }
     }
 }

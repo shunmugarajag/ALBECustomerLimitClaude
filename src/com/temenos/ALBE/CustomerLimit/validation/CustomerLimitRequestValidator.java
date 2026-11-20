@@ -1,6 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.validation;
 
-import java.math.BigDecimal;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
@@ -38,15 +38,15 @@ public class CustomerLimitRequestValidator {
     /** Request for the daily / monthly check and utilisation (DailyMonthlyLimitController). */
     public static boolean isValidForDailyMonthly(CustomerLimitDTO request) {
         String reason = commonReason(request);
-        if (reason == null && isBlank(request.getTransactionId())) {
+        if (reason == null && ValidationUtil.isBlank(request.getTransactionId())) {
             reason = "AAA id missing";
         }
         if (reason == null && request.getTransactionDate() == null) {
             reason = "transaction date missing";
         }
         if (reason == null) {
-            boolean credit = isPositive(request.getCreditAmount());
-            boolean debit = isPositive(request.getDebitAmount());
+            boolean credit = ValidationUtil.isPositive(request.getCreditAmount());
+            boolean debit = ValidationUtil.isPositive(request.getDebitAmount());
             if (!credit && !debit) {
                 reason = "amount is zero or negative";
             } else if (credit && debit) {
@@ -59,7 +59,7 @@ public class CustomerLimitRequestValidator {
     /** Request for the maximum CIF balance check (MaximumCifLimitController). */
     public static boolean isValidForMaxCif(CustomerLimitDTO request) {
         String reason = commonReason(request);
-        if (reason == null && !isPositive(request.getCreditAmount())) {
+        if (reason == null && !ValidationUtil.isPositive(request.getCreditAmount())) {
             reason = "credit amount is zero or negative";
         }
         return result("isValidForMaxCif", request, reason);
@@ -67,7 +67,7 @@ public class CustomerLimitRequestValidator {
 
     /** Customer id for the limit creation / deletion (CustomerLimitCreationController). */
     public static boolean isValidCustomerId(String customerId) {
-        if (isBlank(customerId)) {
+        if (ValidationUtil.isBlank(customerId)) {
             logger.info(LOG_PREFIX + "isValidCustomerId INVALID customer id missing");
             return false;
         }
@@ -80,7 +80,7 @@ public class CustomerLimitRequestValidator {
         if (request == null) {
             return "request not built";
         }
-        if (isBlank(request.getCustomerId())) {
+        if (ValidationUtil.isBlank(request.getCustomerId())) {
             return "customer missing";
         }
         return null;
@@ -96,11 +96,4 @@ public class CustomerLimitRequestValidator {
         return true;
     }
 
-    private static boolean isPositive(BigDecimal amount) {
-        return amount != null && amount.signum() > 0;
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
 }
