@@ -6,6 +6,7 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO.LimitBreach;
 import com.temenos.ALBE.CustomerLimit.override.CustomerLimitOverride;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader.Limits;
 import com.temenos.api.TStructure;
@@ -19,9 +20,6 @@ import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 import com.temenos.t24.api.records.account.AccountRecord;
-import com.temenos.t24.api.records.company.CompanyRecord;
-import com.temenos.t24.api.system.DataAccess;
-import com.temenos.t24.api.system.Session;
 
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API
@@ -51,9 +49,6 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
     private static final Logger logger = LoggerFactory.getLogger(L3API);
     private static final String LOG_PREFIX = "MaximumCifLimitValidator:";
 
-    private static final String CUSTOMER_ACCOUNT_FILE = "CUSTOMER.ACCOUNT";
-    private static final String ACCOUNT_TABLE = "ACCOUNT";
-    private static final String COMPANY = "COMPANY";
     private static final String STATUS_UNAUTH = "UNAUTH";
     private static final String DEBIT = "DEBIT";
 
@@ -158,10 +153,10 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
             return;
         }
 
-        DataAccess daObj = new DataAccess(this);
+        CustomerLimitRepository repository = new CustomerLimitRepository(this);
 
         // Step 1: customer's maximum balance limit.
-        Limits limits = new CustomerLimitReader(daObj).getCustomerLimits(customerId);
+        Limits limits = new CustomerLimitReader(repository).getCustomerLimits(customerId);
         if (limits == null) {
             // No EB.ALBE.CIF.LIMIT record: the caller raises the "limit not defined" override.
             logger.info(LOG_PREFIX + "validate END customer=" + customerId + " no EB.ALBE.CIF.LIMIT record");
@@ -176,8 +171,8 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
         }
 
         // Step 2: total working balance of all the customer's accounts.
-        String finMnemonic = getFinMnemonic(daObj);
-        BigDecimal totalBalance = getTotalCifBalance(daObj, finMnemonic, customerId);
+        String finMnemonic = repository.getFinancialMnemonic();
+        BigDecimal totalBalance = getTotalCifBalance(repository, finMnemonic, customerId);
 
         // Step 3: compare total + credit amount with the limit.
         BigDecimal projectedBalance = totalBalance.add(transactionAmount);
@@ -197,29 +192,14 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
         logger.info(LOG_PREFIX + "validate END customer=" + customerId + " breaches=" + request.getBreaches().size());
     }
 
-    /** Financial mnemonic of the current company, used to read ACCOUNT (same as the FF enquiry routines). */
-    private String getFinMnemonic(DataAccess daObj) {
-        try {
-            Session ssObj = new Session(this);
-            String companyId = ssObj.getCompanyId();
-            CompanyRecord companyRec = new CompanyRecord(daObj.getRecord(COMPANY, companyId));
-            String finMnemonic = companyRec.getFinancialMne().getValue();
-            logger.info(LOG_PREFIX + "getFinMnemonic company=" + companyId + " mnemonic=" + finMnemonic);
-            return finMnemonic;
-        } catch (Exception e) {
-            logger.error(LOG_PREFIX + "getFinMnemonic unable to read COMPANY " + e.getMessage());
-            return "";
-        }
-    }
-
     /** Sums the working balances of every account belonging to the customer. */
-    private BigDecimal getTotalCifBalance(DataAccess daObj, String finMnemonic, String customerId) {
+    private BigDecimal getTotalCifBalance(CustomerLimitRepository repository, String finMnemonic, String customerId) {
         BigDecimal total = BigDecimal.ZERO;
-        List<String> accountIds = getCustomerAccountIds(daObj, finMnemonic, customerId);
+        List<String> accountIds = repository.getCustomerAccountIds(finMnemonic, customerId);
         int index = 0;
         for (String accountId : accountIds) {
             index++;
-            BigDecimal balance = getAccountBalance(daObj, finMnemonic, accountId).multiply(EXCHANGE_RATE);
+            BigDecimal balance = getAccountBalance(repository, finMnemonic, accountId).multiply(EXCHANGE_RATE);
             total = total.add(balance);
             logger.info(LOG_PREFIX + "getTotalCifBalance [" + index + "/" + accountIds.size() + "] account="
                     + accountId + " balance=" + balance + " runningTotal=" + total);
@@ -229,42 +209,16 @@ public class MaximumCifLimitValidator extends ActivityLifecycle {
         return total;
     }
 
-    /** Customer's accounts from the CUSTOMER.ACCOUNT concat file; falls back to a SELECT on ACCOUNT. */
-    private List<String> getCustomerAccountIds(DataAccess daObj, String finMnemonic, String customerId) {
-        try {
-            List<String> accountIds = daObj.getConcatValues(CUSTOMER_ACCOUNT_FILE, customerId);
-            if (accountIds != null && !accountIds.isEmpty()) {
-                logger.info(LOG_PREFIX + "getCustomerAccountIds CUSTOMER.ACCOUNT customer=" + customerId
-                        + " accounts=" + accountIds);
-                return accountIds;
-            }
-        } catch (Exception e) {
-            logger.info(LOG_PREFIX + "getCustomerAccountIds no CUSTOMER.ACCOUNT entry for " + customerId);
-        }
-        try {
-            List<String> accountIds = daObj.selectRecords(finMnemonic, ACCOUNT_TABLE, "",
-                    "WITH CUSTOMER EQ " + customerId);
-            logger.info(LOG_PREFIX + "getCustomerAccountIds SELECT ACCOUNT customer=" + customerId
-                    + " accounts=" + accountIds);
-            return accountIds == null ? List.of() : accountIds;
-        } catch (Exception e) {
-            logger.error(LOG_PREFIX + "getCustomerAccountIds unable to select ACCOUNT for " + customerId + " "
-                    + e.getMessage());
-            return List.of();
-        }
-    }
-
     /** Working balance of one account; 0 if the account cannot be read. */
-    private BigDecimal getAccountBalance(DataAccess daObj, String finMnemonic, String accountId) {
-        try {
-            AccountRecord accountRec = new AccountRecord(daObj.getRecord(finMnemonic, ACCOUNT_TABLE, "", accountId));
-            BigDecimal balance = toAmount(accountRec.getWorkingBalance().getValue(), BigDecimal.ZERO);
-            logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " workingBalance=" + balance);
-            return balance;
-        } catch (Exception e) {
-            logger.error(LOG_PREFIX + "getAccountBalance unable to read ACCOUNT " + accountId + " " + e.getMessage());
+    private BigDecimal getAccountBalance(CustomerLimitRepository repository, String finMnemonic, String accountId) {
+        AccountRecord accountRec = repository.readAccount(finMnemonic, accountId);
+        if (accountRec == null) {
+            logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " not readable, balance=0");
             return BigDecimal.ZERO;
         }
+        BigDecimal balance = toAmount(accountRec.getWorkingBalance().getValue(), BigDecimal.ZERO);
+        logger.info(LOG_PREFIX + "getAccountBalance account=" + accountId + " workingBalance=" + balance);
+        return balance;
     }
 
     /** Credit amount of the current transaction in LCY. */

@@ -3,6 +3,7 @@ package com.temenos.ALBE.CustomerLimit.Routine;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader.Limits;
 import com.temenos.api.TStructure;
@@ -12,8 +13,6 @@ import com.temenos.t24.api.complex.eb.servicehook.TransactionData;
 import com.temenos.t24.api.complex.eb.templatehook.TransactionContext;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
-import com.temenos.t24.api.system.DataAccess;
-import com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable;
 
 /*-----------------------------------------------------------------------------
  * Attached as : After Unau routine
@@ -54,15 +53,15 @@ public class CustomerLimitCreation extends RecordLifecycle {
             String function = transactionContext == null ? null : transactionContext.getCurrentFunction();
             logger.info(LOG_PREFIX + "postUpdateRequest START customer=" + currentRecordId + " function=" + function);
 
-            EbAlbeCifLimitTable cifLimitTable = new EbAlbeCifLimitTable(this);
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
 
             // Customer deleted before authorisation: remove its limit record as well.
             if (isDelete(transactionContext)) {
-                deleteCustomerLimit(cifLimitTable, currentRecordId);
+                deleteCustomerLimit(repository, currentRecordId);
                 return;
             }
 
-            CustomerLimitReader limitReader = new CustomerLimitReader(new DataAccess(this));
+            CustomerLimitReader limitReader = new CustomerLimitReader(repository);
 
             // Never overwrite: limits may have been amended for this customer.
             if (limitReader.getCustomerLimits(currentRecordId) != null) {
@@ -80,7 +79,7 @@ public class CustomerLimitCreation extends RecordLifecycle {
 
             // Copy the generic limits one-to-one into the customer's record.
 
-            EbAlbeCifLimitRecord cifLimitRec = new EbAlbeCifLimitRecord(this);
+            EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
             cifLimitRec.setCcy(nvl(genericLimits.ccy));
             cifLimitRec.setDailyCreditLimit(toText(genericLimits.dailyCreditLimit));
             cifLimitRec.setDailyDebitLimit(toText(genericLimits.dailyDebitLimit));
@@ -90,7 +89,10 @@ public class CustomerLimitCreation extends RecordLifecycle {
 
             logger.info(LOG_PREFIX + "postUpdateRequest writing EB.ALBE.CIF.LIMIT>" + currentRecordId
                     + " from " + genericLimits.source);
-            cifLimitTable.write(currentRecordId, cifLimitRec);
+            if (!repository.writeCifLimit(currentRecordId, cifLimitRec)) {
+                logger.error(LOG_PREFIX + "postUpdateRequest EB.ALBE.CIF.LIMIT not created for " + currentRecordId);
+                return;
+            }
             logger.info(LOG_PREFIX + "postUpdateRequest CREATED EB.ALBE.CIF.LIMIT customer=" + currentRecordId
                     + " ccy=" + genericLimits.ccy + " dailyCredit=" + genericLimits.dailyCreditLimit
                     + " dailyDebit=" + genericLimits.dailyDebitLimit + " monthlyCredit="
@@ -109,13 +111,10 @@ public class CustomerLimitCreation extends RecordLifecycle {
         return FUNCTION_DELETE.equalsIgnoreCase(function) || FUNCTION_DELETE_FULL.equalsIgnoreCase(function);
     }
 
-    private void deleteCustomerLimit(EbAlbeCifLimitTable cifLimitTable, String customerId) {
-        try {
-            cifLimitTable.delete(customerId);
-            logger.info(LOG_PREFIX + "deleteCustomerLimit DELETED EB.ALBE.CIF.LIMIT customer=" + customerId);
-        } catch (Exception e) {
-            logger.info(LOG_PREFIX + "deleteCustomerLimit no EB.ALBE.CIF.LIMIT to delete for " + customerId);
-        }
+    /** Customer deleted before authorisation: remove its EB.ALBE.CIF.LIMIT record. */
+    private void deleteCustomerLimit(CustomerLimitRepository repository, String customerId) {
+        boolean deleted = repository.deleteCifLimit(customerId);
+        logger.info(LOG_PREFIX + "deleteCustomerLimit customer=" + customerId + " deleted=" + deleted);
     }
 
     /** Amount as text for the record; blank when the generic limit is not configured. */

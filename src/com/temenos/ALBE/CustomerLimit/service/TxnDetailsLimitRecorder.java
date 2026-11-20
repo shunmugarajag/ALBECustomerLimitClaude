@@ -9,10 +9,8 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;
-import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
-import com.temenos.t24.api.system.DataAccess;
-import com.temenos.t24.api.tables.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitTable;
 
 /*-----------------------------------------------------------------------------
  * Description : Keeps EB.ALBE.TXN.DETAILS.LIMIT for every transaction counted in
@@ -33,19 +31,17 @@ public class TxnDetailsLimitRecorder {
     private static final Logger logger = LoggerFactory.getLogger(L3API);
     private static final String LOG_PREFIX = "TxnDetailsLimitRecorder:";
 
-    public static final String TXN_DETAILS_TABLE = "EB.ALBE.TXN.DETAILS.LIMIT";
+    public static final String TXN_DETAILS_TABLE = CustomerLimitRepository.TXN_DETAILS_TABLE;
     public static final String FLAG_CREDIT = "CR";
     public static final String FLAG_DEBIT = "DR";
 
     private static final DateTimeFormatter ID_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    private final ActivityLifecycle hook;
-    private final EbAlbeTxnDetailsLimitTable txnDetailsTable;
+    private final CustomerLimitRepository repository;
 
-    /** @param hook the calling ACTIVITY.API routine; gives the T24 context for table access */
-    public TxnDetailsLimitRecorder(ActivityLifecycle hook) {
-        this.hook = hook;
-        this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
+    /** @param repository DB access of the calling routine */
+    public TxnDetailsLimitRecorder(CustomerLimitRepository repository) {
+        this.repository = repository;
     }
 
     /** <customer id>-<YYYYMMDD booking (server) date>-<AAA id> */
@@ -63,12 +59,12 @@ public class TxnDetailsLimitRecorder {
         logger.info(LOG_PREFIX + "record START id=" + recordId);
         try {
             boolean credit = request.getCreditAmount().signum() > 0;
-            EbAlbeTxnDetailsLimitRecord txnRec = new EbAlbeTxnDetailsLimitRecord(hook);
+            EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
             txnRec.setAccountNo(accountNo == null ? "" : accountNo);
             txnRec.setCreditDebitFlag(credit ? FLAG_CREDIT : FLAG_DEBIT);
             txnRec.setEffDate(effectiveDate == null ? "" : effectiveDate);
             txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
-            txnDetailsTable.write(recordId, txnRec);
+            repository.writeTxnDetails(recordId, txnRec);
             logger.info(LOG_PREFIX + "record WRITTEN id=" + recordId + " account=" + accountNo + " flag="
                     + (credit ? FLAG_CREDIT : FLAG_DEBIT) + " effDate=" + effectiveDate + " amount="
                     + (credit ? request.getCreditAmount() : request.getDebitAmount()));
@@ -84,16 +80,10 @@ public class TxnDetailsLimitRecorder {
     public List<CustomerLimitDTO> findOriginal(String customerId, String transactionId) {
         List<CustomerLimitDTO> originals = new ArrayList<>();
         try {
-            DataAccess daObj = new DataAccess(hook);
             // The booking date in the id is not known at reversal time, so match on customer + AAA id.
-            String selection = "WITH @ID LIKE " + customerId + "-...-" + transactionId;
-            List<String> recordIds = daObj.selectRecords("", TXN_DETAILS_TABLE, "", selection);
-            logger.info(LOG_PREFIX + "findOriginal selection=[" + selection + "] found=" + recordIds);
-            if (recordIds == null) {
-                return originals;
-            }
+            List<String> recordIds = repository.selectTxnDetailsIds(customerId, transactionId);
             for (String recordId : recordIds) {
-                CustomerLimitDTO original = toRequest(daObj, recordId, customerId, transactionId);
+                CustomerLimitDTO original = toRequest(recordId, customerId, transactionId);
                 if (original != null) {
                     originals.add(original);
                 }
@@ -111,8 +101,8 @@ public class TxnDetailsLimitRecorder {
     public void delete(CustomerLimitDTO original) {
         String recordId = recordId(original);
         try {
-            txnDetailsTable.delete(recordId);
-            logger.info(LOG_PREFIX + "delete DELETED id=" + recordId);
+            repository.deleteTxnDetails(recordId);
+            logger.info(LOG_PREFIX + "delete DONE id=" + recordId);
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "delete FAILED id=" + recordId + " " + e.getMessage());
         }
@@ -122,7 +112,7 @@ public class TxnDetailsLimitRecorder {
      * Rebuilds the original transaction from its record: date from the id,
      * flag and amount from the fields. Null if the id does not match or cannot be read.
      */
-    private CustomerLimitDTO toRequest(DataAccess daObj, String recordId, String customerId, String transactionId) {
+    private CustomerLimitDTO toRequest(String recordId, String customerId, String transactionId) {
         String prefix = customerId + "-";
         String suffix = "-" + transactionId;
         if (!recordId.startsWith(prefix) || !recordId.endsWith(suffix)) {
@@ -131,8 +121,10 @@ public class TxnDetailsLimitRecorder {
         }
         String datePart = recordId.substring(prefix.length(), recordId.length() - suffix.length());
         try {
-            EbAlbeTxnDetailsLimitRecord txnRec =
-                    new EbAlbeTxnDetailsLimitRecord(daObj.getRecord(TXN_DETAILS_TABLE, recordId));
+            EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
+            if (txnRec == null) {
+                return null;
+            }
             BigDecimal amount = CustomerLimitUtilizationUpdater.toAmount(txnRec.getTxnAmount().getValue());
 
             CustomerLimitDTO original = new CustomerLimitDTO();

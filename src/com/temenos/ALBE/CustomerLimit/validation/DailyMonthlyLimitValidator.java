@@ -23,7 +23,7 @@ import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
-import com.temenos.t24.api.system.DataAccess;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API
@@ -68,8 +68,6 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     private static final String L3API = "L3API";
     private static final Logger logger = LoggerFactory.getLogger(L3API);
     private static final String LOG_PREFIX = "DailyMonthlyLimitValidator:";
-
-    private static final String UTILISED_LIMIT_TABLE = "EB.ALBE.UTILISED.LIMIT";
 
     // AA activity statuses handled by this routine
     private static final String STATUS_UNAUTH = "UNAUTH";
@@ -201,8 +199,9 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
             logger.info(LOG_PREFIX + "postCoreTableUpdate request=" + request + " action="
                     + (isInput ? "COUNT" : isDelete ? "REVERSE (rejected input)" : "REVERSE (reversal)"));
 
-            CustomerLimitUtilizationUpdater updater = new CustomerLimitUtilizationUpdater(this);
-            TxnDetailsLimitRecorder recorder = new TxnDetailsLimitRecorder(this);
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            CustomerLimitUtilizationUpdater updater = new CustomerLimitUtilizationUpdater(repository);
+            TxnDetailsLimitRecorder recorder = new TxnDetailsLimitRecorder(repository);
 
             // Whatever the status, first take out anything already counted for this AAA:
             //   UNAUTH   : earlier input of the same AAA (amend + re-input)
@@ -272,9 +271,9 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     public void validate(CustomerLimitDTO request) {
         logger.info(LOG_PREFIX + "validate START customer=" + request.getCustomerId() + " aaa="
                 + request.getTransactionId());
-        DataAccess daObj = new DataAccess(this);
+        CustomerLimitRepository repository = new CustomerLimitRepository(this);
 
-        Limits limits = new CustomerLimitReader(daObj).getCustomerLimits(request.getCustomerId());
+        Limits limits = new CustomerLimitReader(repository).getCustomerLimits(request.getCustomerId());
         if (limits == null) {
             // No EB.ALBE.CIF.LIMIT record: the caller raises the "limit not defined" override.
             logger.info(LOG_PREFIX + "validate END customer=" + request.getCustomerId()
@@ -288,12 +287,12 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
         // On re-input of an amended transaction its earlier input is already in utilisation;
         // leave it out so the transaction is not checked against itself.
         List<CustomerLimitDTO> earlierInputs =
-                new TxnDetailsLimitRecorder(this).findOriginal(request.getCustomerId(), request.getTransactionId());
+                new TxnDetailsLimitRecorder(repository).findOriginal(request.getCustomerId(), request.getTransactionId());
         logger.info(LOG_PREFIX + "validate earlierInputs=" + earlierInputs.size()
                 + (earlierInputs.isEmpty() ? " (first input)" : " (re-input of an amended transaction)"));
 
-        validateDailyLimit(daObj, request, limits, earlierInputs);
-        validateMonthlyLimit(daObj, request, limits, earlierInputs);
+        validateDailyLimit(repository, request, limits, earlierInputs);
+        validateMonthlyLimit(repository, request, limits, earlierInputs);
 
         logger.info(LOG_PREFIX + "validate END customer=" + request.getCustomerId() + " breaches="
                 + request.getBreaches().size() + " blankLimits=" + request.getUndefinedLimits());
@@ -323,10 +322,10 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     }
 
     /** Daily: today's utilised credit/debit + txn amount against the daily credit/debit limit. */
-    private void validateDailyLimit(DataAccess daObj, CustomerLimitDTO request, Limits limits,
+    private void validateDailyLimit(CustomerLimitRepository repository, CustomerLimitDTO request, Limits limits,
             List<CustomerLimitDTO> earlierInputs) {
         String dailyId = CustomerLimitUtilizationUpdater.dailyRecordId(request);
-        EbAlbeUtilisedLimitRecord dailyRec = getUtilisedRecord(daObj, dailyId);
+        EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(dailyId);
 
         if (isCredit(request)) {
             BigDecimal limit = limits.dailyCreditLimit;
@@ -350,10 +349,10 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
     }
 
     /** Monthly: migrated + this month's utilised credit/debit + txn amount against the monthly limit. */
-    private void validateMonthlyLimit(DataAccess daObj, CustomerLimitDTO request, Limits limits,
+    private void validateMonthlyLimit(CustomerLimitRepository repository, CustomerLimitDTO request, Limits limits,
             List<CustomerLimitDTO> earlierInputs) {
         String monthlyId = CustomerLimitUtilizationUpdater.monthlyRecordId(request);
-        EbAlbeUtilisedLimitRecord monthlyRec = getUtilisedRecord(daObj, monthlyId);
+        EbAlbeUtilisedLimitRecord monthlyRec = repository.readUtilisedLimit(monthlyId);
 
         if (isCredit(request)) {
             BigDecimal limit = limits.monthlyCreditLimit;
@@ -476,21 +475,5 @@ public class DailyMonthlyLimitValidator extends ActivityLifecycle {
 
     private boolean isCredit(CustomerLimitDTO request) {
         return request.getCreditAmount().signum() > 0;
-    }
-
-    /** Reads a utilisation record; null when there is no utilisation yet for that day / month. */
-    private EbAlbeUtilisedLimitRecord getUtilisedRecord(DataAccess daObj, String recordId) {
-        try {
-            EbAlbeUtilisedLimitRecord utilRec =
-                    new EbAlbeUtilisedLimitRecord(daObj.getRecord(UTILISED_LIMIT_TABLE, recordId));
-            logger.info(LOG_PREFIX + "getUtilisedRecord found " + recordId + " credit="
-                    + utilRec.getUtilisedCreditLimit().getValue() + " debit=" + utilRec.getUtilisedDebitLimit().getValue()
-                    + " migratedCredit=" + utilRec.getUtilisedMigratedCreditLimit().getValue()
-                    + " migratedDebit=" + utilRec.getUtilisedMigratedDebitLimit().getValue());
-            return utilRec;
-        } catch (Exception e) {
-            logger.info(LOG_PREFIX + "getUtilisedRecord no record " + recordId + ", utilised = 0");
-            return null;
-        }
     }
 }

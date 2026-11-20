@@ -6,9 +6,8 @@ import java.time.format.DateTimeFormatter;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;
-import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
-import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
 
 /*-----------------------------------------------------------------------------
  * Description : Updates EB.ALBE.UTILISED.LIMIT for daily and monthly utilisation.
@@ -38,13 +37,11 @@ public class CustomerLimitUtilizationUpdater {
     private static final DateTimeFormatter DAILY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter MONTHLY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMM");
 
-    private final ActivityLifecycle hook;
-    private final EbAlbeUtilisedLimitTable utilisedLimitTable;
+    private final CustomerLimitRepository repository;
 
-    /** @param hook the calling ACTIVITY.API routine; gives the T24 context for table access */
-    public CustomerLimitUtilizationUpdater(ActivityLifecycle hook) {
-        this.hook = hook;
-        this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
+    /** @param repository DB access of the calling routine */
+    public CustomerLimitUtilizationUpdater(CustomerLimitRepository repository) {
+        this.repository = repository;
     }
 
     /** Daily utilisation record id: <customer id>-YYYYMMDD of the transaction date. */
@@ -92,7 +89,7 @@ public class CustomerLimitUtilizationUpdater {
             String newDebit = addAmount(oldDebit, debit);
             utilRec.setUtilisedCreditLimit(newCredit);
             utilRec.setUtilisedDebitLimit(newDebit);
-            utilisedLimitTable.write(recordId, utilRec);
+            repository.writeUtilisedLimit(recordId, utilRec);
             logger.info(LOG_PREFIX + "updateDailyUtilization record=" + recordId + " credit " + oldCredit + " -> "
                     + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
@@ -114,7 +111,7 @@ public class CustomerLimitUtilizationUpdater {
             String newDebit = addAmount(oldDebit, debit);
             utilRec.setUtilisedCreditLimit(newCredit);
             utilRec.setUtilisedDebitLimit(newDebit);
-            utilisedLimitTable.write(recordId, utilRec);
+            repository.writeUtilisedLimit(recordId, utilRec);
             logger.info(LOG_PREFIX + "updateMonthlyUtilization record=" + recordId + " credit " + oldCredit + " -> "
                     + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
@@ -124,14 +121,13 @@ public class CustomerLimitUtilizationUpdater {
 
     /** Existing utilisation record, or a new empty one for the first transaction of the day / month. */
     private EbAlbeUtilisedLimitRecord readOrCreate(String recordId) {
-        try {
-            EbAlbeUtilisedLimitRecord utilRec = utilisedLimitTable.read(recordId);
+        EbAlbeUtilisedLimitRecord utilRec = repository.readUtilisedLimit(recordId);
+        if (utilRec != null) {
             logger.info(LOG_PREFIX + "readOrCreate existing record " + recordId);
             return utilRec;
-        } catch (Exception e) {
-            logger.info(LOG_PREFIX + "readOrCreate new record " + recordId);
-            return new EbAlbeUtilisedLimitRecord(hook);
         }
+        logger.info(LOG_PREFIX + "readOrCreate new record " + recordId);
+        return repository.newUtilisedLimitRecord();
     }
 
     /** current + delta, never below zero (protects against reversals on a later day). */

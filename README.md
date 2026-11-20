@@ -23,6 +23,16 @@ Add the required TAFJ and generated Table JARs through **Project → Properties 
 
 The repository does not include proprietary TAFJ libraries. Configure the JARs from your local TAFJ installation.
 
+## Code structure
+
+| Package | Classes | Role |
+|---|---|---|
+| `Routine`, `validation` | CustomerLimitCreation, DailyMonthlyLimitValidator, MaximumCifLimitValidator | T24 hooks (entry points) and limit rules |
+| `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | business helpers, no direct DB calls |
+| `repository` | CustomerLimitRepository | **all** database reads / writes / selects / deletes, each logged |
+| `model` | CustomerLimitDTO | data passed between classes |
+| `override` | CustomerLimitOverride | builds and raises overrides |
+
 ## Routines (ACTIVITY.API)
 
 | Class | Attach to | Hooks |

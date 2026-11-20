@@ -7,10 +7,10 @@ import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
-import com.temenos.t24.api.system.DataAccess;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 
 /*-----------------------------------------------------------------------------
- * Description : Reads limits.
+ * Description : Builds Limits from the limit records (DB access via CustomerLimitRepository).
  *               getCustomerLimits : EB.ALBE.CIF.LIMIT, record id = customer id
  *                                   (used by the validators; no record => "limit not defined" override).
  *               getGenericLimits  : EB.ALBE.GEN.PARAM, record SYSTEM (used only by
@@ -30,8 +30,8 @@ public class CustomerLimitReader {
     private static final Logger logger = LoggerFactory.getLogger(L3API);
     private static final String LOG_PREFIX = "CustomerLimitReader:";
 
-    public static final String CIF_LIMIT_TABLE = "EB.ALBE.CIF.LIMIT";
-    public static final String GEN_PARAM_TABLE = "EB.ALBE.GEN.PARAM";
+    public static final String CIF_LIMIT_TABLE = CustomerLimitRepository.CIF_LIMIT_TABLE;
+    public static final String GEN_PARAM_TABLE = CustomerLimitRepository.GEN_PARAM_TABLE;
     public static final String GEN_PARAM_ID = "SYSTEM";
 
     // KEY.NAME values in EB.ALBE.GEN.PARAM SYSTEM (same names as the EB.ALBE.CIF.LIMIT fields)
@@ -54,11 +54,11 @@ public class CustomerLimitReader {
         public String source;
     }
 
-    private final DataAccess daObj;
+    private final CustomerLimitRepository repository;
 
-    /** @param daObj DataAccess of the calling routine */
-    public CustomerLimitReader(DataAccess daObj) {
-        this.daObj = daObj;
+    /** @param repository DB access of the calling routine */
+    public CustomerLimitReader(CustomerLimitRepository repository) {
+        this.repository = repository;
     }
 
     /**
@@ -68,10 +68,9 @@ public class CustomerLimitReader {
     public Limits getCustomerLimits(String customerId) {
         logger.info(LOG_PREFIX + "getCustomerLimits START reading " + CIF_LIMIT_TABLE + ">" + customerId);
         try {
-            EbAlbeCifLimitRecord cifLimitRec =
-                    new EbAlbeCifLimitRecord(daObj.getRecord(CIF_LIMIT_TABLE, customerId));
-            if (cifLimitRec.toString().isEmpty()) {
-                logger.info(LOG_PREFIX + "getCustomerLimits empty EB.ALBE.CIF.LIMIT record for " + customerId);
+            EbAlbeCifLimitRecord cifLimitRec = repository.readCifLimit(customerId);
+            if (cifLimitRec == null) {
+                logger.info(LOG_PREFIX + "getCustomerLimits no EB.ALBE.CIF.LIMIT record for " + customerId);
                 return null;
             }
             Limits limits = new Limits();
@@ -98,8 +97,11 @@ public class CustomerLimitReader {
     public Limits getGenericLimits() {
         logger.info(LOG_PREFIX + "getGenericLimits START reading " + GEN_PARAM_TABLE + ">" + GEN_PARAM_ID);
         try {
-            EbAlbeGenParamRecord genParamRec =
-                    new EbAlbeGenParamRecord(daObj.getRecord(GEN_PARAM_TABLE, GEN_PARAM_ID));
+            EbAlbeGenParamRecord genParamRec = repository.readGenParam(GEN_PARAM_ID);
+            if (genParamRec == null) {
+                logger.error(LOG_PREFIX + "getGenericLimits no EB.ALBE.GEN.PARAM SYSTEM record");
+                return null;
+            }
             Limits limits = new Limits();
             boolean found = false;
             for (KeyNameClass keyName : genParamRec.getKeyName()) {
