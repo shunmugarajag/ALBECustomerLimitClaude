@@ -74,17 +74,9 @@ public final class Constants {
     public static final String FLAG_DEBIT = "DR";
 
     // -------------------------------------------------------------------------
-    // Booking date kept on the AAA (REMARKS) so a reversal can rebuild record ids
-    // -------------------------------------------------------------------------
-    /** Tag written into AAA REMARKS at input, followed by the server date YYYYMMDD. */
-    public static final String REMARKS_DATE_TAG = "ALBE.LIMIT.DATE=";
-    /** Length of the YYYYMMDD date after the tag. */
-    public static final int REMARKS_DATE_LENGTH = 8;
-
-    // -------------------------------------------------------------------------
     // Record id date formats
     // -------------------------------------------------------------------------
-    /** Daily utilisation / transaction details id date: YYYYMMDD. */
+    /** Daily utilisation id date and EB.ALBE.TXN.DETAILS.LIMIT SYSTEM.DATE: YYYYMMDD. */
     public static final DateTimeFormatter DAILY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     /** Monthly utilisation id date: YYYYMM. */
     public static final DateTimeFormatter MONTHLY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMM");

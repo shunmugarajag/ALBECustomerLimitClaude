@@ -28,7 +28,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.CIF.LIMIT          read, write, delete   (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: SYSTEM)
  *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
- *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, select, delete (id: customer-YYYYMMDD-AAA id)
+ *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete (id: customer-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
  *
  *               Read methods return null (or an empty list) when nothing is found;
@@ -209,30 +209,13 @@ public class CustomerLimitRepository {
             EbAlbeTxnDetailsLimitRecord txnRec =
                     new EbAlbeTxnDetailsLimitRecord(daObj.getRecord(Constants.TXN_DETAILS_TABLE, recordId));
             logger.info(LOG_PREFIX + "readTxnDetails FOUND " + Constants.TXN_DETAILS_TABLE + ">" + recordId
-                    + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue());
+                    + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue()
+                    + " systemDate=" + txnRec.getSystemDate().getValue());
             return txnRec;
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "readTxnDetails NOT FOUND " + Constants.TXN_DETAILS_TABLE + ">" + recordId + " "
                     + e.getMessage());
             return null;
-        }
-    }
-
-    /**
-     * Ids of EB.ALBE.TXN.DETAILS.LIMIT records for a customer + AAA id, whatever the date
-     * in the middle of the id. Empty list if none.
-     */
-    public List<String> selectTxnDetailsIds(String customerId, String aaaId) {
-        String selection = "WITH @ID LIKE " + customerId + "-...-" + aaaId;
-        logger.info(LOG_PREFIX + "selectTxnDetailsIds SELECT " + Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
-        try {
-            List<String> recordIds = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection);
-            List<String> result = recordIds == null ? List.of() : recordIds;
-            logger.info(LOG_PREFIX + "selectTxnDetailsIds FOUND " + result.size() + " " + result);
-            return result;
-        } catch (Exception e) {
-            logger.info(LOG_PREFIX + "selectTxnDetailsIds NONE " + e.getMessage());
-            return List.of();
         }
     }
 

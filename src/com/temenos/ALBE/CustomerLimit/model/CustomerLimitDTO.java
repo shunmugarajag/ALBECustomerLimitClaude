@@ -24,10 +24,8 @@ public class CustomerLimitDTO {
     private String customerId;
     /** AAA id (daily/monthly routine) or arrangement id (maximum CIF routine). */
     private String transactionId;
-    /** Server date the transaction is counted on (from AAA REMARKS once it was input). */
+    /** Server date the transaction is counted on (for a reversal: the original SYSTEM.DATE). */
     private LocalDate transactionDate;
-    /** True when transactionDate was read from the AAA REMARKS tag (record ids can be rebuilt). */
-    private boolean bookingDateFromRemarks = false;
     /** Credit amount (in the limit currency once converted); zero for a debit. */
     private BigDecimal creditAmount = BigDecimal.ZERO;
     /** Debit amount (in the limit currency once converted); zero for a credit. */
@@ -63,11 +61,6 @@ public class CustomerLimitDTO {
 
     public LocalDate getTransactionDate() { return transactionDate; }
     public void setTransactionDate(LocalDate transactionDate) { this.transactionDate = transactionDate; }
-
-    public boolean isBookingDateFromRemarks() { return bookingDateFromRemarks; }
-    public void setBookingDateFromRemarks(boolean bookingDateFromRemarks) {
-        this.bookingDateFromRemarks = bookingDateFromRemarks;
-    }
 
     public BigDecimal getCreditAmount() { return creditAmount; }
     public void setCreditAmount(BigDecimal creditAmount) {
@@ -144,7 +137,6 @@ public class CustomerLimitDTO {
     @Override
     public String toString() {
         return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", date=" + transactionDate
-                + (bookingDateFromRemarks ? "(remarks)" : "(server)")
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
                 + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount
                 + ", rateMissing=" + rateMissing + ", valid=" + valid

@@ -46,7 +46,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Class | Attach to | Hooks |
 |---|---|---|
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – After Unau | `postUpdateRequest`: creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM SYSTEM if not present; deletes it when the unauthorised customer is deleted. |
-| `com.temenos.ALBE.CustomerLimit.controller.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `defaultFieldValues` (UNAUTH): booking date into REMARKS. `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
+| `com.temenos.ALBE.CustomerLimit.controller.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
 | `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM SYSTEM is used only by the creation service.
@@ -103,16 +103,18 @@ Create the tables with these field names so the generated getters match.
 
 Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 
-**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`, confirmed)
+**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **add field SYSTEM.DATE**
 
-Record id: `<customer>-<YYYYMMDD server date>-<AAA id>` (AAA id from `arrangementContext.getArrangementActivityId()`).
+Record id: `<customer>-<AAA id>` (AAA id from `arrangementContext.getArrangementActivityId()`), e.g. `100234-AAACT2632400001`.
+The id is known at every step, so the record is always read **directly by key** (no SELECT).
 
 | Field | Value |
 |---|---|
 | ACCOUNT.NO | arrangement's linked account |
 | CREDIT.DEBIT.FLAG | CR / DR |
 | EFF.DATE | effective (value) date of the transaction |
-| TXN.AMOUNT | transaction amount |
+| TXN.AMOUNT | amount counted, in the limit currency |
+| **SYSTEM.DATE** (new, DATE) | server date the amount was counted on; a rejection / reversal subtracts from this day and month |
 
 Utilisation is counted when the transaction is initiated:
 
@@ -124,12 +126,6 @@ Utilisation is counted when the transaction is initiated:
 | AUTH-REV (authorised reversed) | reversed on the original day/month | read and deleted |
 
 Validation on re-input leaves out the AAA's own earlier input amount.
-
-**Booking date on the AAA:** at first input `DailyMonthlyLimitController.defaultFieldValues` appends
-`ALBE.LIMIT.DATE=YYYYMMDD` (server date) to the AAA **REMARKS** field, keeping any existing text. Every
-later step (re-input, reject, reversal on another day) reads that date and rebuilds
-`<customer>-<date>-<AAA id>`, so EB.ALBE.TXN.DETAILS.LIMIT is read **directly by key**. Only an AAA without
-the tag (input before go-live) falls back to a SELECT on the id.
 
 ## EB.OVERRIDE records
 

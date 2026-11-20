@@ -218,6 +218,7 @@ public class DailyMonthlyLimitService {
      * from its original day and month.
      * @param fallbackToToday true for a reversal: if nothing was recorded (counted before go-live),
      *                        reverse the amount on today's records instead
+     * The original day / month comes from SYSTEM.DATE of EB.ALBE.TXN.DETAILS.LIMIT <customer>-<AAA id>.
      * @return number of amounts reversed
      */
     public int reverse(CustomerLimitDTO request, boolean fallbackToToday) {
