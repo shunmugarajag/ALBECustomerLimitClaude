@@ -28,6 +28,7 @@ import com.temenos.t24.api.hook.system.Enquiry;
  *                 CUSTOMER   optional when a date is given (blank = all customers)
  *                 DATE.FROM  SYSTEM.DATE from (YYYYMMDD)
  *                 DATE.TO    SYSTEM.DATE to   (YYYYMMDD)
+ *                 OVERRIDDEN Y = only transactions accepted with a limit-exceed override
  *               Customer or at least one date is mandatory. Without a customer the range is
  *               completed (missing DATE.TO = today, missing DATE.FROM = DATE.TO) and may cover
  *               at most Constants.ENQ_MAX_DAYS days.
@@ -50,6 +51,7 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
         String customerId = "";
         String fromDate = "";
         String toDate = "";
+        String overridden = "";
         if (filterCriteria != null) {
             for (FilterCriteria filter : filterCriteria) {
                 String field = filter.getFieldname();
@@ -60,10 +62,13 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
                     fromDate = value;
                 } else if (Constants.ENQ_SEL_DATE_TO.equals(field)) {
                     toDate = value;
+                } else if (Constants.ENQ_SEL_OVERRIDDEN.equals(field)) {
+                    overridden = value;
                 }
             }
         }
-        LogUtil.info(CLASS_NAME, "setIds", "START", "customer=" + customerId + " from=" + fromDate + " to=" + toDate);
+        LogUtil.info(CLASS_NAME, "setIds", "START", "customer=" + customerId + " from=" + fromDate + " to=" + toDate
+                + " overridden=" + overridden);
 
         String error = CustomerLimitEnquiryValidator.checkCustomerOrDate(customerId, fromDate, toDate);
         if (error == null) {
@@ -96,7 +101,8 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
         List<String> lines;
         try {
             CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(new CustomerLimitRepository(this));
-            List<LimitTxnRow> rows = service.getTransactions(customerId, fromDate, toDate);
+            List<LimitTxnRow> rows = service.getTransactions(customerId, fromDate, toDate,
+                    CustomerLimitEnquiryValidator.isYes(overridden));
             lines = CustomerLimitEnquiryView.toTxnLines(rows);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "setIds", "ERROR", "customer=" + customerId, e);

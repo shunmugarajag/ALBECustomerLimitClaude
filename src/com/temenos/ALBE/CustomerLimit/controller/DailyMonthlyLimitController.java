@@ -2,6 +2,7 @@ package com.temenos.ALBE.CustomerLimit.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -12,6 +13,7 @@ import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
+import com.temenos.api.TField;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
 import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
@@ -116,6 +118,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             switch (status) {
                 case Constants.STATUS_UNAUTH:   // transaction initiated: count it
                     LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
+                    request.setAcceptedOverrides(getAlbeOverrides(arrangementActivityRecord));
                     service.countAtInput(request, getAccountNo(arrangementRecord),
                             arrangementActivityRecord.getEffectiveDate().getValue());
                     break;
@@ -195,6 +198,28 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             LogUtil.info(CLASS_NAME, "getAccountNo", "NOT FOUND", "linked account not found ", e);
             return "";
         }
+    }
+
+    /**
+     * EB-ALBE.* override ids the user accepted on the activity (AAA OVERRIDE field), each once.
+     * A value is "<override id>}<message>..."; only the id is kept. Empty list if none or unreadable.
+     */
+    private List<String> getAlbeOverrides(AaArrangementActivityRecord arrangementActivityRecord) {
+        List<String> ids = new ArrayList<>();
+        try {
+            for (TField overrideField : arrangementActivityRecord.getOverride()) {
+                String value = ValidationUtil.nvl(overrideField.getValue());
+                int end = value.indexOf(Constants.OVERRIDE_ID_END);
+                String id = (end < 0 ? value : value.substring(0, end)).trim();
+                if (id.startsWith(Constants.OVERRIDE_ID_PREFIX) && !ids.contains(id)) {
+                    ids.add(id);
+                }
+            }
+            LogUtil.info(CLASS_NAME, "getAlbeOverrides", "FOUND", "overrides=" + ids);
+        } catch (Exception e) {
+            LogUtil.info(CLASS_NAME, "getAlbeOverrides", "NOT FOUND", "no override field on the activity", e);
+        }
+        return ids;
     }
 
     /** Logs the raw activity fields received from T24, for tracing. */

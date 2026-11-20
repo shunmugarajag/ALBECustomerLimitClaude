@@ -299,8 +299,10 @@ public class CustomerLimitRepository {
      * @param customerId one customer (<customer>-...), or blank for all customers
      * @param fromDate   SYSTEM.DATE from (YYYYMMDD), blank = no lower bound
      * @param toDate     SYSTEM.DATE to (YYYYMMDD), blank = no upper bound
+     * @param overriddenOnly only records whose OVERRIDE.IDS has a limit-exceed override
      */
-    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate) {
+    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate,
+            boolean overriddenOnly) {
         List<String> conditions = new java.util.ArrayList<>();
         if (customerId != null && !customerId.isEmpty()) {
             conditions.add("@ID LIKE " + customerId + "-...");
@@ -310,6 +312,9 @@ public class CustomerLimitRepository {
         }
         if (toDate != null && !toDate.isEmpty()) {
             conditions.add("SYSTEM.DATE LE " + toDate);
+        }
+        if (overriddenOnly) {
+            conditions.add("OVERRIDE.IDS LIKE ..." + Constants.LIMIT_EXCEED_KEYWORD + "...");
         }
         String selection = (conditions.isEmpty() ? "" : "WITH " + String.join(" AND ", conditions) + " ")
                 + "BY SYSTEM.DATE BY @ID";

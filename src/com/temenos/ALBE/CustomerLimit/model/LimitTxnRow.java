@@ -1,5 +1,7 @@
 package com.temenos.ALBE.CustomerLimit.model;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
+
 /*-----------------------------------------------------------------------------
  * Description : One row of the customer limit transaction enquiry: one transaction
  *               that is currently counted in the customer's utilisation
@@ -25,10 +27,24 @@ public class LimitTxnRow {
     public String systemDate;
     /** Amount counted, in the limit currency. */
     public String amount;
+    /** EB-ALBE.* overrides accepted on the transaction (OVERRIDE.IDS, space separated). */
+    public String overrides = "";
+
+    /** True when the transaction was accepted with a limit-exceed override (daily, monthly, max CIF). */
+    public boolean isLimitOverridden() {
+        for (String id : overrides.split(Constants.OVERRIDE_LIST_SEPARATOR)) {
+            for (String exceed : Constants.LIMIT_EXCEED_OVERRIDES) {
+                if (exceed.equals(id.trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     @Override
     public String toString() {
         return "LimitTxnRow[id=" + recordId + ", flag=" + creditDebitFlag + ", amount=" + amount
-                + ", systemDate=" + systemDate + "]";
+                + ", systemDate=" + systemDate + ", overrides=" + overrides + "]";
     }
 }

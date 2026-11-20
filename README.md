@@ -7,6 +7,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 | Document | For |
 |---|---|
 | [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md) | How the code works: architecture, classes, flows, data, overrides, logging, design decisions, HLSD deviations, open items |
+| [docs/REPORTS.md](docs/REPORTS.md) | The customer limit reports: summary, period report, transaction report (incl. overridden transactions) – selection, columns, examples, T24 set-up |
 | [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, logging, go-live data, DEV/SIT test cases |
 
 ## Project configuration
@@ -59,7 +60,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | `com.temenos.ALBE.CustomerLimit.controller.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitSummaryEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | `setIds`: limit summary per customer (limits, used today / this month, available). Selection CUSTOMER, DATE, OVER.LIMIT (optional). |
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitPeriodEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | `setIds`: per customer per day (DATE.FROM–DATE.TO) or per month (MONTH.FROM–MONTH.TO) with usage; CUSTOMER, OVER.LIMIT optional. |
-| `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitTxnEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.TXN | `setIds`: transactions counted (EB.ALBE.TXN.DETAILS.LIMIT) for one customer, or all customers in a date range. |
+| `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitTxnEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.TXN | `setIds`: transactions counted (EB.ALBE.TXN.DETAILS.LIMIT) for one customer, or all customers in a date range; OVERRIDDEN = Y for only overridden transactions. |
 | `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
@@ -116,7 +117,7 @@ Create the tables with these field names so the generated getters match.
 
 Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 
-**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **add field SYSTEM.DATE**
+**EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **add fields SYSTEM.DATE and OVERRIDE.IDS**
 
 Record id: `<customer>-<AAA id>` (AAA id from `arrangementContext.getArrangementActivityId()`), e.g. `100234-AAACT2632400001`.
 The id is known at every step, so the record is always read **directly by key** (no SELECT).
@@ -128,6 +129,7 @@ The id is known at every step, so the record is always read **directly by key** 
 | EFF.DATE | effective (value) date of the transaction |
 | TXN.AMOUNT | amount counted, in the limit currency |
 | **SYSTEM.DATE** (new, DATE) | server date the amount was counted on; a rejection / reversal subtracts from this day and month |
+| **OVERRIDE.IDS** (new, text) | EB-ALBE.* overrides accepted on the transaction (from the AAA OVERRIDE field), for the overridden-transactions report |
 
 Utilisation is counted when the transaction is initiated:
 

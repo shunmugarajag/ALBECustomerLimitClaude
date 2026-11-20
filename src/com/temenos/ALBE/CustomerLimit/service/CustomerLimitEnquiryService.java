@@ -34,6 +34,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *   getTransactions : the transactions currently counted for one or all customers, from
  *                     EB.ALBE.TXN.DETAILS.LIMIT, optionally by SYSTEM.DATE range.
  *   overLimitOnly   : keep only rows where something used is above its limit.
+ *   overriddenOnly  : keep only transactions accepted with a limit-exceed override.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -229,12 +230,13 @@ public class CustomerLimitEnquiryService {
      * Transactions counted for one customer (customerId given) or all customers (blank),
      * optionally between fromDate and toDate (SYSTEM.DATE, YYYYMMDD; blank = no bound), oldest first.
      */
-    public List<LimitTxnRow> getTransactions(String customerId, String fromDate, String toDate) {
+    public List<LimitTxnRow> getTransactions(String customerId, String fromDate, String toDate,
+            boolean overriddenOnly) {
         LogUtil.info(CLASS_NAME, "getTransactions", "START", "customer=" + customerId + " from=" + fromDate
-                + " to=" + toDate);
+                + " to=" + toDate + " overriddenOnly=" + overriddenOnly);
 
         List<LimitTxnRow> rows = new ArrayList<>();
-        for (String recordId : repository.selectTxnDetailsIds(customerId, fromDate, toDate)) {
+        for (String recordId : repository.selectTxnDetailsIds(customerId, fromDate, toDate, overriddenOnly)) {
             EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
             if (txnRec == null) {
                 continue;
@@ -249,7 +251,10 @@ public class CustomerLimitEnquiryService {
             row.effectiveDate = ValidationUtil.nvl(txnRec.getEffDate().getValue());
             row.systemDate = ValidationUtil.nvl(txnRec.getSystemDate().getValue());
             row.amount = ValidationUtil.nvl(txnRec.getTxnAmount().getValue());
-            rows.add(row);
+            row.overrides = ValidationUtil.nvl(txnRec.getOverrideIds().getValue()).trim();
+            if (!overriddenOnly || row.isLimitOverridden()) {
+                rows.add(row);
+            }
         }
         LogUtil.info(CLASS_NAME, "getTransactions", "END", "customer=" + customerId + " rows=" + rows.size());
         return rows;

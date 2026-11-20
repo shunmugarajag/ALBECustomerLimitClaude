@@ -199,6 +199,8 @@ Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
 
 ### 5.6 Enquiries
 
+Full description, columns, examples and T24 set-up: **[REPORTS.md](REPORTS.md)**.
+
 | Enquiry | Selection | Reads |
 |---|---|---|
 | Summary | CUSTOMER (opt.), DATE (opt., default today), OVER.LIMIT | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of CIF.LIMIT ids |
@@ -338,6 +340,7 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | `AaArrangementActivityRecord.getTxnAmount()` / `getEffectiveDate()` / `getActivity()` | AA controllers |
 | `AaArrangementRecord.getCurrency()`, `getCustomer()`, `getLinkedAppl()` | AA controllers |
 | `TField.setOverride(id FM p1 VM p2)` – parameter format | CustomerLimitOverride |
+| `AaArrangementActivityRecord.getOverride()` – accepted overrides at `postCoreTableUpdate`, value format `<id>}...` | DailyMonthlyLimitController (OVERRIDE.IDS for the overridden-transactions report) |
 | `TransactionContext.getCurrentFunction()` | CustomerLimitCreationController (logged only) |
 | `DataAccess.getConcatValues("CUSTOMER.ACCOUNT", id)` | repository |
 | `AccountRecord.getWorkingBalance()` / `getCurrency()` | MaximumCifLimitService |
@@ -371,7 +374,7 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | # | Item | Owner |
 |---|---|---|
 | 1 | Exchange rate table / field and the read in `readExchangeRate` | bank / dev |
-| 2 | Add field SYSTEM.DATE to EB.ALBE.TXN.DETAILS.LIMIT and regenerate its JAR | T24 |
+| 2 | Add fields SYSTEM.DATE and OVERRIDE.IDS to EB.ALBE.TXN.DETAILS.LIMIT and regenerate its JAR | T24 |
 | 3 | HLSD update for the deviations in section 11 | BA |
 | 4 | DEV verification of the API calls in section 12 | dev |
 | 5 | One-off creation of EB.ALBE.CIF.LIMIT for customers that already exist (separate flow) | bank / dev |
@@ -393,3 +396,4 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | 20-Nov-2026 | GEN.PARAM record id CUSTOMER.LIMIT |
 | 20-Nov-2026 | Enquiries: limit summary and transaction report; strict date parsing |
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
+| 20-Nov-2026 | Accepted overrides stored in TXN.DETAILS OVERRIDE.IDS; transaction report OVERRIDDEN filter; separate REPORTS.md |

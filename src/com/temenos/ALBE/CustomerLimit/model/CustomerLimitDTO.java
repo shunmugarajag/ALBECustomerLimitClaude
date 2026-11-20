@@ -53,6 +53,8 @@ public class CustomerLimitDTO {
     private String rateMissingCurrency;
     /** EB.ALBE.CIF.LIMIT fields that are blank; raised once as the "limit not defined" override. */
     private final List<String> undefinedLimits = new ArrayList<>();
+    /** EB-ALBE.* overrides the user accepted on the activity (from the AAA OVERRIDE field). */
+    private List<String> acceptedOverrides = new ArrayList<>();
 
     public String getCustomerId() { return customerId; }
     public void setCustomerId(String customerId) { this.customerId = customerId; }
@@ -81,6 +83,11 @@ public class CustomerLimitDTO {
 
     /** "customer=<id> aaa=<id>" - the key that starts most log lines about this request. */
     public String logKey() { return "customer=" + customerId + " aaa=" + transactionId; }
+
+    public List<String> getAcceptedOverrides() { return Collections.unmodifiableList(acceptedOverrides); }
+    public void setAcceptedOverrides(List<String> acceptedOverrides) {
+        this.acceptedOverrides = acceptedOverrides == null ? new ArrayList<>() : new ArrayList<>(acceptedOverrides);
+    }
 
     public String getTransactionCurrency() { return transactionCurrency; }
     public void setTransactionCurrency(String transactionCurrency) { this.transactionCurrency = transactionCurrency; }
