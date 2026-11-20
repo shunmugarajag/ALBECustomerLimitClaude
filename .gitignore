@@ -1,0 +1,5 @@
+/bin/
+/.classpath.local
+*.class
+*.log
+.settings/
