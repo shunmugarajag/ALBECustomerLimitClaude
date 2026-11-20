@@ -7,6 +7,13 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 | Document | For |
 |---|---|
 | [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md) | How the code works: architecture, classes, flows, data, overrides, logging, design decisions, HLSD deviations, open items |
+| [docs/TRACEABILITY.md](docs/TRACEABILITY.md) | HLSD requirement → code → test, use cases 8.1–8.6, agreed deviations |
+| [docs/UNIT_TEST_CASES.md](docs/UNIT_TEST_CASES.md) | 67 test cases with results (61 run outside T24, 6 DEV only) |
+| [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | release 1.0: objects to deploy, installation order, smoke test, rollback, per-environment settings |
+| [docs/DATA_MIGRATION.md](docs/DATA_MIGRATION.md) | one-off loads before go-live: limits for existing customers, migrated monthly usage, cut-over |
+| [docs/SUPPORT_RUNBOOK.md](docs/SUPPORT_RUNBOOK.md) | production support: monitoring, common cases, error lines, business FAQ, escalation |
+| [docs/CODE_REVIEW_CHECKLIST.md](docs/CODE_REVIEW_CHECKLIST.md) | project standards as a review checklist |
+| [CHANGELOG.md](CHANGELOG.md) | plain-language history of changes |
 | [CLAUDE.md](CLAUDE.md) | Handover for a new (Claude) session: rules, decisions and why, code map, open items, how to test |
 | [docs/GAPS.md](docs/GAPS.md) | Known gaps and open points (no table change needed): risk, example, proposed fix, decision needed; exchange rate questions for the bank |
 | [docs/REPORTS.md](docs/REPORTS.md) | The customer limit reports: summary, period report, transaction report (incl. overridden transactions) – selection, columns, examples, T24 set-up |
