@@ -43,19 +43,13 @@ public class MaximumCifLimitService {
         this.currencyService = new CurrencyConversionService(repository);
     }
 
-    /** Maximum CIF balance check; records a breach with the HLSD message and amount difference. */
+    /**
+     * Maximum CIF balance check; records a breach with the HLSD message and amount difference.
+     * The request has been checked by CustomerLimitRequestValidator (customer, credit > 0).
+     */
     public void validate(CustomerLimitDTO request) {
         String customerId = request.getCustomerId();
         logger.info(LOG_PREFIX + "validate START " + request);
-
-        if (customerId == null || customerId.trim().isEmpty()) {
-            logger.info(LOG_PREFIX + "validate SKIP customer id missing");
-            return;
-        }
-        if (request.getCreditAmount().signum() <= 0) {
-            logger.info(LOG_PREFIX + "validate SKIP customer=" + customerId + " no credit amount");
-            return;
-        }
 
         // Step 1: customer's maximum balance limit.
         Limits limits = limitReader.getCustomerLimits(customerId);

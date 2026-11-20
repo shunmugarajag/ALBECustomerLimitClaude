@@ -39,6 +39,7 @@ public class CustomerLimitCreationService {
 
     /**
      * Creates the customer's limit record from the generic limits.
+     * The customer id has been checked by CustomerLimitRequestValidator.
      * @return true if a record was created; false if it already existed or could not be created
      */
     public boolean create(String customerId) {

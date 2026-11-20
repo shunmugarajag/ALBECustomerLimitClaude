@@ -60,6 +60,8 @@ public class DailyMonthlyLimitService {
     /**
      * Daily then monthly check. Every breach / blank limit is recorded on the request;
      * a missing EB.ALBE.CIF.LIMIT record sets limitMissing.
+     * The request has been checked by CustomerLimitRequestValidator (customer, AAA id, date,
+     * one positive credit or debit amount).
      */
     public void validate(CustomerLimitDTO request) {
         logger.info(LOG_PREFIX + "validate START " + request);

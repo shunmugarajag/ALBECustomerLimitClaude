@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.List;
 
@@ -41,6 +42,10 @@ public class CustomerLimitCreationController extends RecordLifecycle {
             String function = transactionContext == null ? null : transactionContext.getCurrentFunction();
             logger.info(LOG_PREFIX + "postUpdateRequest START application=" + application + " customer="
                     + currentRecordId + " function=" + function);
+
+            if (!CustomerLimitRequestValidator.isValidCustomerId(currentRecordId)) {
+                return;
+            }
 
             CustomerLimitCreationService service =
                     new CustomerLimitCreationService(new CustomerLimitRepository(this));

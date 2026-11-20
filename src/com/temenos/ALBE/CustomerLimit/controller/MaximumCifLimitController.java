@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
@@ -70,6 +71,9 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             request.setCreditAmount(
                     CustomerLimitUtilizationUpdater.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
             logger.info(LOG_PREFIX + "validateRecord request=" + request);
+            if (!CustomerLimitRequestValidator.isValidForMaxCif(request)) {
+                return arrangementActivityRecord.getValidationResponse();
+            }
 
             // Service
             MaximumCifLimitService service = new MaximumCifLimitService(new CustomerLimitRepository(this));

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -66,7 +67,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             }
 
             CustomerLimitDTO request = buildRequest(arrangementActivityRecord, arrangementRecord, arrangementContext);
-            if (request == null) {
+            if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
                 return arrangementActivityRecord.getValidationResponse();
             }
 
@@ -117,7 +118,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             }
 
             CustomerLimitDTO request = buildRequest(arrangementActivityRecord, arrangementRecord, arrangementContext);
-            if (request == null) {
+            if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
                 return;
             }
 

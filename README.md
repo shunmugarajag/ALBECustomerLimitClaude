@@ -36,6 +36,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 |---|---|---|---|
 | Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, CustomerLimitCreationController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
 | Service | `service` | DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder | Business rules (limit checks, utilisation count / reverse, limit creation). |
+| Validation | `validation` | CustomerLimitRequestValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
 | Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
 | View | `view` | CustomerLimitOverride | Builds and raises the overrides on TXN.AMOUNT. |
