@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 
 import com.temenos.ALBE.CustomerLimit.model.Limits;
@@ -25,7 +26,7 @@ import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
  */
 public class CustomerLimitCreationService {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "CustomerLimitCreationService:";
 
     private final CustomerLimitRepository repository;

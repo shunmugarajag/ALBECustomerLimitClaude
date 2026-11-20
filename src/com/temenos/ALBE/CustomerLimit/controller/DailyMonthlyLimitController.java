@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -42,21 +43,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "DailyMonthlyLimitController:";
-
-    // AA activity statuses handled by this routine
-    private static final String STATUS_UNAUTH = "UNAUTH";
-    private static final String STATUS_AUTH = "AUTH";
-    private static final String STATUS_DELETE = "DELETE";
-    private static final String STATUS_AUTH_REV = "AUTH-REV";
-
-    // Activity name fragments used to decide credit / debit
-    private static final String CREDIT = "CREDIT";
-    private static final String DEBIT = "DEBIT";
-
-    /** Exchange rate is fixed at 1 until currency conversion is confirmed. */
-    private static final BigDecimal EXCHANGE_RATE = BigDecimal.ONE;
 
     /** Input validation: daily and monthly limit check, overrides on TXN.AMOUNT. */
     @Override
@@ -72,7 +60,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             logger.info(LOG_PREFIX + "validateRecord START status=" + activityStatus);
             logActivity("validateRecord", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
-            if (!STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
+            if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
                 logger.info(LOG_PREFIX + "validateRecord SKIP status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
@@ -114,11 +102,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             logger.info(LOG_PREFIX + "postCoreTableUpdate START status=" + activityStatus);
             logActivity("postCoreTableUpdate", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
-            boolean isInput = STATUS_UNAUTH.equalsIgnoreCase(activityStatus);
-            boolean isDelete = STATUS_DELETE.equalsIgnoreCase(activityStatus);
-            boolean isReversal = STATUS_AUTH_REV.equalsIgnoreCase(activityStatus);
+            boolean isInput = Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus);
+            boolean isDelete = Constants.STATUS_DELETE.equalsIgnoreCase(activityStatus);
+            boolean isReversal = Constants.STATUS_AUTH_REV.equalsIgnoreCase(activityStatus);
 
-            if (STATUS_AUTH.equalsIgnoreCase(activityStatus)) {
+            if (Constants.STATUS_AUTH.equalsIgnoreCase(activityStatus)) {
                 logger.info(LOG_PREFIX + "postCoreTableUpdate SKIP AUTH (utilisation already counted at input)");
                 return;
             }
@@ -164,16 +152,16 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
 
         String activity = arrangementActivityRecord.getActivity().getValue();
         BigDecimal amount = CustomerLimitUtilizationUpdater
-                .toAmount(arrangementActivityRecord.getTxnAmount().getValue()).multiply(EXCHANGE_RATE);
+                .toAmount(arrangementActivityRecord.getTxnAmount().getValue()).multiply(Constants.EXCHANGE_RATE);
 
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
         request.setTransactionId(getAaaId(arrangementContext, arrangementActivityRecord));
         request.setTransactionDate(LocalDate.now()); // server date, as agreed
 
-        if (activity != null && activity.contains(CREDIT)) {
+        if (activity != null && activity.contains(Constants.ACTIVITY_CREDIT)) {
             request.setCreditAmount(amount);
-        } else if (activity != null && activity.contains(DEBIT)) {
+        } else if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
             request.setDebitAmount(amount);
         } else {
             logger.info(LOG_PREFIX + "buildRequest SKIP activity=" + activity + " is neither credit nor debit");

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
@@ -31,11 +32,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "MaximumCifLimitController:";
-
-    private static final String STATUS_UNAUTH = "UNAUTH";
-    private static final String DEBIT = "DEBIT";
 
     /** Input validation for credit activities: maximum CIF balance check, overrides on TXN.AMOUNT. */
     @Override
@@ -54,12 +52,12 @@ public class MaximumCifLimitController extends ActivityLifecycle {
                     + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
                     + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
 
-            if (!STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
+            if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
                 logger.info(LOG_PREFIX + "validateRecord SKIP status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
             // HLSD: maximum balance check is for credit activities only.
-            if (activity != null && activity.contains(DEBIT)) {
+            if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
                 logger.info(LOG_PREFIX + "validateRecord SKIP debit activity " + activity);
                 return arrangementActivityRecord.getValidationResponse();
             }

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -28,14 +29,8 @@ import com.temenos.t24.api.records.account.AccountRecord;
  */
 public class MaximumCifLimitService {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "MaximumCifLimitService:";
-
-    /** Exchange rate is fixed at 1 until currency conversion is confirmed. */
-    private static final BigDecimal EXCHANGE_RATE = BigDecimal.ONE;
-
-    /** HLSD override text: Overall credit/debit exceed for Customer <customer id> by <amount difference>. */
-    public static final String MSG_LIMIT_EXCEEDED = "Overall credit/debit exceed for Customer %s by %s";
 
     private final CustomerLimitRepository repository;
     private final CustomerLimitReader limitReader;
@@ -54,7 +49,7 @@ public class MaximumCifLimitService {
             logger.info(LOG_PREFIX + "validate SKIP customer id missing");
             return;
         }
-        BigDecimal transactionAmount = request.getCreditAmount().multiply(EXCHANGE_RATE);
+        BigDecimal transactionAmount = request.getCreditAmount().multiply(Constants.EXCHANGE_RATE);
         if (transactionAmount.signum() <= 0) {
             logger.info(LOG_PREFIX + "validate SKIP customer=" + customerId + " no credit amount");
             return;
@@ -70,7 +65,7 @@ public class MaximumCifLimitService {
         BigDecimal maximumCifLimit = limits.maxCifBalance;
         if (maximumCifLimit == null) {
             logger.info(LOG_PREFIX + "validate NOT DEFINED MAX.CIF.BALANCE is blank for customer=" + customerId);
-            request.addUndefinedLimit("MAX.CIF.BALANCE");
+            request.addUndefinedLimit(Constants.KEY_MAX_CIF_BALANCE);
             return;
         }
 
@@ -86,8 +81,8 @@ public class MaximumCifLimitService {
         if (projectedBalance.compareTo(maximumCifLimit) > 0) {
             BigDecimal difference = projectedBalance.subtract(maximumCifLimit);
             logger.info(LOG_PREFIX + "validate BREACH customer=" + customerId + " difference=" + difference);
-            request.addBreach(CustomerLimitOverride.MAX_CIF_BAL_EXCEED,
-                    String.format(MSG_LIMIT_EXCEEDED, customerId, difference.toPlainString()), difference);
+            request.addBreach(Constants.OVR_MAX_CIF_BAL_EXCEED,
+                    String.format(Constants.MSG_MAX_CIF_EXCEEDED, customerId, difference.toPlainString()), difference);
         } else {
             logger.info(LOG_PREFIX + "validate OK customer=" + customerId + " headroom="
                     + maximumCifLimit.subtract(projectedBalance));
@@ -102,7 +97,7 @@ public class MaximumCifLimitService {
         int index = 0;
         for (String accountId : accountIds) {
             index++;
-            BigDecimal balance = getAccountBalance(finMnemonic, accountId).multiply(EXCHANGE_RATE);
+            BigDecimal balance = getAccountBalance(finMnemonic, accountId).multiply(Constants.EXCHANGE_RATE);
             total = total.add(balance);
             logger.info(LOG_PREFIX + "getTotalCifBalance [" + index + "/" + accountIds.size() + "] account="
                     + accountId + " balance=" + balance + " runningTotal=" + total);

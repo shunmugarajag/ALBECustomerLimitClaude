@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
@@ -26,12 +27,8 @@ import com.temenos.t24.api.hook.system.RecordLifecycle;
  */
 public class CustomerLimitCreationController extends RecordLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "CustomerLimitCreationController:";
-
-    // T24 function codes for delete of the unauthorised customer
-    private static final String FUNCTION_DELETE = "D";
-    private static final String FUNCTION_DELETE_FULL = "DELETE";
 
     /** After Unau: create the customer's limit record, or delete it when the customer is deleted. */
     @Override
@@ -49,7 +46,7 @@ public class CustomerLimitCreationController extends RecordLifecycle {
                     new CustomerLimitCreationService(new CustomerLimitRepository(this));
 
             boolean done;
-            if (FUNCTION_DELETE.equalsIgnoreCase(function) || FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
+            if (Constants.FUNCTION_DELETE.equalsIgnoreCase(function) || Constants.FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
                 logger.info(LOG_PREFIX + "postUpdateRequest action=DELETE");
                 done = service.delete(currentRecordId);
             } else {

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -32,12 +33,8 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  */
 public class DailyMonthlyLimitService {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "DailyMonthlyLimitService:";
-
-    /** HLSD override texts (the EB.OVERRIDE records carry the same text with & placeholders). */
-    public static final String MSG_DAILY_EXCEEDED = "Daily credit/debit exceed for Customer %s by %s";
-    public static final String MSG_MONTHLY_EXCEEDED = "Monthly credit/debit exceed for Customer %s by %s";
 
     private final CustomerLimitRepository repository;
     private final CustomerLimitReader limitReader;
@@ -95,16 +92,16 @@ public class DailyMonthlyLimitService {
             utilised = utilised.subtract(earlierAmount(request, earlierInputs, true, false)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateDailyLimit CREDIT record=" + dailyId + " utilised=" + utilised
                     + " txn=" + request.getCreditAmount() + " limit=" + limits.dailyCreditLimit);
-            checkLimit(request, "DAILY.CREDIT.LIMIT", limits.dailyCreditLimit, utilised, request.getCreditAmount(),
-                    CustomerLimitOverride.DAILY_LIMIT_EXCEED, MSG_DAILY_EXCEEDED);
+            checkLimit(request, Constants.KEY_DAILY_CREDIT_LIMIT, limits.dailyCreditLimit, utilised, request.getCreditAmount(),
+                    Constants.OVR_DAILY_LIMIT_EXCEED, Constants.MSG_DAILY_EXCEEDED);
         } else {
             BigDecimal utilised = dailyRec == null ? BigDecimal.ZERO
                     : CustomerLimitUtilizationUpdater.toAmount(dailyRec.getUtilisedDebitLimit().getValue());
             utilised = utilised.subtract(earlierAmount(request, earlierInputs, false, false)).max(BigDecimal.ZERO);
             logger.info(LOG_PREFIX + "validateDailyLimit DEBIT record=" + dailyId + " utilised=" + utilised
                     + " txn=" + request.getDebitAmount() + " limit=" + limits.dailyDebitLimit);
-            checkLimit(request, "DAILY.DEBIT.LIMIT", limits.dailyDebitLimit, utilised, request.getDebitAmount(),
-                    CustomerLimitOverride.DAILY_LIMIT_EXCEED, MSG_DAILY_EXCEEDED);
+            checkLimit(request, Constants.KEY_DAILY_DEBIT_LIMIT, limits.dailyDebitLimit, utilised, request.getDebitAmount(),
+                    Constants.OVR_DAILY_LIMIT_EXCEED, Constants.MSG_DAILY_EXCEEDED);
         }
     }
 
@@ -122,8 +119,8 @@ public class DailyMonthlyLimitService {
             logger.info(LOG_PREFIX + "validateMonthlyLimit CREDIT record=" + monthlyId + " migrated=" + migrated
                     + " utilised=" + monthly + " txn=" + request.getCreditAmount() + " limit="
                     + limits.monthlyCreditLimit);
-            checkLimit(request, "MONTHLY.CREDIT.LIMIT", limits.monthlyCreditLimit, migrated.add(monthly),
-                    request.getCreditAmount(), CustomerLimitOverride.MONTHLY_LIMIT_EXCEED, MSG_MONTHLY_EXCEEDED);
+            checkLimit(request, Constants.KEY_MONTHLY_CREDIT_LIMIT, limits.monthlyCreditLimit, migrated.add(monthly),
+                    request.getCreditAmount(), Constants.OVR_MONTHLY_LIMIT_EXCEED, Constants.MSG_MONTHLY_EXCEEDED);
         } else {
             BigDecimal migrated = monthlyRec == null ? BigDecimal.ZERO
                     : CustomerLimitUtilizationUpdater.toAmount(monthlyRec.getUtilisedMigratedDebitLimit().getValue());
@@ -133,8 +130,8 @@ public class DailyMonthlyLimitService {
             logger.info(LOG_PREFIX + "validateMonthlyLimit DEBIT record=" + monthlyId + " migrated=" + migrated
                     + " utilised=" + monthly + " txn=" + request.getDebitAmount() + " limit="
                     + limits.monthlyDebitLimit);
-            checkLimit(request, "MONTHLY.DEBIT.LIMIT", limits.monthlyDebitLimit, migrated.add(monthly),
-                    request.getDebitAmount(), CustomerLimitOverride.MONTHLY_LIMIT_EXCEED, MSG_MONTHLY_EXCEEDED);
+            checkLimit(request, Constants.KEY_MONTHLY_DEBIT_LIMIT, limits.monthlyDebitLimit, migrated.add(monthly),
+                    request.getDebitAmount(), Constants.OVR_MONTHLY_LIMIT_EXCEED, Constants.MSG_MONTHLY_EXCEEDED);
         }
     }
 

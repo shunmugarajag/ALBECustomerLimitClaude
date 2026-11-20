@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.view;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.Arrays;
 
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
@@ -27,24 +28,10 @@ import com.temenos.logging.facade.LoggerFactory;
  * 20-Nov-2026   Development      Initial Version
  *-----------------------------------------------------------------------------
  */
-public final class CustomerLimitOverride {
+public class CustomerLimitOverride {
 
-    private static final Logger logger = LoggerFactory.getLogger("L3API");
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "CustomerLimitOverride:";
-
-    /** Override: daily credit/debit limit exceeded (params: customer id, difference). */
-    public static final String DAILY_LIMIT_EXCEED = "EB-ALBE.DAILY.LIMIT.EXCEED";
-    /** Override: monthly credit/debit limit exceeded (params: customer id, difference). */
-    public static final String MONTHLY_LIMIT_EXCEED = "EB-ALBE.MONTHLY.LIMIT.EXCEED";
-    /** Override: maximum overall CIF balance exceeded (params: customer id, difference). */
-    public static final String MAX_CIF_BAL_EXCEED = "EB-ALBE.MAX.CIF.BAL.EXCEED";
-
-    /** Override: no EB.ALBE.CIF.LIMIT record, or one of its limit fields is blank (param: customer id). */
-    public static final String LIMIT_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
-
-    // T24 field mark / value mark separating the id and its & parameters
-    private static final char FM = '\u00FE';
-    private static final char VM = '\u00FD';
 
     private CustomerLimitOverride() {
         // Utility class: static methods only.
@@ -61,7 +48,7 @@ public final class CustomerLimitOverride {
             logger.info(LOG_PREFIX + "raiseFor customer=" + request.getCustomerId() + " limit not defined"
                     + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
-            raise(field, LIMIT_NOT_DEFINED, request.getCustomerId());
+            raise(field, Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId());
             raised++;
         }
         for (LimitBreach breach : request.getBreaches()) {
@@ -92,7 +79,7 @@ public final class CustomerLimitOverride {
 
     /** Shows FM as ^ and VM as ] so the exact text sent to T24 is readable in the log. */
     private static String readable(String text) {
-        return text.replace(FM, '^').replace(VM, ']');
+        return text.replace(Constants.FM, '^').replace(Constants.VM, ']');
     }
 
     /** Builds <id> FM <param1> VM <param2> ...; just <id> when there are no parameters. */
@@ -100,10 +87,10 @@ public final class CustomerLimitOverride {
         if (params == null || params.length == 0) {
             return overrideId;
         }
-        StringBuilder sb = new StringBuilder(overrideId).append(FM);
+        StringBuilder sb = new StringBuilder(overrideId).append(Constants.FM);
         for (int i = 0; i < params.length; i++) {
             if (i > 0) {
-                sb.append(VM);
+                sb.append(Constants.VM);
             }
             sb.append(params[i] == null ? "" : params[i]);
         }

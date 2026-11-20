@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
@@ -30,12 +31,8 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  */
 public class CustomerLimitUtilizationUpdater {
 
-    private static final String L3API = "L3API";
-    private static final Logger logger = LoggerFactory.getLogger(L3API);
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "CustomerLimitUtilizationUpdater:";
-
-    private static final DateTimeFormatter DAILY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final DateTimeFormatter MONTHLY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMM");
 
     private final CustomerLimitRepository repository;
 
@@ -46,12 +43,12 @@ public class CustomerLimitUtilizationUpdater {
 
     /** Daily utilisation record id: <customer id>-YYYYMMDD of the transaction date. */
     public static String dailyRecordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(DAILY_ID_FORMAT);
+        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT);
     }
 
     /** Monthly utilisation record id: <customer id>-YYYYMM of the transaction date. */
     public static String monthlyRecordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(MONTHLY_ID_FORMAT);
+        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.MONTHLY_ID_FORMAT);
     }
 
     /** Adds the transaction amounts to the daily and monthly utilisation. */

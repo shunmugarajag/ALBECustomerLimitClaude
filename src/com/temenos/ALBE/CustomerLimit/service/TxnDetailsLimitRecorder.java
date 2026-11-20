@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -27,15 +28,8 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  */
 public class TxnDetailsLimitRecorder {
 
-    private static final String L3API = "L3API";
-    private static final Logger logger = LoggerFactory.getLogger(L3API);
+    private static final Logger logger = LoggerFactory.getLogger(Constants.LOGGER_NAME);
     private static final String LOG_PREFIX = "TxnDetailsLimitRecorder:";
-
-    public static final String TXN_DETAILS_TABLE = CustomerLimitRepository.TXN_DETAILS_TABLE;
-    public static final String FLAG_CREDIT = "CR";
-    public static final String FLAG_DEBIT = "DR";
-
-    private static final DateTimeFormatter ID_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final CustomerLimitRepository repository;
 
@@ -46,7 +40,7 @@ public class TxnDetailsLimitRecorder {
 
     /** <customer id>-<YYYYMMDD booking (server) date>-<AAA id> */
     public static String recordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(ID_DATE_FORMAT) + "-"
+        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT) + "-"
                 + request.getTransactionId();
     }
 
@@ -61,12 +55,12 @@ public class TxnDetailsLimitRecorder {
             boolean credit = request.getCreditAmount().signum() > 0;
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
             txnRec.setAccountNo(accountNo == null ? "" : accountNo);
-            txnRec.setCreditDebitFlag(credit ? FLAG_CREDIT : FLAG_DEBIT);
+            txnRec.setCreditDebitFlag(credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT);
             txnRec.setEffDate(effectiveDate == null ? "" : effectiveDate);
             txnRec.setTxnAmount((credit ? request.getCreditAmount() : request.getDebitAmount()).toPlainString());
             repository.writeTxnDetails(recordId, txnRec);
             logger.info(LOG_PREFIX + "record WRITTEN id=" + recordId + " account=" + accountNo + " flag="
-                    + (credit ? FLAG_CREDIT : FLAG_DEBIT) + " effDate=" + effectiveDate + " amount="
+                    + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate + " amount="
                     + (credit ? request.getCreditAmount() : request.getDebitAmount()));
         } catch (Exception e) {
             logger.error(LOG_PREFIX + "record FAILED id=" + recordId + " " + e.getMessage());
@@ -130,8 +124,8 @@ public class TxnDetailsLimitRecorder {
             CustomerLimitDTO original = new CustomerLimitDTO();
             original.setCustomerId(customerId);
             original.setTransactionId(transactionId);
-            original.setTransactionDate(LocalDate.parse(datePart, ID_DATE_FORMAT));
-            if (FLAG_CREDIT.equalsIgnoreCase(txnRec.getCreditDebitFlag().getValue())) {
+            original.setTransactionDate(LocalDate.parse(datePart, Constants.DAILY_ID_FORMAT));
+            if (Constants.FLAG_CREDIT.equalsIgnoreCase(txnRec.getCreditDebitFlag().getValue())) {
                 original.setCreditAmount(amount);
             } else {
                 original.setDebitAmount(amount);

@@ -1,5 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.model;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -70,7 +71,7 @@ public class CustomerLimitDTO {
         this.limitMissing = limitMissing;
         if (limitMissing) {
             valid = false;
-            validationMessage = "Customer limit not defined for Customer " + customerId;
+            validationMessage = String.format(Constants.MSG_LIMIT_NOT_DEFINED, customerId);
         }
     }
 
@@ -83,7 +84,7 @@ public class CustomerLimitDTO {
         if (!undefinedLimits.contains(fieldName)) {
             undefinedLimits.add(fieldName);
         }
-        validationMessage = "Customer limit not defined for Customer " + customerId + " (" + fieldName + ")";
+        validationMessage = String.format(Constants.MSG_LIMIT_NOT_DEFINED, customerId) + " (" + fieldName + ")";
     }
 
     public List<LimitBreach> getBreaches() { return Collections.unmodifiableList(breaches); }

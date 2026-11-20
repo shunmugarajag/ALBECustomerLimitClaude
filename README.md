@@ -39,6 +39,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
 | Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
 | View | `view` | CustomerLimitOverride | Builds and raises the overrides on TXN.AMOUNT. |
+| Constants | `constants` | Constants | All constants: tables, record ids, statuses, activity keywords, field / key names, override ids, messages, date formats. The only `final` class. |
 
 ## Routines to register (EB.API)
 
