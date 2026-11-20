@@ -41,7 +41,7 @@ public class CustomerLimitReader {
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
-        LogUtil.info(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">"
+        LogUtil.detail(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">"
                 + customerId);
         try {
             EbAlbeCifLimitRecord cifLimitRec = repository.readCifLimit(customerId);
@@ -129,10 +129,16 @@ public class CustomerLimitReader {
         }
     }
 
+    /** Customer limits are a per-record trace (detail); the generic limits are logged always. */
     private void logLimits(String method, Limits limits) {
-        LogUtil.info(CLASS_NAME, method, "CALC", "source=" + limits.source + " ccy=" + limits.ccy
+        String details = "source=" + limits.source + " ccy=" + limits.ccy
                 + " dailyCredit=" + limits.dailyCreditLimit + " dailyDebit=" + limits.dailyDebitLimit
                 + " monthlyCredit=" + limits.monthlyCreditLimit + " monthlyDebit=" + limits.monthlyDebitLimit
-                + " maxCifBalance=" + limits.maxCifBalance);
+                + " maxCifBalance=" + limits.maxCifBalance;
+        if ("getGenericLimits".equals(method)) {
+            LogUtil.info(CLASS_NAME, method, "CALC", details);
+        } else {
+            LogUtil.detail(CLASS_NAME, method, "CALC", details);
+        }
     }
 }

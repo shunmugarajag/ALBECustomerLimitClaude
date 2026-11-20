@@ -105,7 +105,7 @@ public class CustomerLimitRepository {
                         + ">" + customerId);
                 return null;
             }
-            LogUtil.info(CLASS_NAME, "readCifLimit", "FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
+            LogUtil.detail(CLASS_NAME, "readCifLimit", "FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
             return cifLimitRec;
         } catch (Exception e) {
             LogUtil.info(CLASS_NAME, "readCifLimit", "NOT FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
@@ -212,14 +212,14 @@ public class CustomerLimitRepository {
         LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "READ", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
         try {
             EbAlbeUtilisedLimitRecord utilRec = utilisedLimitTable.read(recordId);
-            LogUtil.info(CLASS_NAME, "readUtilisedLimit", "FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId
+            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId
                     + " credit=" + utilRec.getUtilisedCreditLimit().getValue()
                     + " debit=" + utilRec.getUtilisedDebitLimit().getValue()
                     + " migratedCredit=" + utilRec.getUtilisedMigratedCreditLimit().getValue()
                     + " migratedDebit=" + utilRec.getUtilisedMigratedDebitLimit().getValue());
             return utilRec;
         } catch (Exception e) {
-            LogUtil.info(CLASS_NAME, "readUtilisedLimit", "NOT FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
+            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "NOT FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
             return null;
         }
     }
@@ -257,7 +257,7 @@ public class CustomerLimitRepository {
         try {
             EbAlbeTxnDetailsLimitRecord txnRec =
                     new EbAlbeTxnDetailsLimitRecord(daObj.getRecord(Constants.TXN_DETAILS_TABLE, recordId));
-            LogUtil.info(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
+            LogUtil.detail(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
                     + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue()
                     + " systemDate=" + txnRec.getSystemDate().getValue());
             return txnRec;
@@ -414,7 +414,7 @@ public class CustomerLimitRepository {
         try {
             AccountRecord accountRec = new AccountRecord(daObj.getRecord(finMnemonic, Constants.ACCOUNT_TABLE, "",
                     accountId));
-            LogUtil.info(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId
+            LogUtil.detail(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId
                     + " workingBalance="
                     + accountRec.getWorkingBalance().getValue());
             return accountRec;

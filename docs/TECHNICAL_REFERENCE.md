@@ -290,7 +290,9 @@ Controller `END` lines carry `elapsedMs` for timing.
 | DB trace lines switchable (`LOG_DETAIL_ENABLED=false` in production) | done |
 | Per-transaction read cache (CIF.LIMIT, UTILISED.LIMIT and COMPANY are read more than once) | possible next step |
 | CUSTOMER.ACCOUNT empty -> SELECT on ACCOUNT fallback (slow on a large file) | consider removing once CUSTOMER.ACCOUNT is confirmed reliable |
-| Fewer info lines in production | possible next step |
+| Per-record read lines (FOUND / NOT FOUND of CIF.LIMIT, UTILISED.LIMIT, TXN.DETAILS, ACCOUNT) and per-row enquiry lines are `detail` | done – with `LOG_DETAIL_ENABLED=false` a 1,000-customer summary writes 3 lines instead of ~3,000 |
+| Enquiries filter in the SELECT (not in Java), read only by key, no repeated lookups, no file writing, BigDecimal amounts | done (gaps seen in the sample NOFILE routines avoided) |
+| EB.ALBE.TXN.DETAILS.LIMIT grows with every counted transaction | consider a housekeeping job for old records (keep at least as long as a reversal is possible) |
 
 ---
 

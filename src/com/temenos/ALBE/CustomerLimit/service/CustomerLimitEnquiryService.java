@@ -65,7 +65,7 @@ public class CustomerLimitEnquiryService {
     private LimitSummaryRow buildSummaryRow(String customerId, LocalDate reportDate) {
         Limits limits = limitReader.getCustomerLimits(customerId);
         if (limits == null) {
-            LogUtil.info(CLASS_NAME, "buildSummaryRow", "SKIP", "customer=" + customerId + " no EB.ALBE.CIF.LIMIT");
+            LogUtil.detail(CLASS_NAME, "buildSummaryRow", "SKIP", "customer=" + customerId + " no EB.ALBE.CIF.LIMIT");
             return null;
         }
         EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(
@@ -92,7 +92,7 @@ public class CustomerLimitEnquiryService {
 
         row.maxCifBalance = limits.maxCifBalance;
 
-        LogUtil.info(CLASS_NAME, "buildSummaryRow", "CALC", row);
+        LogUtil.detail(CLASS_NAME, "buildSummaryRow", "CALC", row);
         return row;
     }
 

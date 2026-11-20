@@ -127,7 +127,7 @@ public class CustomerLimitUtilizationUpdater {
     private EbAlbeUtilisedLimitRecord readOrCreate(String recordId) {
         EbAlbeUtilisedLimitRecord utilRec = repository.readUtilisedLimit(recordId);
         if (utilRec != null) {
-            LogUtil.info(CLASS_NAME, "readOrCreate", "FOUND", "record=" + recordId);
+            LogUtil.detail(CLASS_NAME, "readOrCreate", "FOUND", "record=" + recordId);
             return utilRec;
         }
         LogUtil.info(CLASS_NAME, "readOrCreate", "NEW", "record=" + recordId);
