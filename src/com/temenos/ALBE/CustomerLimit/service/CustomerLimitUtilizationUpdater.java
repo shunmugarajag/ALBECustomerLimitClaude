@@ -1,13 +1,13 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
 /*-----------------------------------------------------------------------------
@@ -51,66 +51,46 @@ public class CustomerLimitUtilizationUpdater {
 
     /** Adds the transaction amounts to the daily and monthly utilisation. */
     public void update(CustomerLimitDTO request) {
-        LogUtil.info(CLASS_NAME, "update", "CALC", "customer=" + request.getCustomerId() + " aaa=" + request.getTransactionId()
-                + " date=" + request.getTransactionDate() + " credit=" + request.getCreditAmount()
-                + " debit=" + request.getDebitAmount());
-        updateDailyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
-        updateMonthlyUtilization(request, request.getCreditAmount(), request.getDebitAmount());
-        LogUtil.info(CLASS_NAME, "update", "END", "customer=" + request.getCustomerId() + " daily="
-                + dailyRecordId(request) + " monthly=" + monthlyRecordId(request));
+        apply(request, "update", request.getCreditAmount(), request.getDebitAmount());
     }
 
     /** Subtracts the original transaction amounts from the daily and monthly utilisation. */
     public void reverse(CustomerLimitDTO originalTransaction) {
-        LogUtil.info(CLASS_NAME, "reverse", "CALC", "customer=" + originalTransaction.getCustomerId()
-                + " aaa=" + originalTransaction.getTransactionId() + " date=" + originalTransaction.getTransactionDate()
-                + " credit=" + originalTransaction.getCreditAmount() + " debit=" + originalTransaction.getDebitAmount());
-        updateDailyUtilization(originalTransaction, originalTransaction.getCreditAmount().negate(),
+        apply(originalTransaction, "reverse", originalTransaction.getCreditAmount().negate(),
                 originalTransaction.getDebitAmount().negate());
-        updateMonthlyUtilization(originalTransaction, originalTransaction.getCreditAmount().negate(),
-                originalTransaction.getDebitAmount().negate());
-        LogUtil.info(CLASS_NAME, "reverse", "END", "customer=" + originalTransaction.getCustomerId() + " daily="
-                + dailyRecordId(originalTransaction) + " monthly=" + monthlyRecordId(originalTransaction));
     }
 
-    /** Adds credit / debit (negative for a reversal) to the daily record's UTILISED.CREDIT/DEBIT.LIMIT. */
-    private void updateDailyUtilization(CustomerLimitDTO request, BigDecimal credit, BigDecimal debit) {
-        String recordId = dailyRecordId(request);
-        try {
-            EbAlbeUtilisedLimitRecord utilRec = readOrCreate(recordId);
-            String oldCredit = utilRec.getUtilisedCreditLimit().getValue();
-            String oldDebit = utilRec.getUtilisedDebitLimit().getValue();
-            String newCredit = addAmount(oldCredit, credit);
-            String newDebit = addAmount(oldDebit, debit);
-            utilRec.setUtilisedCreditLimit(newCredit);
-            utilRec.setUtilisedDebitLimit(newDebit);
-            repository.writeUtilisedLimit(recordId, utilRec);
-            LogUtil.info(CLASS_NAME, "updateDailyUtilization", "UPDATED", "record=" + recordId + " credit " + oldCredit + " -> "
-                    + newCredit + ", debit " + oldDebit + " -> " + newDebit);
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "updateDailyUtilization", "FAILED", "record=" + recordId, e);
-        }
+    /** Adds credit / debit (negative for a reversal) to the day's and the month's record. */
+    private void apply(CustomerLimitDTO request, String action, BigDecimal credit, BigDecimal debit) {
+        String dailyId = dailyRecordId(request);
+        String monthlyId = monthlyRecordId(request);
+        LogUtil.info(CLASS_NAME, action, "START", request.logKey() + " date=" + request.getTransactionDate()
+                + " credit=" + credit + " debit=" + debit);
+        addToRecord(dailyId, credit, debit);
+        addToRecord(monthlyId, credit, debit);
+        LogUtil.info(CLASS_NAME, action, "END", request.logKey() + " daily=" + dailyId + " monthly=" + monthlyId);
     }
 
     /**
-     * Adds credit / debit (negative for a reversal) to the monthly record's UTILISED.CREDIT/DEBIT.LIMIT.
+     * Adds credit / debit to UTILISED.CREDIT/DEBIT.LIMIT of one daily or monthly record.
      * UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT hold migration data and are never changed here.
      */
-    private void updateMonthlyUtilization(CustomerLimitDTO request, BigDecimal credit, BigDecimal debit) {
-        String recordId = monthlyRecordId(request);
+    private void addToRecord(String recordId, BigDecimal credit, BigDecimal debit) {
         try {
             EbAlbeUtilisedLimitRecord utilRec = readOrCreate(recordId);
             String oldCredit = utilRec.getUtilisedCreditLimit().getValue();
             String oldDebit = utilRec.getUtilisedDebitLimit().getValue();
             String newCredit = addAmount(oldCredit, credit);
             String newDebit = addAmount(oldDebit, debit);
+
             utilRec.setUtilisedCreditLimit(newCredit);
             utilRec.setUtilisedDebitLimit(newDebit);
             repository.writeUtilisedLimit(recordId, utilRec);
-            LogUtil.info(CLASS_NAME, "updateMonthlyUtilization", "UPDATED", "record=" + recordId + " credit " + oldCredit + " -> "
-                    + newCredit + ", debit " + oldDebit + " -> " + newDebit);
+
+            LogUtil.info(CLASS_NAME, "addToRecord", "UPDATED", "record=" + recordId
+                    + " credit " + oldCredit + " -> " + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "updateMonthlyUtilization", "FAILED", "record=" + recordId, e);
+            LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", "record=" + recordId, e);
         }
     }
 

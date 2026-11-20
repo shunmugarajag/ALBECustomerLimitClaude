@@ -1,11 +1,10 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 
 /*-----------------------------------------------------------------------------
@@ -50,7 +49,8 @@ public class CustomerLimitCreationService {
 
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
-            LogUtil.error(CLASS_NAME, "create", "NOT FOUND", "EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
+            LogUtil.error(CLASS_NAME, "create", "NOT FOUND",
+                    "EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
             return false;
         }
         LogUtil.info(CLASS_NAME, "create", "CALC", "generic " + genericLimits);

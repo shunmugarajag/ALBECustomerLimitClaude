@@ -1,14 +1,14 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.account.AccountRecord;
 
@@ -74,7 +74,8 @@ public class MaximumCifLimitService {
         String finMnemonic = repository.getFinancialMnemonic();
         BigDecimal totalBalance = getTotalCifBalance(request, finMnemonic, limits.ccy);
         if (totalBalance == null) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no exchange rate for account currency "
+            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId
+                    + " no exchange rate for account currency "
                     + request.getRateMissingCurrency());
             return;
         }
@@ -82,7 +83,8 @@ public class MaximumCifLimitService {
         // Step 3: compare total + credit amount with the limit (equal to the limit is allowed).
         BigDecimal projectedBalance = totalBalance.add(transactionAmount);
         LogUtil.info(CLASS_NAME, "validate", "CALC", "customer=" + customerId + " totalBalance=" + totalBalance
-                + " txnAmount=" + transactionAmount + " projected=" + projectedBalance + " maxLimit=" + maximumCifLimit);
+                + " txnAmount=" + transactionAmount + " projected=" + projectedBalance + " maxLimit="
+                        + maximumCifLimit);
 
         if (projectedBalance.compareTo(maximumCifLimit) > 0) {
             BigDecimal difference = projectedBalance.subtract(maximumCifLimit);
@@ -109,7 +111,8 @@ public class MaximumCifLimitService {
             index++;
             BigDecimal balance = getAccountBalance(request, finMnemonic, accountId, limitCcy);
             if (balance == null) {
-                LogUtil.error(CLASS_NAME, "getTotalCifBalance", "NO RATE", "account=" + accountId + " no exchange rate to "
+                LogUtil.error(CLASS_NAME, "getTotalCifBalance", "NO RATE", "account=" + accountId
+                        + " no exchange rate to "
                         + limitCcy);
                 return null;
             }
@@ -117,7 +120,8 @@ public class MaximumCifLimitService {
             LogUtil.info(CLASS_NAME, "getTotalCifBalance", "CALC", "[" + index + "/" + accountIds.size() + "] account="
                     + accountId + " balance=" + balance + " runningTotal=" + total);
         }
-        LogUtil.info(CLASS_NAME, "getTotalCifBalance", "CALC", "customer=" + customerId + " accounts=" + accountIds.size()
+        LogUtil.info(CLASS_NAME, "getTotalCifBalance", "CALC", "customer=" + customerId + " accounts="
+                + accountIds.size()
                 + " total=" + total);
         return total;
     }
@@ -130,7 +134,8 @@ public class MaximumCifLimitService {
             String limitCcy) {
         AccountRecord accountRec = repository.readAccount(finMnemonic, accountId);
         if (accountRec == null) {
-            LogUtil.info(CLASS_NAME, "getAccountBalance", "NOT FOUND", "account=" + accountId + " not readable, balance=0");
+            LogUtil.info(CLASS_NAME, "getAccountBalance", "NOT FOUND", "account=" + accountId
+                    + " not readable, balance=0");
             return BigDecimal.ZERO;
         }
         BigDecimal balance = ValidationUtil.toAmount(accountRec.getWorkingBalance().getValue());
@@ -140,7 +145,8 @@ public class MaximumCifLimitService {
             request.setRateMissing(accountCcy);
             return null;
         }
-        LogUtil.info(CLASS_NAME, "getAccountBalance", "CALC", "account=" + accountId + " balance=" + balance + " " + accountCcy
+        LogUtil.info(CLASS_NAME, "getAccountBalance", "CALC", "account=" + accountId + " balance=" + balance + " "
+                + accountCcy
                 + " inLimitCcy=" + converted + " " + limitCcy);
         return converted;
     }

@@ -1,9 +1,9 @@
 package com.temenos.ALBE.CustomerLimit.repository;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
 import com.temenos.t24.api.records.account.AccountRecord;
@@ -87,7 +87,8 @@ public class CustomerLimitRepository {
             EbAlbeCifLimitRecord cifLimitRec =
                     new EbAlbeCifLimitRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
             if (cifLimitRec.toString().isEmpty()) {
-                LogUtil.info(CLASS_NAME, "readCifLimit", "NOT FOUND", "empty record " + Constants.CIF_LIMIT_TABLE + ">" + customerId);
+                LogUtil.info(CLASS_NAME, "readCifLimit", "NOT FOUND", "empty record " + Constants.CIF_LIMIT_TABLE
+                        + ">" + customerId);
                 return null;
             }
             LogUtil.info(CLASS_NAME, "readCifLimit", "FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
@@ -138,7 +139,8 @@ public class CustomerLimitRepository {
     public EbAlbeGenParamRecord readGenParam(String paramId) {
         LogUtil.detail(CLASS_NAME, "readGenParam", "READ", Constants.GEN_PARAM_TABLE + ">" + paramId);
         try {
-            EbAlbeGenParamRecord genParamRec = new EbAlbeGenParamRecord(daObj.getRecord(Constants.GEN_PARAM_TABLE, paramId));
+            EbAlbeGenParamRecord genParamRec = new EbAlbeGenParamRecord(daObj.getRecord(Constants.GEN_PARAM_TABLE,
+                    paramId));
             LogUtil.info(CLASS_NAME, "readGenParam", "FOUND", Constants.GEN_PARAM_TABLE + ">" + paramId);
             return genParamRec;
         } catch (Exception e) {
@@ -185,7 +187,8 @@ public class CustomerLimitRepository {
             LogUtil.info(CLASS_NAME, "writeUtilisedLimit", "WRITTEN", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
             return true;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "writeUtilisedLimit", "FAILED", Constants.UTILISED_LIMIT_TABLE + ">" + recordId, e);
+            LogUtil.error(CLASS_NAME, "writeUtilisedLimit", "FAILED", Constants.UTILISED_LIMIT_TABLE + ">" + recordId,
+                    e);
             return false;
         }
     }
@@ -280,7 +283,8 @@ public class CustomerLimitRepository {
             LogUtil.detail(CLASS_NAME, "getFinancialMnemonic", "READ", Constants.COMPANY_TABLE + ">" + companyId);
             CompanyRecord companyRec = new CompanyRecord(daObj.getRecord(Constants.COMPANY_TABLE, companyId));
             String finMnemonic = companyRec.getFinancialMne().getValue();
-            LogUtil.info(CLASS_NAME, "getFinancialMnemonic", "FOUND", "company=" + companyId + " mnemonic=" + finMnemonic);
+            LogUtil.info(CLASS_NAME, "getFinancialMnemonic", "FOUND", "company=" + companyId + " mnemonic="
+                    + finMnemonic);
             return finMnemonic;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "getFinancialMnemonic", "FAILED", "company=" + companyId, e);
@@ -301,13 +305,16 @@ public class CustomerLimitRepository {
                         + accountIds.size() + " " + accountIds);
                 return accountIds;
             }
-            LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "NOT FOUND", Constants.CUSTOMER_ACCOUNT_FILE + " empty for " + customerId);
+            LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "NOT FOUND", Constants.CUSTOMER_ACCOUNT_FILE
+                    + " empty for " + customerId);
         } catch (Exception e) {
-            LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "NOT FOUND", "no " + Constants.CUSTOMER_ACCOUNT_FILE + " entry for " + customerId);
+            LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "NOT FOUND", "no " + Constants.CUSTOMER_ACCOUNT_FILE
+                    + " entry for " + customerId);
         }
 
         String selection = "WITH CUSTOMER EQ " + customerId;
-        LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "SELECT", "fallback SELECT " + Constants.ACCOUNT_TABLE + " mnemonic=" + finMnemonic
+        LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "SELECT", "fallback SELECT " + Constants.ACCOUNT_TABLE
+                + " mnemonic=" + finMnemonic
                 + " [" + selection + "]");
         try {
             List<String> accountIds = daObj.selectRecords(finMnemonic, Constants.ACCOUNT_TABLE, "", selection);
@@ -322,10 +329,13 @@ public class CustomerLimitRepository {
 
     /** Reads ACCOUNT <id> in the given company; null if it cannot be read. */
     public AccountRecord readAccount(String finMnemonic, String accountId) {
-        LogUtil.detail(CLASS_NAME, "readAccount", "READ", Constants.ACCOUNT_TABLE + ">" + accountId + " mnemonic=" + finMnemonic);
+        LogUtil.detail(CLASS_NAME, "readAccount", "READ", Constants.ACCOUNT_TABLE + ">" + accountId + " mnemonic="
+                + finMnemonic);
         try {
-            AccountRecord accountRec = new AccountRecord(daObj.getRecord(finMnemonic, Constants.ACCOUNT_TABLE, "", accountId));
-            LogUtil.info(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId + " workingBalance="
+            AccountRecord accountRec = new AccountRecord(daObj.getRecord(finMnemonic, Constants.ACCOUNT_TABLE, "",
+                    accountId));
+            LogUtil.info(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId
+                    + " workingBalance="
                     + accountRec.getWorkingBalance().getValue());
             return accountRec;
         } catch (Exception e) {

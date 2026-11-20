@@ -1,15 +1,15 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
+import com.temenos.ALBE.CustomerLimit.model.Limits;
+import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
-import com.temenos.ALBE.CustomerLimit.model.Limits;
-import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 
 /*-----------------------------------------------------------------------------
  * Description : Builds Limits from the limit records (DB access via CustomerLimitRepository).
@@ -41,11 +41,13 @@ public class CustomerLimitReader {
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
-        LogUtil.info(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">" + customerId);
+        LogUtil.info(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">"
+                + customerId);
         try {
             EbAlbeCifLimitRecord cifLimitRec = repository.readCifLimit(customerId);
             if (cifLimitRec == null) {
-                LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for " + customerId);
+                LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for "
+                        + customerId);
                 return null;
             }
             Limits limits = new Limits();
@@ -70,7 +72,8 @@ public class CustomerLimitReader {
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {
-        LogUtil.info(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID);
+        LogUtil.info(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">"
+                + Constants.GEN_PARAM_ID);
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
             if (genParamRec == null) {

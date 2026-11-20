@@ -1,12 +1,12 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitCreationService;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.api.TStructure;
 import com.temenos.t24.api.complex.eb.servicehook.TransactionData;
 import com.temenos.t24.api.complex.eb.templatehook.TransactionContext;
@@ -48,7 +48,8 @@ public class CustomerLimitCreationController extends RecordLifecycle {
                     new CustomerLimitCreationService(new CustomerLimitRepository(this));
 
             boolean done;
-            if (Constants.FUNCTION_DELETE.equalsIgnoreCase(function) || Constants.FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
+            if (Constants.FUNCTION_DELETE.equalsIgnoreCase(function)
+                    || Constants.FUNCTION_DELETE_FULL.equalsIgnoreCase(function)) {
                 LogUtil.info(CLASS_NAME, "postUpdateRequest", "ACTION", "action=DELETE");
                 done = service.delete(currentRecordId);
             } else {

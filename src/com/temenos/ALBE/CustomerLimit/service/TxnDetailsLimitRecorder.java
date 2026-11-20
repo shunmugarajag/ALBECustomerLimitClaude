@@ -1,16 +1,16 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 
 /*-----------------------------------------------------------------------------
@@ -110,7 +110,8 @@ public class TxnDetailsLimitRecorder {
             LocalDate countedOn = ValidationUtil.toDate(txnRec.getSystemDate().getValue());
             if (countedOn == null) {
                 countedOn = LocalDate.now();
-                LogUtil.error(CLASS_NAME, "toRequest", "INVALID", "id=" + recordId + " SYSTEM.DATE blank/invalid, using today "
+                LogUtil.error(CLASS_NAME, "toRequest", "INVALID", "id=" + recordId
+                        + " SYSTEM.DATE blank/invalid, using today "
                         + countedOn);
             }
 

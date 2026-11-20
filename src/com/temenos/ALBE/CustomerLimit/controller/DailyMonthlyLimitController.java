@@ -1,16 +1,16 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.DailyMonthlyLimitService;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
@@ -75,8 +75,8 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             // View
             int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
 
-            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId() + " aaa="
-                    + request.getTransactionId() + " overridesRaised=" + raised + " elapsedMs="
+            LogUtil.info(CLASS_NAME, "validateRecord", "END", request.logKey() + " overridesRaised=" + raised
+                    + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
@@ -100,17 +100,10 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "START", "status=" + activityStatus);
             logActivity("postCoreTableUpdate", arrangementActivityRecord, arrangementContext, arrangementRecord);
 
-            boolean isInput = Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus);
-            boolean isDelete = Constants.STATUS_DELETE.equalsIgnoreCase(activityStatus);
-            boolean isReversal = Constants.STATUS_AUTH_REV.equalsIgnoreCase(activityStatus);
-
-            if (Constants.STATUS_AUTH.equalsIgnoreCase(activityStatus)) {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=AUTH (utilisation already counted at input)");
-                return;
-            }
-            if (!isInput && !isDelete && !isReversal) {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=" + activityStatus
-                        + " (only UNAUTH / DELETE / AUTH-REV change utilisation)");
+            String status = activityStatus == null ? "" : activityStatus.trim().toUpperCase();
+            if (!isUtilisationStatus(status)) {
+                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=" + status
+                        + " (only UNAUTH / DELETE / AUTH-REV change utilisation; AUTH was counted at input)");
                 return;
             }
 
@@ -120,25 +113,35 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             }
 
             DailyMonthlyLimitService service = new DailyMonthlyLimitService(new CustomerLimitRepository(this));
-            if (isInput) {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=COUNT");
-                service.countAtInput(request, getAccountNo(arrangementRecord),
-                        arrangementActivityRecord.getEffectiveDate().getValue());
-            } else if (isDelete) {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=REVERSE (rejected input)");
-                service.reverse(request, false);
-            } else {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "action=REVERSE (reversal)");
-                service.reverse(request, true);
+            switch (status) {
+                case Constants.STATUS_UNAUTH:   // transaction initiated: count it
+                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
+                    service.countAtInput(request, getAccountNo(arrangementRecord),
+                            arrangementActivityRecord.getEffectiveDate().getValue());
+                    break;
+                case Constants.STATUS_DELETE:   // unauthorised input rejected: take it back
+                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE rejected input "
+                            + request.logKey());
+                    service.reverse(request, false);
+                    break;
+                default:                        // AUTH-REV, committed transaction reversed: take it back
+                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE reversal " + request.logKey());
+                    service.reverse(request, true);
+                    break;
             }
 
-            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "END", "status=" + activityStatus + " customer="
-                    + request.getCustomerId() + " aaa=" + request.getTransactionId() + " elapsedMs="
-                    + (System.currentTimeMillis() - startTime));
+            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "END", "status=" + status + " " + request.logKey()
+                    + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "ERROR", "status=" + activityStatus, e);
         }
+    }
+
+    /** UNAUTH, DELETE and AUTH-REV change utilisation; AUTH and anything else do not. */
+    private boolean isUtilisationStatus(String status) {
+        return Constants.STATUS_UNAUTH.equals(status) || Constants.STATUS_DELETE.equals(status)
+                || Constants.STATUS_AUTH_REV.equals(status);
     }
 
     /**

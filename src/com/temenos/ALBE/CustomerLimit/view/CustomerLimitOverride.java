@@ -1,12 +1,12 @@
 package com.temenos.ALBE.CustomerLimit.view;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.util.Arrays;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.LimitBreach;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.api.TField;
 
 /*-----------------------------------------------------------------------------
@@ -45,14 +45,16 @@ public class CustomerLimitOverride {
     public static int raiseFor(TField field, CustomerLimitDTO request) {
         int raised = 0;
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
-            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " limit not defined"
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId()
+                    + " limit not defined"
                     + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
             raise(field, Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId());
             raised++;
         }
         if (request.isRateMissing()) {
-            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " no exchange rate from "
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId()
+                    + " no exchange rate from "
                     + request.getRateMissingCurrency() + " to " + request.getLimitCurrency());
             raise(field, Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(), request.getLimitCurrency());
             raised++;
@@ -63,7 +65,8 @@ public class CustomerLimitOverride {
             raise(field, breach.getOverrideId(), request.getCustomerId(), breach.getDifference().toPlainString());
             raised++;
         }
-        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised=" + raised);
+        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
+                + raised);
         return raised;
     }
 

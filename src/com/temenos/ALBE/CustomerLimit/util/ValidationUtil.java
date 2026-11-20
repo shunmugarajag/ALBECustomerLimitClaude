@@ -61,7 +61,8 @@ public class ValidationUtil {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
-            LogUtil.error(CLASS_NAME, "toOptionalAmount", "INVALID", "invalid amount '" + value + "', treated as blank");
+            LogUtil.error(CLASS_NAME, "toOptionalAmount", "INVALID", "invalid amount '" + value
+                    + "', treated as blank");
             return null;
         }
     }

@@ -1,10 +1,9 @@
 package com.temenos.ALBE.CustomerLimit.validation;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 /*-----------------------------------------------------------------------------
  * Description : Single place where the input taken from T24 is checked, once, by the

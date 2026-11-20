@@ -1,11 +1,12 @@
 package com.temenos.ALBE.CustomerLimit.model;
 
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 
 /*-----------------------------------------------------------------------------
  * Description : Input and result data passed between the customer limit routines.
@@ -71,6 +72,15 @@ public class CustomerLimitDTO {
     public void setDebitAmount(BigDecimal debitAmount) {
         this.debitAmount = debitAmount == null ? BigDecimal.ZERO : debitAmount;
     }
+
+    /** True for a credit transaction (credit amount above zero), false for a debit. */
+    public boolean isCredit() { return creditAmount.signum() > 0; }
+
+    /** The transaction amount: the credit amount for a credit, the debit amount for a debit. */
+    public BigDecimal getAmount() { return isCredit() ? creditAmount : debitAmount; }
+
+    /** "customer=<id> aaa=<id>" - the key that starts most log lines about this request. */
+    public String logKey() { return "customer=" + customerId + " aaa=" + transactionId; }
 
     public String getTransactionCurrency() { return transactionCurrency; }
     public void setTransactionCurrency(String transactionCurrency) { this.transactionCurrency = transactionCurrency; }

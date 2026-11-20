@@ -1,12 +1,12 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.MaximumCifLimitService;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
+import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
@@ -79,7 +79,8 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             // View
             int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
 
-            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId() + " overridesRaised="
+            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId()
+                    + " overridesRaised="
                     + raised + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {

@@ -1,13 +1,13 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 /*-----------------------------------------------------------------------------
  * Description : Converts amounts to the customer's limit currency (EB.ALBE.CIF.LIMIT CCY).
@@ -34,7 +34,8 @@ public class CurrencyConversionService {
      * otherwise the configured exchange rate; null when no rate is available.
      */
     public BigDecimal getRate(String fromCcy, String toCcy) {
-        if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy, toCcy)) {
+        if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy,
+                toCcy)) {
             LogUtil.info(CLASS_NAME, "getRate", "CALC", "from=" + fromCcy + " to=" + toCcy + " same currency, rate=1");
             return Constants.SAME_CURRENCY_RATE;
         }
@@ -54,7 +55,8 @@ public class CurrencyConversionService {
             return null;
         }
         BigDecimal converted = amount.multiply(rate).setScale(Constants.AMOUNT_SCALE, RoundingMode.HALF_UP);
-        LogUtil.info(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " " + toCcy);
+        LogUtil.info(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " "
+                + toCcy);
         return converted;
     }
 
@@ -71,9 +73,8 @@ public class CurrencyConversionService {
 
         BigDecimal rate = getRate(request.getTransactionCurrency(), limitCcy);
         if (rate == null) {
-            LogUtil.error(CLASS_NAME, "convertRequest", "NO RATE", "customer=" + request.getCustomerId() + " aaa="
-                    + request.getTransactionId() + " no rate from " + request.getTransactionCurrency() + " to "
-                    + limitCcy);
+            LogUtil.error(CLASS_NAME, "convertRequest", "NO RATE", request.logKey() + " no rate from "
+                    + request.getTransactionCurrency() + " to " + limitCcy);
             request.setRateMissing(request.getTransactionCurrency());
             return false;
         }

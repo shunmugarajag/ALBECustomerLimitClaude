@@ -1,14 +1,16 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
-import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
+import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
@@ -92,58 +94,62 @@ public class DailyMonthlyLimitService {
         LogUtil.info(CLASS_NAME, "validate", "END", request + " blankLimits=" + request.getUndefinedLimits());
     }
 
-    /** Daily: today's utilised credit/debit + txn amount against the daily credit/debit limit. */
+    /** Daily: today's utilised credit (or debit) + txn amount against the daily limit. */
     private void validateDailyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs) {
+        boolean credit = request.isCredit();
         String dailyId = CustomerLimitUtilizationUpdater.dailyRecordId(request);
         EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(dailyId);
 
-        if (isCredit(request)) {
-            BigDecimal utilised = dailyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(dailyRec.getUtilisedCreditLimit().getValue());
-            utilised = utilised.subtract(earlierAmount(request, earlierInputs, true, false)).max(BigDecimal.ZERO);
-            LogUtil.info(CLASS_NAME, "validateDailyLimit", "CALC", "CREDIT record=" + dailyId + " utilised=" + utilised
-                    + " txn=" + request.getCreditAmount() + " limit=" + limits.dailyCreditLimit);
-            checkLimit(request, Constants.KEY_DAILY_CREDIT_LIMIT, limits.dailyCreditLimit, utilised, request.getCreditAmount(),
-                    Constants.OVR_DAILY_LIMIT_EXCEED, Constants.MSG_DAILY_EXCEEDED);
-        } else {
-            BigDecimal utilised = dailyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(dailyRec.getUtilisedDebitLimit().getValue());
-            utilised = utilised.subtract(earlierAmount(request, earlierInputs, false, false)).max(BigDecimal.ZERO);
-            LogUtil.info(CLASS_NAME, "validateDailyLimit", "CALC", "DEBIT record=" + dailyId + " utilised=" + utilised
-                    + " txn=" + request.getDebitAmount() + " limit=" + limits.dailyDebitLimit);
-            checkLimit(request, Constants.KEY_DAILY_DEBIT_LIMIT, limits.dailyDebitLimit, utilised, request.getDebitAmount(),
-                    Constants.OVR_DAILY_LIMIT_EXCEED, Constants.MSG_DAILY_EXCEEDED);
-        }
+        BigDecimal utilised = utilisedAmount(dailyRec, credit)
+                .subtract(earlierAmount(request, earlierInputs, credit, false))
+                .max(BigDecimal.ZERO);
+
+        String limitField = credit ? Constants.KEY_DAILY_CREDIT_LIMIT : Constants.KEY_DAILY_DEBIT_LIMIT;
+        BigDecimal limit = credit ? limits.dailyCreditLimit : limits.dailyDebitLimit;
+
+        LogUtil.info(CLASS_NAME, "validateDailyLimit", "CALC", limitField + " record=" + dailyId
+                + " utilised=" + utilised + " txn=" + request.getAmount() + " limit=" + limit);
+        checkLimit(request, limitField, limit, utilised, Constants.OVR_DAILY_LIMIT_EXCEED,
+                Constants.MSG_DAILY_EXCEEDED);
     }
 
-    /** Monthly: migrated + this month's utilised credit/debit + txn amount against the monthly limit. */
+    /** Monthly: migrated + this month's utilised credit (or debit) + txn amount against the monthly limit. */
     private void validateMonthlyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs) {
+        boolean credit = request.isCredit();
         String monthlyId = CustomerLimitUtilizationUpdater.monthlyRecordId(request);
         EbAlbeUtilisedLimitRecord monthlyRec = repository.readUtilisedLimit(monthlyId);
 
-        if (isCredit(request)) {
-            BigDecimal migrated = monthlyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(monthlyRec.getUtilisedMigratedCreditLimit().getValue());
-            BigDecimal monthly = monthlyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(monthlyRec.getUtilisedCreditLimit().getValue());
-            monthly = monthly.subtract(earlierAmount(request, earlierInputs, true, true)).max(BigDecimal.ZERO);
-            LogUtil.info(CLASS_NAME, "validateMonthlyLimit", "CALC", "CREDIT record=" + monthlyId + " migrated=" + migrated
-                    + " utilised=" + monthly + " txn=" + request.getCreditAmount() + " limit="
-                    + limits.monthlyCreditLimit);
-            checkLimit(request, Constants.KEY_MONTHLY_CREDIT_LIMIT, limits.monthlyCreditLimit, migrated.add(monthly),
-                    request.getCreditAmount(), Constants.OVR_MONTHLY_LIMIT_EXCEED, Constants.MSG_MONTHLY_EXCEEDED);
-        } else {
-            BigDecimal migrated = monthlyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(monthlyRec.getUtilisedMigratedDebitLimit().getValue());
-            BigDecimal monthly = monthlyRec == null ? BigDecimal.ZERO
-                    : ValidationUtil.toAmount(monthlyRec.getUtilisedDebitLimit().getValue());
-            monthly = monthly.subtract(earlierAmount(request, earlierInputs, false, true)).max(BigDecimal.ZERO);
-            LogUtil.info(CLASS_NAME, "validateMonthlyLimit", "CALC", "DEBIT record=" + monthlyId + " migrated=" + migrated
-                    + " utilised=" + monthly + " txn=" + request.getDebitAmount() + " limit="
-                    + limits.monthlyDebitLimit);
-            checkLimit(request, Constants.KEY_MONTHLY_DEBIT_LIMIT, limits.monthlyDebitLimit, migrated.add(monthly),
-                    request.getDebitAmount(), Constants.OVR_MONTHLY_LIMIT_EXCEED, Constants.MSG_MONTHLY_EXCEEDED);
+        BigDecimal migrated = migratedAmount(monthlyRec, credit);
+        BigDecimal utilised = utilisedAmount(monthlyRec, credit)
+                .subtract(earlierAmount(request, earlierInputs, credit, true))
+                .max(BigDecimal.ZERO);
+
+        String limitField = credit ? Constants.KEY_MONTHLY_CREDIT_LIMIT : Constants.KEY_MONTHLY_DEBIT_LIMIT;
+        BigDecimal limit = credit ? limits.monthlyCreditLimit : limits.monthlyDebitLimit;
+
+        LogUtil.info(CLASS_NAME, "validateMonthlyLimit", "CALC", limitField + " record=" + monthlyId
+                + " migrated=" + migrated + " utilised=" + utilised + " txn=" + request.getAmount() + " limit="
+                        + limit);
+        checkLimit(request, limitField, limit, migrated.add(utilised), Constants.OVR_MONTHLY_LIMIT_EXCEED,
+                Constants.MSG_MONTHLY_EXCEEDED);
+    }
+
+    /** UTILISED.CREDIT.LIMIT (or UTILISED.DEBIT.LIMIT) of the record; 0 when there is no record yet. */
+    private BigDecimal utilisedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
+        if (utilRec == null) {
+            return BigDecimal.ZERO;
         }
+        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedCreditLimit().getValue()
+                : utilRec.getUtilisedDebitLimit().getValue());
+    }
+
+    /** UTILISED.MIGRATED.CREDIT.LIMIT (or ...DEBIT.LIMIT) of the monthly record; 0 when there is no record. */
+    private BigDecimal migratedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
+        if (utilRec == null) {
+            return BigDecimal.ZERO;
+        }
+        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedMigratedCreditLimit().getValue()
+                : utilRec.getUtilisedMigratedDebitLimit().getValue());
     }
 
     /**
@@ -151,14 +157,14 @@ public class DailyMonthlyLimitService {
      * A blank (null) limit is recorded as "limit not defined".
      */
     private void checkLimit(CustomerLimitDTO request, String limitField, BigDecimal limit, BigDecimal utilised,
-            BigDecimal transactionAmount, String overrideId, String messageFormat) {
+            String overrideId, String messageFormat) {
         if (limit == null) {
             LogUtil.info(CLASS_NAME, "checkLimit", "NOT DEFINED", limitField + " is blank for customer="
                     + request.getCustomerId());
             request.addUndefinedLimit(limitField);
             return;
         }
-        BigDecimal projected = utilised.add(transactionAmount);
+        BigDecimal projected = utilised.add(request.getAmount());
         if (projected.compareTo(limit) > 0) {
             BigDecimal difference = projected.subtract(limit);
             LogUtil.info(CLASS_NAME, "checkLimit", "BREACH", limitField + " projected=" + projected
@@ -179,11 +185,7 @@ public class DailyMonthlyLimitService {
             boolean credit, boolean sameMonth) {
         BigDecimal total = BigDecimal.ZERO;
         for (CustomerLimitDTO earlier : earlierInputs) {
-            boolean samePeriod = sameMonth
-                    ? earlier.getTransactionDate().getYear() == request.getTransactionDate().getYear()
-                            && earlier.getTransactionDate().getMonthValue() == request.getTransactionDate().getMonthValue()
-                    : earlier.getTransactionDate().equals(request.getTransactionDate());
-            if (samePeriod) {
+            if (isSamePeriod(earlier.getTransactionDate(), request.getTransactionDate(), sameMonth)) {
                 total = total.add(credit ? earlier.getCreditAmount() : earlier.getDebitAmount());
             }
         }
@@ -209,8 +211,7 @@ public class DailyMonthlyLimitService {
         toLimitCurrency(request);
         updater.update(request);
         recorder.record(request, accountNo, effectiveDate);
-        LogUtil.info(CLASS_NAME, "countAtInput", "END", "customer=" + request.getCustomerId() + " aaa="
-                + request.getTransactionId() + " earlierInputReversed=" + earlier);
+        LogUtil.info(CLASS_NAME, "countAtInput", "END", request.logKey() + " earlierInputReversed=" + earlier);
     }
 
     /**
@@ -225,7 +226,8 @@ public class DailyMonthlyLimitService {
         LogUtil.info(CLASS_NAME, "reverse", "START", request + " fallbackToToday=" + fallbackToToday);
         int reversed = reverseCounted(request);
         if (reversed == 0 && fallbackToToday) {
-            LogUtil.info(CLASS_NAME, "reverse", "NOT FOUND", "no EB.ALBE.TXN.DETAILS.LIMIT for aaa=" + request.getTransactionId()
+            LogUtil.info(CLASS_NAME, "reverse", "NOT FOUND", "no EB.ALBE.TXN.DETAILS.LIMIT for aaa="
+                    + request.getTransactionId()
                     + ", reversing on server date");
             toLimitCurrency(request);
             updater.reverse(request);
@@ -233,8 +235,7 @@ public class DailyMonthlyLimitService {
         } else if (reversed == 0) {
             LogUtil.info(CLASS_NAME, "reverse", "SKIP", "nothing was counted for aaa=" + request.getTransactionId());
         }
-        LogUtil.info(CLASS_NAME, "reverse", "END", "customer=" + request.getCustomerId() + " aaa="
-                + request.getTransactionId() + " reversed=" + reversed);
+        LogUtil.info(CLASS_NAME, "reverse", "END", request.logKey() + " reversed=" + reversed);
         return reversed;
     }
 
@@ -244,10 +245,10 @@ public class DailyMonthlyLimitService {
      */
     private int reverseCounted(CustomerLimitDTO request) {
         List<CustomerLimitDTO> originals = recorder.findOriginal(request);
-        LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", "customer=" + request.getCustomerId() + " aaa="
-                + request.getTransactionId() + " found=" + originals.size());
+        LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", request.logKey() + " found=" + originals.size());
         for (CustomerLimitDTO original : originals) {
-            LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", "originalDate=" + original.getTransactionDate() + " credit="
+            LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", "originalDate=" + original.getTransactionDate()
+                    + " credit="
                     + original.getCreditAmount() + " debit=" + original.getDebitAmount());
             updater.reverse(original);
             recorder.delete(original);
@@ -268,12 +269,14 @@ public class DailyMonthlyLimitService {
             return;
         }
         if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.error(CLASS_NAME, "toLimitCurrency", "NO RATE", "no rate from " + request.getTransactionCurrency() + " to "
+            LogUtil.error(CLASS_NAME, "toLimitCurrency", "NO RATE", "no rate from " + request.getTransactionCurrency()
+                    + " to "
                     + limits.ccy + ", amount counted unconverted for aaa=" + request.getTransactionId());
         }
     }
 
-    private boolean isCredit(CustomerLimitDTO request) {
-        return request.getCreditAmount().signum() > 0;
+    /** Same day, or (sameMonth=true) same calendar month. */
+    private boolean isSamePeriod(LocalDate date1, LocalDate date2, boolean sameMonth) {
+        return sameMonth ? YearMonth.from(date1).equals(YearMonth.from(date2)) : date1.equals(date2);
     }
 }
