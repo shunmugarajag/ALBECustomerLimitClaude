@@ -23,6 +23,7 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
 | 5 | **Overrides** | After each check | Acceptable overrides from EB.OVERRIDE, raised on TXN.AMOUNT |
+| 6 | **Enquiries** | On demand | Limit summary (limits, used, available per customer) and transaction report (what is counted) |
 
 All limit breaches are **acceptable overrides**, not errors: the user can accept and continue.
 
@@ -69,6 +70,12 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
 | `controller` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
 | `controller` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
+| `controller` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
+| `controller` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
+| `validation` | `CustomerLimitEnquiryValidator` | Enquiry selection checks: valid dates, date range, customer mandatory |
+| `service` | `CustomerLimitEnquiryService` | Builds the report rows (read only) |
+| `model` | `LimitSummaryRow`, `LimitTxnRow` | One report row each |
+| `view` | `CustomerLimitEnquiryView` | Formats the rows as `*`-separated enquiry lines (column order documented in the class) |
 | `validation` | `CustomerLimitRequestValidator` | `isValidForDailyMonthly`, `isValidForMaxCif`, `isValidCustomerId` |
 | `service` | `CustomerLimitCreationService` | `create(customerId)` – never overwrites an existing record |
 | `service` | `DailyMonthlyLimitService` | `validate`, `countAtInput`, `reverse` |
@@ -188,6 +195,17 @@ total + credit > MAX.CIF.BALANCE -> breach (difference)
 
 Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
 **Pending:** the rate table and field are not configured yet (`Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD` are empty), so today only same-currency transactions are checked; other currencies raise the rate-missing override.
+
+### 5.6 Enquiries
+
+| Enquiry | Selection | Reads |
+|---|---|---|
+| Limit summary | CUSTOMER (optional), DATE (optional, default today) | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of all CIF.LIMIT ids |
+| Transaction report | CUSTOMER (mandatory), DATE.FROM / DATE.TO (optional, on SYSTEM.DATE) | one SELECT on TXN.DETAILS by `<customer>-...`, then a read per record |
+
+Available = limit − used (negative = over the limit after an accepted override; blank when the limit is not defined).
+Bad selection raises an EB.ERROR (`EB-ALBE.ENQ.*`); nothing found raises `EB-NO.REC.SELECT`, as in the team's other NOFILE enquiries.
+Enquiries never write. Dates are parsed strictly (`Constants.DATE_PARSE_FORMAT`), so 20261131 is rejected.
 
 ---
 
@@ -366,3 +384,5 @@ These are used by the code but are **not** in the team's sample routines. Check 
 | 20-Nov-2026 | Validation once in controllers; ValidationUtil; LogUtil logging standard |
 | 20-Nov-2026 | Readability refactor (credit/debit merged) |
 | 20-Nov-2026 | Creation as Auth routine, no delete flow, never overwrite |
+| 20-Nov-2026 | GEN.PARAM record id CUSTOMER.LIMIT |
+| 20-Nov-2026 | Enquiries: limit summary and transaction report; strict date parsing |

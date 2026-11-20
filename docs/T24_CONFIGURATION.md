@@ -21,12 +21,32 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 | 11 | Data before go-live (existing customers, migrated utilisation) | ☐ |
 | 12 | Exchange rate (pending) | ☐ |
 | 13 | DEV / SIT test cases | ☐ |
+| 14 | Enquiries (limit summary, transaction report) | ☐ |
 
 ---
 
 ## 1. Local tables
 
 Create (or check) these four EB.TABLE.DEFINITION records. **Field names must match exactly**: the generated Java getters (`getDailyCreditLimit()` …) come from them.
+
+### 1.0 Table type (which files T24 creates)
+
+| Type | Files | Meaning |
+|---|---|---|
+| H (history) | live + $NAU + $HIS | maker-checker with full history |
+| U (unauthorised) | live + $NAU | maker-checker, no history |
+| L (live only) | live | no authorisation, no history, written directly |
+
+The field that holds the type in EB.TABLE.DEFINITION can differ by release **(confirm)**; FILE.CONTROL > SUFFIXES shows the result ($NAU / $HIS).
+
+| Table | Suggested type | Why |
+|---|---|---|
+| EB.ALBE.CIF.LIMIT | **H** | users amend it through a version; the bank needs authorisation and a history of limit changes |
+| EB.ALBE.GEN.PARAM | **H** (or U) | parameter changes should be authorised and traceable |
+| EB.ALBE.UTILISED.LIMIT | **L** | written only by the code on every transaction; no authorisation, no history (would grow huge) |
+| EB.ALBE.TXN.DETAILS.LIMIT | **L** | internal bookkeeping, one record per transaction, deleted on rejection / reversal |
+
+The code always reads and writes the **live** file. If UTILISED.LIMIT / TXN.DETAILS already exist as H or U it still works, but L avoids users creating $NAU copies on screen and saves space.
 
 ### 1.1 EB.ALBE.GEN.PARAM – generic parameters  *(exists)*
 
@@ -264,3 +284,93 @@ Also note in the DEV log (once):
 - the AAA id format (test 3) – the TXN.DETAILS id must fit;
 - the override text shows both `&` values (test 4);
 - the T24 "record not found" text for a missing EB.ALBE.CIF.LIMIT (test 1). If you see `cifLimitExists | FAILED` instead of `NOT FOUND`, add the word from that log line to `Constants.RECORD_NOT_FOUND_MARKERS`.
+
+---
+
+## 14. Enquiries – customer limit reports
+
+Two NOFILE enquiries (same set-up as the team's other NOFILE enquiries, e.g. NOFILE.FF.BM.OVERDUE.SM.RPT).
+Each routine returns one line per row with the columns separated by `*`; the ENQUIRY record shows each column by its position.
+
+### 14.1 EB.API
+
+| EB.API id | Java package | Java class | Method |
+|---|---|---|---|
+| ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitSummaryEnquiryController` | `setIds` |
+| ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitTxnEnquiryController` | `setIds` |
+
+### 14.2 STANDARD.SELECTION
+
+| STANDARD.SELECTION | Routine | Selection fields |
+|---|---|---|
+| NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `CUSTOMER` (optional, EQ), `DATE` (optional, EQ, YYYYMMDD; blank = today) |
+| NOFILE.ALBE.CUSTOMER.LIMIT.TXN | ALBE.E.CUSTOMER.LIMIT.TXN | `CUSTOMER` (**mandatory**, EQ), `DATE.FROM` (optional), `DATE.TO` (optional) |
+
+The selection field names must be exactly as above (`Constants.ENQ_SEL_*`).
+
+### 14.3 ENQUIRY records
+
+**ALBE.CUSTOMER.LIMIT.SUMMARY** (FILE.NAME = NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY) – one line per customer:
+
+| Col | Field | Meaning |
+|---|---|---|
+| 1 | CUSTOMER | customer id |
+| 2 | CCY | limit currency |
+| 3 | REPORT.DATE | date reported (YYYYMMDD) |
+| 4 | DAILY.CR.LIMIT | daily credit limit |
+| 5 | DAILY.CR.UTILISED | credit used on that day |
+| 6 | DAILY.CR.AVAILABLE | limit − used |
+| 7 | DAILY.DR.LIMIT | daily debit limit |
+| 8 | DAILY.DR.UTILISED | debit used on that day |
+| 9 | DAILY.DR.AVAILABLE | limit − used |
+| 10 | MONTHLY.CR.LIMIT | monthly credit limit |
+| 11 | MONTHLY.CR.UTILISED | credit used in that month (migrated + counted) |
+| 12 | MONTHLY.CR.AVAILABLE | limit − used |
+| 13 | MONTHLY.DR.LIMIT | monthly debit limit |
+| 14 | MONTHLY.DR.UTILISED | debit used in that month (migrated + counted) |
+| 15 | MONTHLY.DR.AVAILABLE | limit − used |
+| 16 | MAX.CIF.BALANCE | maximum CIF balance limit |
+
+- A blank limit shows blank limit and blank available.
+- A **negative** available means the customer is over the limit (transactions accepted with the override).
+- Without CUSTOMER the report lists **every** customer that has an EB.ALBE.CIF.LIMIT record (3 reads per customer) – on a large customer base give a CUSTOMER, or run it as an offline report.
+
+**ALBE.CUSTOMER.LIMIT.TXN** (FILE.NAME = NOFILE.ALBE.CUSTOMER.LIMIT.TXN) – the transactions currently counted for the customer, oldest first:
+
+| Col | Field | Meaning |
+|---|---|---|
+| 1 | CUSTOMER | customer id |
+| 2 | AAA.ID | arrangement activity |
+| 3 | ACCOUNT.NO | account |
+| 4 | CR.DR | CR / DR |
+| 5 | TXN.AMOUNT | amount counted (limit currency) |
+| 6 | EFF.DATE | effective date |
+| 7 | SYSTEM.DATE | server date it was counted on (DATE.FROM / DATE.TO filter on this) |
+| 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
+
+Rejected and reversed transactions are **not** listed: their record is deleted when the utilisation is reversed.
+
+### 14.4 EB.ERROR records
+
+| ID | Message (suggested) | When |
+|---|---|---|
+| EB-NO.REC.SELECT | No records selected | nothing to show (already used by other enquiries) |
+| EB-ALBE.ENQ.INVALID.DATE | Invalid date, enter YYYYMMDD | DATE / DATE.FROM / DATE.TO not a real date (e.g. 20261131) |
+| EB-ALBE.ENQ.DATE.RANGE | Date from cannot be after date to | DATE.FROM > DATE.TO |
+| EB-ALBE.ENQ.CUSTOMER.MANDATORY | Customer is mandatory | transaction report without CUSTOMER |
+
+### 14.5 Menu and tests
+
+Add both enquiries to the relevant user menu. Test:
+
+| # | Test | Expected |
+|---|---|---|
+| E1 | Summary for a customer after tests 3–4 of §13 | daily CR used 7000, available −2000 |
+| E2 | Summary after the rejection (test 6) | daily CR used 3000, available 2000 |
+| E3 | Summary without CUSTOMER | one line per EB.ALBE.CIF.LIMIT record |
+| E4 | Summary DATE = 20261131 | error EB-ALBE.ENQ.INVALID.DATE |
+| E5 | Transaction report for the customer | one line per counted transaction; the rejected one is not shown |
+| E6 | Transaction report without CUSTOMER | error EB-ALBE.ENQ.CUSTOMER.MANDATORY |
+| E7 | Transaction report DATE.FROM > DATE.TO | error EB-ALBE.ENQ.DATE.RANGE |
+
+The transaction report uses one SELECT on EB.ALBE.TXN.DETAILS.LIMIT (`WITH @ID LIKE <customer>-... [AND SYSTEM.DATE GE/LE ...] BY SYSTEM.DATE BY @ID`); check in DEV that SYSTEM.DATE is selectable (it is a normal field once added).

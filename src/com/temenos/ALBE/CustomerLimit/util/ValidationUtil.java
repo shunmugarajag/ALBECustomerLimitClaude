@@ -78,7 +78,7 @@ public class ValidationUtil {
             return null;
         }
         try {
-            return LocalDate.parse(value.trim(), Constants.DAILY_ID_FORMAT);
+            return LocalDate.parse(value.trim(), Constants.DATE_PARSE_FORMAT);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "toDate", "INVALID", "invalid date '" + value + "'");
             return null;

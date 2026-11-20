@@ -10,7 +10,6 @@ import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
-import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
@@ -100,7 +99,7 @@ public class DailyMonthlyLimitService {
         String dailyId = CustomerLimitUtilizationUpdater.dailyRecordId(request);
         EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(dailyId);
 
-        BigDecimal utilised = utilisedAmount(dailyRec, credit)
+        BigDecimal utilised = CustomerLimitUtilizationUpdater.utilisedAmount(dailyRec, credit)
                 .subtract(earlierAmount(request, earlierInputs, credit, false))
                 .max(BigDecimal.ZERO);
 
@@ -119,8 +118,8 @@ public class DailyMonthlyLimitService {
         String monthlyId = CustomerLimitUtilizationUpdater.monthlyRecordId(request);
         EbAlbeUtilisedLimitRecord monthlyRec = repository.readUtilisedLimit(monthlyId);
 
-        BigDecimal migrated = migratedAmount(monthlyRec, credit);
-        BigDecimal utilised = utilisedAmount(monthlyRec, credit)
+        BigDecimal migrated = CustomerLimitUtilizationUpdater.migratedAmount(monthlyRec, credit);
+        BigDecimal utilised = CustomerLimitUtilizationUpdater.utilisedAmount(monthlyRec, credit)
                 .subtract(earlierAmount(request, earlierInputs, credit, true))
                 .max(BigDecimal.ZERO);
 
@@ -132,24 +131,6 @@ public class DailyMonthlyLimitService {
                         + limit);
         checkLimit(request, limitField, limit, migrated.add(utilised), Constants.OVR_MONTHLY_LIMIT_EXCEED,
                 Constants.MSG_MONTHLY_EXCEEDED);
-    }
-
-    /** UTILISED.CREDIT.LIMIT (or UTILISED.DEBIT.LIMIT) of the record; 0 when there is no record yet. */
-    private BigDecimal utilisedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
-        if (utilRec == null) {
-            return BigDecimal.ZERO;
-        }
-        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedCreditLimit().getValue()
-                : utilRec.getUtilisedDebitLimit().getValue());
-    }
-
-    /** UTILISED.MIGRATED.CREDIT.LIMIT (or ...DEBIT.LIMIT) of the monthly record; 0 when there is no record. */
-    private BigDecimal migratedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
-        if (utilRec == null) {
-            return BigDecimal.ZERO;
-        }
-        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedMigratedCreditLimit().getValue()
-                : utilRec.getUtilisedMigratedDebitLimit().getValue());
     }
 
     /**

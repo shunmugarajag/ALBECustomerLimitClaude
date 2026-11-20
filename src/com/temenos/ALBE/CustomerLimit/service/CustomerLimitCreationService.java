@@ -58,7 +58,8 @@ public class CustomerLimitCreationService {
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
             LogUtil.error(CLASS_NAME, "create", "NOT FOUND",
-                    Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " not found, limit not created for " + customerId);
+                    Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " not found, limit not created for "
+                    + customerId);
             return false;
         }
         LogUtil.info(CLASS_NAME, "create", "CALC", "generic " + genericLimits);

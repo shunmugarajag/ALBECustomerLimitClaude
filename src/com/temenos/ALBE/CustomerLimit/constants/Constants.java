@@ -2,6 +2,7 @@ package com.temenos.ALBE.CustomerLimit.constants;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
+import java.time.format.ResolverStyle;
 
 /*-----------------------------------------------------------------------------
  * Description : All constants of the customer limit routines in one place.
@@ -90,6 +91,9 @@ public final class Constants {
     public static final DateTimeFormatter DAILY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     /** Monthly utilisation id date: YYYYMM. */
     public static final DateTimeFormatter MONTHLY_ID_FORMAT = DateTimeFormatter.ofPattern("yyyyMM");
+    /** Strict YYYYMMDD for reading dates: an impossible date such as 20261131 is rejected, not adjusted. */
+    public static final DateTimeFormatter DATE_PARSE_FORMAT =
+            DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
 
     // -------------------------------------------------------------------------
     // Currency conversion
@@ -129,6 +133,22 @@ public final class Constants {
     public static final String MSG_MAX_CIF_EXCEEDED = "Overall credit/debit exceed for Customer %s by %s";
     public static final String MSG_LIMIT_NOT_DEFINED = "Customer limit not defined for Customer %s";
     public static final String MSG_EXCH_RATE_MISSING = "Exchange rate not available from %s to %s";
+
+    // -------------------------------------------------------------------------
+    // Enquiries (NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY / NOFILE.ALBE.CUSTOMER.LIMIT.TXN)
+    // -------------------------------------------------------------------------
+    /** Separator between the columns of one enquiry row (split by the ENQUIRY record). */
+    public static final String ENQ_SEPARATOR = "*";
+    /** Selection field names in STANDARD.SELECTION. */
+    public static final String ENQ_SEL_CUSTOMER = "CUSTOMER";
+    public static final String ENQ_SEL_DATE = "DATE";
+    public static final String ENQ_SEL_DATE_FROM = "DATE.FROM";
+    public static final String ENQ_SEL_DATE_TO = "DATE.TO";
+    /** EB.ERROR ids raised by the enquiries. */
+    public static final String ERR_NO_RECORDS = "EB-NO.REC.SELECT";
+    public static final String ERR_INVALID_DATE = "EB-ALBE.ENQ.INVALID.DATE";
+    public static final String ERR_DATE_RANGE = "EB-ALBE.ENQ.DATE.RANGE";
+    public static final String ERR_CUSTOMER_MANDATORY = "EB-ALBE.ENQ.CUSTOMER.MANDATORY";
 
     // -------------------------------------------------------------------------
     // T24 dynamic array marks (override id FM param1 VM param2)

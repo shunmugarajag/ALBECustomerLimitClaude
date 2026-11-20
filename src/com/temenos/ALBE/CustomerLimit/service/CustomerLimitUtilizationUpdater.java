@@ -1,6 +1,7 @@
 package com.temenos.ALBE.CustomerLimit.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -41,12 +42,40 @@ public class CustomerLimitUtilizationUpdater {
 
     /** Daily utilisation record id: <customer id>-YYYYMMDD of the transaction date. */
     public static String dailyRecordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT);
+        return dailyRecordId(request.getCustomerId(), request.getTransactionDate());
     }
 
     /** Monthly utilisation record id: <customer id>-YYYYMM of the transaction date. */
     public static String monthlyRecordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.MONTHLY_ID_FORMAT);
+        return monthlyRecordId(request.getCustomerId(), request.getTransactionDate());
+    }
+
+    /** Daily utilisation record id: <customer id>-YYYYMMDD. */
+    public static String dailyRecordId(String customerId, LocalDate date) {
+        return customerId + "-" + date.format(Constants.DAILY_ID_FORMAT);
+    }
+
+    /** Monthly utilisation record id: <customer id>-YYYYMM. */
+    public static String monthlyRecordId(String customerId, LocalDate date) {
+        return customerId + "-" + date.format(Constants.MONTHLY_ID_FORMAT);
+    }
+
+    /** UTILISED.CREDIT.LIMIT (or UTILISED.DEBIT.LIMIT) of the record; 0 when there is no record yet. */
+    public static BigDecimal utilisedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
+        if (utilRec == null) {
+            return BigDecimal.ZERO;
+        }
+        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedCreditLimit().getValue()
+                : utilRec.getUtilisedDebitLimit().getValue());
+    }
+
+    /** UTILISED.MIGRATED.CREDIT.LIMIT (or ...DEBIT.LIMIT) of the monthly record; 0 when there is no record. */
+    public static BigDecimal migratedAmount(EbAlbeUtilisedLimitRecord utilRec, boolean credit) {
+        if (utilRec == null) {
+            return BigDecimal.ZERO;
+        }
+        return ValidationUtil.toAmount(credit ? utilRec.getUtilisedMigratedCreditLimit().getValue()
+                : utilRec.getUtilisedMigratedDebitLimit().getValue());
     }
 
     /** Adds the transaction amounts to the daily and monthly utilisation. */

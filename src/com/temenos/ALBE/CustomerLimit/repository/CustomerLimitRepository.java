@@ -5,6 +5,7 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
+import com.temenos.t24.api.hook.system.Enquiry;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
@@ -24,10 +25,10 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *               selects or deletes one thing and logs what it did.
  *
  *               Tables / files used:
- *                 EB.ALBE.CIF.LIMIT          read, write           (id: customer id)
+ *                 EB.ALBE.CIF.LIMIT          read, write, select   (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
  *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
- *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete (id: customer-AAA id)
+ *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
  *
  *               Read methods return null (or an empty list) when nothing is found;
@@ -48,7 +49,8 @@ public class CustomerLimitRepository {
     private final EbAlbeUtilisedLimitTable utilisedLimitTable;
     private final EbAlbeTxnDetailsLimitTable txnDetailsTable;
 
-    // Exactly one of these is set; used only to create new (empty) generated records.
+    // At most one of these is set; used only to create new (empty) generated records.
+    // Enquiries only read, so for them both are null.
     private final ActivityLifecycle activityHook;
     private final RecordLifecycle recordHook;
 
@@ -74,6 +76,18 @@ public class CustomerLimitRepository {
         this.activityHook = null;
         this.recordHook = hook;
         LogUtil.info(CLASS_NAME, "init", "CREATED", "for version hook " + hook.getClass().getSimpleName());
+    }
+
+    /** Constructor for the enquiry routines (read and select only, no new records). */
+    public CustomerLimitRepository(Enquiry hook) {
+        this.daObj = new DataAccess(hook);
+        this.ssObj = new Session(hook);
+        this.cifLimitTable = new EbAlbeCifLimitTable(hook);
+        this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
+        this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
+        this.activityHook = null;
+        this.recordHook = null;
+        LogUtil.info(CLASS_NAME, "init", "CREATED", "for enquiry hook " + hook.getClass().getSimpleName());
     }
 
     // =========================================================================
@@ -135,6 +149,21 @@ public class CustomerLimitRepository {
             }
         }
         return false;
+    }
+
+    /** Ids of all EB.ALBE.CIF.LIMIT records (customers that have limits), sorted. */
+    public List<String> selectCifLimitIds() {
+        String selection = "BY @ID";
+        LogUtil.info(CLASS_NAME, "selectCifLimitIds", "SELECT", Constants.CIF_LIMIT_TABLE + " [" + selection + "]");
+        try {
+            List<String> ids = daObj.selectRecords("", Constants.CIF_LIMIT_TABLE, "", selection);
+            List<String> result = ids == null ? List.of() : ids;
+            LogUtil.info(CLASS_NAME, "selectCifLimitIds", "FOUND", result.size() + " records");
+            return result;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "selectCifLimitIds", "FAILED", Constants.CIF_LIMIT_TABLE, e);
+            return List.of();
+        }
     }
 
     /** New empty EB.ALBE.CIF.LIMIT record, to be filled and written. */
@@ -235,6 +264,32 @@ public class CustomerLimitRepository {
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
             return null;
+        }
+    }
+
+    /**
+     * Ids of the customer's EB.ALBE.TXN.DETAILS.LIMIT records (<customer>-...), optionally only
+     * those counted between fromDate and toDate (SYSTEM.DATE, YYYYMMDD, either may be blank),
+     * sorted by SYSTEM.DATE then id. Used by the enquiry only, never in a transaction.
+     */
+    public List<String> selectTxnDetailsIds(String customerId, String fromDate, String toDate) {
+        StringBuilder selection = new StringBuilder("WITH @ID LIKE ").append(customerId).append("-...");
+        if (fromDate != null && !fromDate.isEmpty()) {
+            selection.append(" AND SYSTEM.DATE GE ").append(fromDate);
+        }
+        if (toDate != null && !toDate.isEmpty()) {
+            selection.append(" AND SYSTEM.DATE LE ").append(toDate);
+        }
+        selection.append(" BY SYSTEM.DATE BY @ID");
+        LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "SELECT", Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
+        try {
+            List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection.toString());
+            List<String> result = ids == null ? List.of() : ids;
+            LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "FOUND", result.size() + " records");
+            return result;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "selectTxnDetailsIds", "FAILED", Constants.TXN_DETAILS_TABLE, e);
+            return List.of();
         }
     }
 

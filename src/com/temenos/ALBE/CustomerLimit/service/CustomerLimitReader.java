@@ -77,7 +77,8 @@ public class CustomerLimitReader {
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
             if (genParamRec == null) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND",
+                        "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record");
                 return null;
             }
             Limits limits = new Limits();
@@ -114,14 +115,16 @@ public class CustomerLimitReader {
                 }
             }
             if (!found) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID", Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " has no keys");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID",
+                        Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " has no keys");
                 return null;
             }
             limits.source = Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID;
             logLimits("getGenericLimits", limits);
             return limits;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record ", e);
+            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND",
+                    "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record", e);
             return null;
         }
     }
