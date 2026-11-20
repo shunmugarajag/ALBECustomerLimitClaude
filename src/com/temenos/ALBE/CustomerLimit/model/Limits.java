@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 /*-----------------------------------------------------------------------------
  * Description : Limit values of one customer (from EB.ALBE.CIF.LIMIT) or the generic
- *               limits (from EB.ALBE.GEN.PARAM SYSTEM). A null amount means the field
+ *               limits (from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT). A null amount means the field
  *               is blank (limit not defined).
  *------------------------------------------------------------------------------
  * Modification History :

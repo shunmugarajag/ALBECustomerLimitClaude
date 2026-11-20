@@ -45,10 +45,10 @@ public final class Constants {
     public static final String COMPANY_TABLE = "COMPANY";
 
     /** EB.ALBE.GEN.PARAM record holding the generic limits. */
-    public static final String GEN_PARAM_ID = "SYSTEM";
+    public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
 
     // -------------------------------------------------------------------------
-    // Limit field names (EB.ALBE.CIF.LIMIT fields = EB.ALBE.GEN.PARAM SYSTEM KEY.NAME values)
+    // Limit field names (EB.ALBE.CIF.LIMIT fields = EB.ALBE.GEN.PARAM CUSTOMER.LIMIT KEY.NAME values)
     // -------------------------------------------------------------------------
     public static final String KEY_CCY = "CCY";
     public static final String KEY_DAILY_CREDIT_LIMIT = "DAILY.CREDIT.LIMIT";

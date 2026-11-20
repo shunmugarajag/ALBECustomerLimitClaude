@@ -15,7 +15,7 @@ import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
  * Description : Builds Limits from the limit records (DB access via CustomerLimitRepository).
  *               getCustomerLimits : EB.ALBE.CIF.LIMIT, record id = customer id
  *                                   (used by the validators; no record => "limit not defined" override).
- *               getGenericLimits  : EB.ALBE.GEN.PARAM, record SYSTEM (used only by
+ *               getGenericLimits  : EB.ALBE.GEN.PARAM, record CUSTOMER.LIMIT (used only by
  *                                   CustomerLimitCreationService), KEY.NAME / KEY.VALUE pairs:
  *                    CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT,
  *                    MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE
@@ -67,7 +67,7 @@ public class CustomerLimitReader {
     }
 
     /**
-     * Generic limits from EB.ALBE.GEN.PARAM SYSTEM (KEY.NAME / KEY.VALUE pairs).
+     * Generic limits from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT (KEY.NAME / KEY.VALUE pairs).
      * Used only by CustomerLimitCreationService to build a new customer's record.
      * @return the limits, or null if the record or its keys are missing
      */
@@ -77,7 +77,7 @@ public class CustomerLimitReader {
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
             if (genParamRec == null) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no EB.ALBE.GEN.PARAM SYSTEM record");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record");
                 return null;
             }
             Limits limits = new Limits();
@@ -114,14 +114,14 @@ public class CustomerLimitReader {
                 }
             }
             if (!found) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID", "EB.ALBE.GEN.PARAM SYSTEM has no keys");
+                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID", Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " has no keys");
                 return null;
             }
             limits.source = Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ID;
             logLimits("getGenericLimits", limits);
             return limits;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no EB.ALBE.GEN.PARAM SYSTEM record ", e);
+            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND", "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record ", e);
             return null;
         }
     }

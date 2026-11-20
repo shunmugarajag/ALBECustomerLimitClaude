@@ -10,7 +10,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 |---|---|---|
 | 1 | Local tables (EB.TABLE.DEFINITION) | ☐ |
 | 2 | Generate the table Java API (JARs) | ☐ |
-| 3 | Parameter record EB.ALBE.GEN.PARAM `SYSTEM` | ☐ |
+| 3 | Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` | ☐ |
 | 4 | EB.OVERRIDE records | ☐ |
 | 5 | Build and deploy the routine JAR | ☐ |
 | 6 | EB.API records | ☐ |
@@ -100,9 +100,9 @@ Core API JARs also needed (from the TAFJ installation): `com.temenos.api` (TFiel
 
 ---
 
-## 3. Parameter record EB.ALBE.GEN.PARAM `SYSTEM`
+## 3. Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT`
 
-Input and authorise record **`SYSTEM`** – the default limits copied to each new customer.
+Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to each new customer. The id is set in `Constants.GEN_PARAM_ID`.
 
 | KEY.NAME | KEY.VALUE (example) |
 |---|---|
@@ -167,7 +167,7 @@ If your release needs one EB.API record per hook method, create two for `DailyMo
 | **AUTH.ROUTINE** | `ALBE.CL.LIMIT.CREATE` (with `@` prefix if your release needs it) |
 | AFTER.UNAU.RTN | **nothing** for this routine (it was After Unau in the HLSD; changed to Auth) |
 
-Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMIT `<customer>` is created from GEN.PARAM `SYSTEM` – only if it does not exist. Amending and re-authorising the customer leaves the limit record unchanged.
+Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMIT `<customer>` is created from GEN.PARAM `CUSTOMER.LIMIT` – only if it does not exist. Amending and re-authorising the customer leaves the limit record unchanged.
 
 > Customers created through **other** CUSTOMER versions will not get a limit record. Attach the same routine to those versions if they also need one.
 
@@ -220,7 +220,7 @@ An amended record is never overwritten by the creation routine.
 
 | Item | What to do |
 |---|---|
-| **Existing customers** | The creation routine only runs when a customer is authorised. Existing customers need EB.ALBE.CIF.LIMIT records from a **one-off load** (separate flow – e.g. copy GEN.PARAM `SYSTEM` for every customer, or the bank's own limits). Without a record every transaction gets the "limit not defined" override. |
+| **Existing customers** | The creation routine only runs when a customer is authorised. Existing customers need EB.ALBE.CIF.LIMIT records from a **one-off load** (separate flow – e.g. copy GEN.PARAM `CUSTOMER.LIMIT` for every customer, or the bank's own limits). Without a record every transaction gets the "limit not defined" override. |
 | **Migrated monthly utilisation** | If the current month's totals come from the old system, load them into UTILISED.MIGRATED.CREDIT.LIMIT / UTILISED.MIGRATED.DEBIT.LIMIT of `<customer>-YYYYMM`. The routine adds them to the monthly total and never changes them. |
 | **Reversal of transactions made before go-live** | They have no EB.ALBE.TXN.DETAILS.LIMIT record; an AUTH-REV then subtracts the amount from **today's** records (floored at 0). No action needed, just be aware. |
 

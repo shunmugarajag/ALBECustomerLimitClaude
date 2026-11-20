@@ -18,7 +18,7 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 
 | # | Function | When | Result |
 |---|---|---|---|
-| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP) | Copies the generic limits from EB.ALBE.GEN.PARAM `SYSTEM` into EB.ALBE.CIF.LIMIT `<customer>`, only if the customer has no record yet |
+| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMIT `<customer>`, only if the customer has no record yet |
 | 2 | **Daily / monthly limit check** | AA credit or debit activity input | Override if today's or this month's credit (or debit) total would go over the customer's limit |
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
@@ -94,7 +94,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 
 | Table | Record id | Written by | Read by |
 |---|---|---|---|
-| EB.ALBE.GEN.PARAM | `SYSTEM` | user (one-off) | creation |
+| EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | user (one-off) | creation |
 | EB.ALBE.CIF.LIMIT | customer id | creation; user (amend via version) | all checks |
 | EB.ALBE.UTILISED.LIMIT | daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` | utilisation update | daily / monthly check |
 | EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<AAA id>` | utilisation update (input) | rejection / reversal / re-input |
@@ -128,7 +128,7 @@ customer authorised
   -> cifLimitExists(customer)
         TRUE  -> SKIP (amendment: limits kept)
         null  -> SKIP + error log (read failed: never overwrite)
-        FALSE -> read EB.ALBE.GEN.PARAM SYSTEM
+        FALSE -> read EB.ALBE.GEN.PARAM CUSTOMER.LIMIT
                    not found -> error log, nothing written
                    found     -> write EB.ALBE.CIF.LIMIT <customer> (CCY + 5 limits)
 ```
@@ -297,7 +297,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 | HLSD 7.2.1 | Implemented | Agreed |
 |---|---|---|
 | Creation routine: After Unau on CUSTOMER,ALBE.CORP; delete CIF.LIMIT when the unauthorised customer is deleted | Auth routine; no delete flow | 20-Nov-2026 |
-| Table EB.ALBE.GEN.CIF.LIMIT for generic limits | EB.ALBE.GEN.PARAM record `SYSTEM` (KEY.NAME / KEY.VALUE) | yes |
+| Table EB.ALBE.GEN.CIF.LIMIT for generic limits | EB.ALBE.GEN.PARAM record `CUSTOMER.LIMIT` (KEY.NAME / KEY.VALUE) | yes |
 | TXN.DETAILS id `<customer>-YYYYMMDD-<txn id>` | `<customer>-<AAA id>` + new field SYSTEM.DATE | yes |
 | – | Currency conversion to the limit currency | added |
 

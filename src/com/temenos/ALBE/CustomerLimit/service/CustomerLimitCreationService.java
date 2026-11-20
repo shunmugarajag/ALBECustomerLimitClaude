@@ -12,7 +12,7 @@ import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
  *               Called by CustomerLimitCreationController; all DB access goes through
  *               CustomerLimitRepository.
  *
- *               create : copies EB.ALBE.GEN.PARAM SYSTEM into EB.ALBE.CIF.LIMIT <customer>
+ *               create : copies EB.ALBE.GEN.PARAM CUSTOMER.LIMIT into EB.ALBE.CIF.LIMIT <customer>
  *                        if the customer has no record (an existing record is never
  *                        overwritten, so limits amended for the customer stay).
  *               Called at customer authorisation, so there is no delete flow.
@@ -58,7 +58,7 @@ public class CustomerLimitCreationService {
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
             LogUtil.error(CLASS_NAME, "create", "NOT FOUND",
-                    "EB.ALBE.GEN.PARAM SYSTEM not found, limit not created for " + customerId);
+                    Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " not found, limit not created for " + customerId);
             return false;
         }
         LogUtil.info(CLASS_NAME, "create", "CALC", "generic " + genericLimits);

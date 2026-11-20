@@ -25,7 +25,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *
  *               Tables / files used:
  *                 EB.ALBE.CIF.LIMIT          read, write           (id: customer id)
- *                 EB.ALBE.GEN.PARAM          read                  (id: SYSTEM)
+ *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
  *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete (id: customer-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
