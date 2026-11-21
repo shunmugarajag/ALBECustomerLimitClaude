@@ -1,6 +1,5 @@
 package com.temenos.ALBE.CustomerLimit.controller;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -24,14 +23,15 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API
- * Attached to : ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT
- *               (credit / debit decided by the AAA ACTIVITY.CLASS; any other class is skipped)
+ * Attached to : any activity - normally ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT.
+ *               Which activities are counted, the amount and the date: ActivityRequestBuilder
+ *               (credit / debit by the ACTIVITY.CLASS action; others skipped).
  * Description: Controller for the daily and monthly limit routine (HLSD 7.2.1 - 2).
  *               Reads the activity, builds the request, calls DailyMonthlyLimitService
  *               and lets the view (CustomerLimitOverride) raise the overrides.
  *               No business rules and no DB access here.
  *
- *   defaultFieldValues  UNAUTH   : keeps the server date in the activity REMARKS as
+ *   defaultFieldValues  UNAUTH   : keeps the T24 date in the activity REMARKS as
  *                                  ALBE.LIMIT.DATE=YYYYMMDD (first input only), so every later
  *                                  step - also a reversal on another day - uses the date the
  *                                  amount was counted on and rebuilds the
@@ -47,13 +47,15 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 20-Nov-2026   Development      Initial Version (was DailyMonthlyLimitValidator)
  * 21-Nov-2026   Development      Counted date in activity REMARKS (no table field)
  * 21-Nov-2026   Development      Credit / debit by ACTIVITY.CLASS instead of activity name (G9)
+ * 21-Nov-2026   Development      Common for all activities (ActivityRequestBuilder): class action,
+ *                                ORIG.TXN.AMT, TXN.AMOUNT.LCY, T24 date instead of server clock (G1)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
     private static final String CLASS_NAME = "DailyMonthlyLimitController";
 
     /**
-     * Input defaulting: keeps the counted (server) date in the activity REMARKS the first time
+     * Input defaulting: keeps the counted (T24) date in the activity REMARKS the first time
      * the activity is input. Existing REMARKS text is kept; a re-input keeps the original date.
      */
     @Override
@@ -70,23 +72,24 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                 LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return;
             }
-            // Only credit / debit activities are counted, so only they get the date tag.
-            String activityClass = arrangementActivityRecord.getActivityClass().getValue();
-            if (!ValidationUtil.isCreditActivityClass(activityClass)
-                    && !ValidationUtil.isDebitActivityClass(activityClass)) {
-                LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "class=" + activityClass
-                        + " (not credit / debit)");
+            // Only counted activities (credit / debit action, counted initiation type) get the date tag.
+            if (!ActivityRequestBuilder.isCountedActivity(arrangementActivityRecord.getActivityClass().getValue(),
+                    ActivityRequestBuilder.getInitiationType(arrangementActivityRecord),
+                    arrangementActivityRecord.getActivity().getValue())) {
                 return;
             }
 
             String remarks = ValidationUtil.nvl(arrangementActivityRecord.getRemarks().getValue()).trim();
-            LocalDate existing = getCountedDate(remarks);
+            LocalDate existing = ActivityRequestBuilder.dateFromRemarks(remarks);
             if (existing != null) {
                 LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "re-input, counted date kept " + existing);
                 return;
             }
 
-            String tag = Constants.REMARKS_DATE_TAG + LocalDate.now().format(Constants.DAILY_ID_FORMAT);
+            // T24 date of the activity (ORG.SYSTEM.DATE / T24 TODAY), not the server clock.
+            LocalDate countedDate = ActivityRequestBuilder.getT24Date(arrangementActivityRecord,
+                    new CustomerLimitRepository(this));
+            String tag = Constants.REMARKS_DATE_TAG + countedDate.format(Constants.DAILY_ID_FORMAT);
             String newRemarks = remarks.isEmpty() ? tag : remarks + Constants.REMARKS_SEPARATOR + tag;
             arrangementActivityRecord.setRemarks(newRemarks);
             LogUtil.info(CLASS_NAME, "defaultFieldValues", "UPDATED", "REMARKS '" + remarks + "' -> '" + newRemarks
@@ -116,13 +119,15 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                 return arrangementActivityRecord.getValidationResponse();
             }
 
-            CustomerLimitDTO request = buildRequest(arrangementActivityRecord, arrangementRecord, arrangementContext);
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
+                    getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
                 return arrangementActivityRecord.getValidationResponse();
             }
 
             // Model + service
-            DailyMonthlyLimitService service = new DailyMonthlyLimitService(new CustomerLimitRepository(this));
+            DailyMonthlyLimitService service = new DailyMonthlyLimitService(repository);
             service.validate(request);
 
             // View
@@ -160,12 +165,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                 return;
             }
 
-            CustomerLimitDTO request = buildRequest(arrangementActivityRecord, arrangementRecord, arrangementContext);
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
+                    getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
                 return;
             }
 
-            DailyMonthlyLimitService service = new DailyMonthlyLimitService(new CustomerLimitRepository(this));
+            DailyMonthlyLimitService service = new DailyMonthlyLimitService(repository);
             switch (status) {
                 case Constants.STATUS_UNAUTH:   // transaction initiated: count it
                     LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
@@ -195,58 +202,6 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
     private boolean isUtilisationStatus(String status) {
         return Constants.STATUS_UNAUTH.equals(status) || Constants.STATUS_DELETE.equals(status)
                 || Constants.STATUS_AUTH_REV.equals(status);
-    }
-
-    /**
-     * Builds the request (model) from the activity: customer, AAA id, server date and the
-     * credit or debit amount. Returns null if the activity is neither credit nor debit.
-     */
-    private CustomerLimitDTO buildRequest(AaArrangementActivityRecord arrangementActivityRecord,
-            AaArrangementRecord arrangementRecord, ArrangementContext arrangementContext) {
-
-        String activity = arrangementActivityRecord.getActivity().getValue();
-        // Credit / debit from the system-filled ACTIVITY.CLASS (exact match), not from the activity name.
-        String activityClass = arrangementActivityRecord.getActivityClass().getValue();
-        // Amount in the transaction (arrangement) currency; the service converts it to the limit currency.
-        BigDecimal amount = ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue());
-
-        CustomerLimitDTO request = new CustomerLimitDTO();
-        request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
-        request.setTransactionId(getAaaId(arrangementContext, arrangementActivityRecord));
-        // Counted date from the activity REMARKS (written at input), so a rejection or a reversal on
-        // a later day uses the original day and month; today's server date if the tag is not there.
-        LocalDate countedDate = getCountedDate(arrangementActivityRecord.getRemarks().getValue());
-        request.setTransactionDate(countedDate != null ? countedDate : LocalDate.now());
-        request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
-
-        if (ValidationUtil.isCreditActivityClass(activityClass)) {
-            request.setCreditAmount(amount);
-        } else if (ValidationUtil.isDebitActivityClass(activityClass)) {
-            request.setDebitAmount(amount);
-        } else {
-            LogUtil.info(CLASS_NAME, "buildRequest", "SKIP", "activity=" + activity + " class=" + activityClass
-                    + " is neither " + Constants.ACTIVITY_CLASS_CREDIT + " nor " + Constants.ACTIVITY_CLASS_DEBIT);
-            return null;
-        }
-        LogUtil.info(CLASS_NAME, "buildRequest", "CALC", "activity=" + activity + " class=" + activityClass
-                + " request=" + request);
-        return request;
-    }
-
-    /** Counted date from the REMARKS tag ALBE.LIMIT.DATE=YYYYMMDD; null if not there or not a valid date. */
-    private LocalDate getCountedDate(String remarks) {
-        String text = ValidationUtil.nvl(remarks);
-        int pos = text.indexOf(Constants.REMARKS_DATE_TAG);
-        if (pos < 0) {
-            LogUtil.info(CLASS_NAME, "getCountedDate", "NOT FOUND", "no " + Constants.REMARKS_DATE_TAG
-                    + " in REMARKS");
-            return null;
-        }
-        int start = pos + Constants.REMARKS_DATE_TAG.length();
-        int end = Math.min(start + Constants.REMARKS_DATE_LENGTH, text.length());
-        LocalDate date = ValidationUtil.toDate(text.substring(start, end));
-        LogUtil.info(CLASS_NAME, "getCountedDate", date == null ? "INVALID" : "FOUND", "countedDate=" + date);
-        return date;
     }
 
     /** AAA id of the current activity; arrangement id only if the context does not supply it. */

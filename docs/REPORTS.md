@@ -62,7 +62,7 @@ One line per customer for one day: each limit, used that day / that month, avail
 | Field | Required | Meaning |
 |---|---|---|
 | CUSTOMER | no | one customer; blank = every customer with an EB.ALBE.CIF.LIMIT record |
-| DATE | no | YYYYMMDD; blank = today (server date) |
+| DATE | no | YYYYMMDD; blank = today (T24 date) |
 | OVER.LIMIT | no | `Y` = only customers with a used amount above its limit |
 
 ### Columns
@@ -177,7 +177,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | DATE.FROM / DATE.TO | | on the counted date (the date in the record id `<customer>-<YYYYMMDD>-<AAA>`) |
 | OVERRIDDEN | no | `Y` = only transactions accepted with a **limit-exceed** override (daily, monthly or max CIF), read from the activity |
 
-- Without CUSTOMER: a missing DATE.TO = today, a missing DATE.FROM = DATE.TO; at most 92 days.
+- Without CUSTOMER: a missing DATE.TO = today (T24 date), a missing DATE.FROM = DATE.TO; at most 92 days.
 - "Limit not defined" and "exchange rate missing" are **shown** in the OVERRIDES column but do **not** make a transaction "overridden" (`Constants.LIMIT_EXCEED_OVERRIDES`).
 
 ### Columns
@@ -190,9 +190,10 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | 4 | CR.DR | CR / DR |
 | 5 | TXN.AMOUNT | amount counted (limit currency) |
 | 6 | EFF.DATE | effective date |
-| 7 | COUNTED.DATE | server date it was counted on (from the record id) |
+| 7 | COUNTED.DATE | T24 date it was counted on (from the record id) |
 | 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
 | 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (from AA.ARRANGEMENT.ACTIVITY OVERRIDE, space separated) |
+| 10 | TXN.REF | FT / TT reference of the transaction (AA.ARRANGEMENT.ACTIVITY TXN.CONTRACT.ID, read at report time); blank for activities input directly |
 
 ### Where the overrides come from
 

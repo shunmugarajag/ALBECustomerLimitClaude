@@ -51,7 +51,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 | Layer | Package | Classes | Role |
 |---|---|---|---|
-| Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, CustomerLimitCreationController, CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
+| Controller | `controller` | DailyMonthlyLimitController, MaximumCifLimitController, ActivityRequestBuilder (common activity mapping), CustomerLimitCreationController, CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController | T24 entry points: read the activity / record, build the request, call the service, raise overrides through the view. No rules, no DB access. |
 | Service | `service` | DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder, CurrencyConversionService, CustomerLimitEnquiryService | Business rules (limit checks, utilisation count / reverse, limit creation, report data). |
 | Validation | `validation` | CustomerLimitRequestValidator, CustomerLimitEnquiryValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
 | Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
@@ -70,11 +70,11 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitSummaryEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | `setIds`: limit summary per customer (limits, used today / this month, available). Selection CUSTOMER, DATE, OVER.LIMIT (optional). |
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitPeriodEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | `setIds`: per customer per day (DATE.FROM–DATE.TO) or per month (MONTH.FROM–MONTH.TO) with usage; CUSTOMER, OVER.LIMIT optional. |
 | `com.temenos.ALBE.CustomerLimit.controller.CustomerLimitTxnEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.TXN | `setIds`: transactions counted (EB.ALBE.TXN.DETAILS.LIMIT) for one customer, or all customers in a date range; OVERRIDDEN = Y for only overridden transactions. |
-| `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
+| `com.temenos.ALBE.CustomerLimit.controller.MaximumCifLimitController` | ACTIVITY.API – any activity (counted credits only), normally ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
-Credit/debit is taken from the activity's ACTIVITY.CLASS (`ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`); other classes are skipped. Dates use the server date.
+The routines can be attached to **any activity** (`controller/ActivityRequestBuilder`): an activity is counted when it has an amount (ORIG.TXN.AMT, else TXN.AMOUNT) and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line, e.g. `ACCOUNTS-CREDIT-ARRANGEMENT`); other activities are skipped. Dates use the **T24 date** (REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY), not the server clock. When the limit currency is the local currency, the activity's TXN.AMOUNT.LCY is used (no rate lookup).
 
 ### Currency conversion
 
@@ -128,7 +128,7 @@ Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 
 **EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **structure as approved, no change**
 
-Record id (HLSD): `<customer>-<YYYYMMDD>-<AAA id>`, e.g. `100234-20261120-AAACT2632400001`; YYYYMMDD = server date the amount was counted on.
+Record id (HLSD): `<customer>-<YYYYMMDD>-<AAA id>`, e.g. `100234-20261120-AAACT2632400001`; YYYYMMDD = T24 date the amount was counted on.
 That date is kept in the activity **REMARKS** as `ALBE.LIMIT.DATE=YYYYMMDD` (written by `defaultFieldValues` at first input, existing text kept), so every later step – also a rejection or a reversal on another day – rebuilds the id and reads the record **directly by key** (no SELECT).
 
 | Field | Value |

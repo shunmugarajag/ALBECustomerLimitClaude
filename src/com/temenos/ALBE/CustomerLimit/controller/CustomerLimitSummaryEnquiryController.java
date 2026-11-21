@@ -64,11 +64,13 @@ public class CustomerLimitSummaryEnquiryController extends Enquiry {
         if (error != null) {
             throw new T24CoreException("", error);
         }
-        LocalDate reportDate = ValidationUtil.isBlank(dateText) ? LocalDate.now() : ValidationUtil.toDate(dateText);
+        // No date given: the T24 date (not the server clock).
+        CustomerLimitRepository repository = new CustomerLimitRepository(this);
+        LocalDate reportDate = ValidationUtil.isBlank(dateText) ? t24Today(repository) : ValidationUtil.toDate(dateText);
 
         List<String> lines;
         try {
-            CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(new CustomerLimitRepository(this));
+            CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(repository);
             List<LimitSummaryRow> rows = service.getLimitSummary(customerId, reportDate,
                     CustomerLimitEnquiryValidator.isYes(overLimit));
             lines = CustomerLimitEnquiryView.toSummaryLines(rows);
@@ -83,5 +85,11 @@ public class CustomerLimitSummaryEnquiryController extends Enquiry {
             throw new T24CoreException("", Constants.ERR_NO_RECORDS);
         }
         return lines;
+    }
+
+    /** T24 date; the server clock only if T24 TODAY cannot be read. */
+    private LocalDate t24Today(CustomerLimitRepository repository) {
+        LocalDate today = repository.getT24Today();
+        return today != null ? today : LocalDate.now();
     }
 }

@@ -64,7 +64,7 @@ Possible causes: a write failed (G3), parallel inputs (G2), REMARKS tag removed 
 
 ### 3.6 Reversal subtracted from the wrong day
 
-The day comes from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD`. If the tag was removed or edited, today's date was used. Check the AAA REMARKS; correct the two days as in 3.5. Ask users not to edit the tag.
+The day comes from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD`. If the tag was removed or edited, the activity's ORG.SYSTEM.DATE (T24 date of the activity) was used, else T24 TODAY. Check the AAA REMARKS; correct the two days as in 3.5. Ask users not to edit the tag.
 
 ### 3.7 "Exchange rate not available from X to Y"
 

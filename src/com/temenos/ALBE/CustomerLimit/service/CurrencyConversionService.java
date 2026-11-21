@@ -12,12 +12,15 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 /*-----------------------------------------------------------------------------
  * Description : Converts amounts to the customer's limit currency (EB.ALBE.CIF.LIMIT CCY).
  *               Same currency (or a blank currency on either side) => rate 1, no lookup.
- *               Different currency => rate from CustomerLimitRepository.readExchangeRate;
+ *               Transaction amount with the limit in local currency => the activity's LCY
+ *               amount (TXN.AMOUNT.LCY), no rate lookup.
+ *               Otherwise different currency => rate from CustomerLimitRepository.readExchangeRate;
  *               no rate => the caller is told (null / rateMissing).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 21-Nov-2026   Development      LCY amount from the activity when the limit CCY is the LCY (E1)
  *-----------------------------------------------------------------------------
  */
 public class CurrencyConversionService {
@@ -48,6 +51,19 @@ public class CurrencyConversionService {
         return rate;
     }
 
+    /**
+     * True when the activity's LCY amount (TXN.AMOUNT.LCY) can be used: different currencies,
+     * the limit currency is the local currency and the LCY amount is given.
+     */
+    private boolean useLcyAmount(CustomerLimitDTO request, BigDecimal amount, String limitCcy) {
+        if (ValidationUtil.isBlank(request.getTransactionCurrency()) || ValidationUtil.isBlank(limitCcy)
+                || ValidationUtil.sameCurrency(request.getTransactionCurrency(), limitCcy)
+                || !ValidationUtil.isPositive(request.getAmountLcy()) || !ValidationUtil.isPositive(amount)) {
+            return false;
+        }
+        return ValidationUtil.sameCurrency(limitCcy, repository.getLocalCurrency());
+    }
+
     /** amount in fromCcy converted to toCcy; null when no rate is available. */
     public BigDecimal convert(BigDecimal amount, String fromCcy, String toCcy) {
         BigDecimal rate = getRate(fromCcy, toCcy);
@@ -70,6 +86,21 @@ public class CurrencyConversionService {
         BigDecimal amount = credit ? request.getCreditAmount() : request.getDebitAmount();
         request.setLimitCurrency(limitCcy);
         request.setOriginalAmount(amount);
+
+        // Limit in local currency and T24 gave the LCY amount on the activity: use it, no rate lookup.
+        if (useLcyAmount(request, amount, limitCcy)) {
+            BigDecimal converted = request.getAmountLcy().setScale(Constants.AMOUNT_SCALE, RoundingMode.HALF_UP);
+            request.setExchangeRate(converted.divide(amount, Constants.RATE_SCALE, RoundingMode.HALF_UP));
+            if (credit) {
+                request.setCreditAmount(converted);
+            } else {
+                request.setDebitAmount(converted);
+            }
+            LogUtil.info(CLASS_NAME, "convertRequest", "CALC", "customer=" + request.getCustomerId() + " " + amount
+                    + " " + request.getTransactionCurrency() + " = " + converted + " " + limitCcy
+                    + " (LCY amount from the activity)");
+            return true;
+        }
 
         BigDecimal rate = getRate(request.getTransactionCurrency(), limitCcy);
         if (rate == null) {

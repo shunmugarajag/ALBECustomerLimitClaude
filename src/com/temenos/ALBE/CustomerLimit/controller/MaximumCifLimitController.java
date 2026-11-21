@@ -19,7 +19,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API
- * Attached to : ACCOUNTS-CREDIT-ARRANGEMENT (validate record)
+ * Attached to : any activity - normally ACCOUNTS-CREDIT-ARRANGEMENT (validate record);
+ *               checks counted credits only (ActivityRequestBuilder)
  * Description : Controller for the maximum overall CIF balance routine (HLSD 7.2.1 - 3).
  *               Reads the activity, builds the request, calls MaximumCifLimitService
  *               and lets the view (CustomerLimitOverride) raise the overrides.
@@ -28,7 +29,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version (was MaximumCifLimitValidator)
- * 21-Nov-2026   Development      Credit only by exact ACTIVITY.CLASS (was: name without DEBIT) (G9)
+ * 21-Nov-2026   Development      Credit only by ACTIVITY.CLASS (was: name without DEBIT) (G9)
+ * 21-Nov-2026   Development      Common activity mapping (ActivityRequestBuilder): ORIG.TXN.AMT, LCY amount
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -57,28 +59,25 @@ public class MaximumCifLimitController extends ActivityLifecycle {
                 LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
-            // HLSD: maximum balance check is for credit activities only (exact ACTIVITY.CLASS match,
-            // so debit and non-money activities are skipped).
-            if (!ValidationUtil.isCreditActivityClass(activityClass)) {
+            // Common activity mapping; HLSD: maximum balance check is for credit activities only.
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            String aaaId = ValidationUtil.isBlank(arrangementContext.getArrangementActivityId())
+                    ? arrangementActivityRecord.getArrangement().getValue()
+                    : arrangementContext.getArrangementActivityId().trim();
+            CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord, aaaId,
+                    repository);
+            if (request == null || !request.isCredit()) {
                 LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "activity=" + activity + " class=" + activityClass
-                        + " (not " + Constants.ACTIVITY_CLASS_CREDIT + ")");
+                        + " (not a counted credit)");
                 return arrangementActivityRecord.getValidationResponse();
             }
-
-            // Model
-            CustomerLimitDTO request = new CustomerLimitDTO();
-            request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
-            request.setTransactionId(arrangementActivityRecord.getArrangement().getValue());
-            request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
-            request.setCreditAmount(
-                    ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue()));
             LogUtil.info(CLASS_NAME, "validateRecord", "CALC", "request=" + request);
             if (!CustomerLimitRequestValidator.isValidForMaxCif(request)) {
                 return arrangementActivityRecord.getValidationResponse();
             }
 
             // Service
-            MaximumCifLimitService service = new MaximumCifLimitService(new CustomerLimitRepository(this));
+            MaximumCifLimitService service = new MaximumCifLimitService(repository);
             service.validate(request);
 
             // View

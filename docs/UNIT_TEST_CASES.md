@@ -18,14 +18,16 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Maximum CIF balance | UT-X01 … X04 | 4 | 4 | – |
 | Limit not defined | UT-L01 … L03 | 3 | 3 | – |
 | Utilisation (count / reverse) | UT-U01 … U07 | 7 | 7 | – |
-| Currency conversion | UT-F01 … F04 | 4 | 4 | – |
+| Currency conversion | UT-F01 … F08 | 8 | 8 | – |
 | Limit creation | UT-C01 … C03 | 3 | 3 | – |
-| Counted date (REMARKS) | UT-R01 … R05 | 5 | 5 | – |
+| Counted date (REMARKS) | UT-R01 … R08 | 8 | 8 | – |
 | Request validation | UT-V01 … V06 | 6 | 6 | – |
-| Activity class (credit / debit) | UT-A01 … A04 | 4 | 4 | – |
-| Reports | UT-E01 … E16 | 16 | 16 | – |
-| Controllers in T24 | UT-T01 … T07 | 7 | – | 7 |
-| **Total** | | **72** | **65** | **7** |
+| Activity mapping (any activity) | UT-A01 … A13 | 13 | 13 | – |
+| Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
+| Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
+| Reports | UT-E01 … E17 | 17 | 17 | – |
+| Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
+| **Total** | | **97** | **88** | **9** |
 
 ---
 
@@ -96,6 +98,10 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-F02 | limits EGP, USD rate 48.50 | credit 100 USD | compared as 4850 EGP → daily override 2850; stored 4850.00 | Pass |
 | UT-F03 | USD input counted | rejected | 4850 EGP reversed (stored amount, no re-conversion) | Pass |
 | UT-F04 | no EUR rate | credit 100 EUR | EB-ALBE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
+| UT-F05 | limit EGP = LCY, TXN.AMOUNT.LCY 4850 | credit 100 USD | 4850.00 EGP, rate 48.5, **no rate lookup** | Pass |
+| UT-F06 | limit USD (not LCY) | credit 100 EGP | rate lookup → missing | Pass |
+| UT-F07 | no LCY amount on the activity | credit 100 USD | rate lookup | Pass |
+| UT-F08 | same currency | credit 300 EGP | 300.00, no lookup | Pass |
 
 ## Limit creation
 
@@ -109,11 +115,14 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
-| UT-R01 | REMARKS "Salary credit Nov" | first input (UNAUTH) | REMARKS "Salary credit Nov ALBE.LIMIT.DATE=<today>" | Pass |
+| UT-R01 | REMARKS "Salary credit Nov" | first input (UNAUTH) | REMARKS "Salary credit Nov ALBE.LIMIT.DATE=<T24 date>" | Pass |
 | UT-R02 | tag present | re-input | REMARKS unchanged (first date kept) | Pass |
 | UT-R03 | REMARKS "x ALBE.LIMIT.DATE=20261120", today 21-Nov | read date | 20-Nov used | Pass |
 | UT-R04 | status AUTH-REV | defaulting | REMARKS not touched | Pass |
-| UT-R05 | no tag / "ALBE.LIMIT.DATE=20261131" / empty | read date | no date (today used); invalid date rejected | Pass |
+| UT-R05 | no tag / "ALBE.LIMIT.DATE=20261131" / empty | read date | no date (T24 date used); invalid date rejected | Pass |
+| UT-R06 | REMARKS "Salary", ORG.SYSTEM.DATE 20260401, clock 21-Nov | first input | "Salary ALBE.LIMIT.DATE=20260401" (T24 date, not clock) | Pass |
+| UT-R07 | no ORG.SYSTEM.DATE, T24 TODAY 20260402 | first input | "ALBE.LIMIT.DATE=20260402" | Pass |
+| UT-R08 | `DEPOSITS-NEW-ARRANGEMENT` | first input | REMARKS untouched (not counted) | Pass |
 
 ## Request validation (controller, once)
 
@@ -126,14 +135,34 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-V05 | debit for maximum CIF | invalid (credit only) | Pass |
 | UT-V06 | null request / blank customer id (creation) | invalid | Pass |
 
-## Activity class (credit / debit) – added 21-Nov-2026 (G9)
+## Activity mapping – any activity (ActivityRequestBuilder) – 21-Nov-2026
 
 | Id | ACTIVITY.CLASS | Expected | Result |
 |---|---|---|---|
 | UT-A01 | `ACCOUNTS-CREDIT-ARRANGEMENT` (also with spaces around) | credit | Pass |
 | UT-A02 | `ACCOUNTS-DEBIT-ARRANGEMENT` | debit; not credit (maximum CIF skipped) | Pass |
 | UT-A03 | `DEPOSITS-NEW-ARRANGEMENT`, `ACCOUNTS-CHANGE.PRODUCT-ARRANGEMENT` | neither – daily/monthly skipped (no REMARKS tag, no count), maximum CIF skipped | Pass |
-| UT-A04 | `ACCOUNTS-CREDIT-ARRANGEMENT-X`, blank, null | neither (exact match only, no partial match) | Pass |
+| UT-A04 | blank, null | neither | Pass |
+| UT-A05 | `ACCOUNTS-CREDIT-ARRANGEMENT`, TXN.AMOUNT 100 | credit 100 | Pass |
+| UT-A06 | `ACCOUNTS-DEBIT-ARRANGEMENT`, TXN.AMOUNT 40 | debit 40 | Pass |
+| UT-A07 | `DEPOSITS-CREDIT-ARRANGEMENT` (other product line) | credit (action CREDIT) | Pass |
+| UT-A08 | `DEPOSITS-NEW-ARRANGEMENT` with an amount | skipped (action NEW) | Pass |
+| UT-A09 | credit class, no TXN.AMOUNT / ORIG.TXN.AMT | skipped | Pass |
+| UT-A10 | INITIATION.TYPE SECONDARY | counted (all types agreed) | Pass |
+| UT-A11 | INITIATION.TYPE not in `COUNTED_INITIATION_TYPES` | skipped | Pass |
+| UT-A12 | TXN.AMOUNT 500, ORIG.TXN.AMT 2000, ORIG.TXN.AMT.LCY 97000 | amount 2000, LCY 97000 | Pass |
+| UT-A13 | TXN.AMOUNT 500, ORIG.TXN.AMT blank, TXN.AMOUNT.LCY 24250 | amount 500, LCY 24250 | Pass |
+
+## Counted date (T24 date) and currency – 21-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-D06 | REMARKS tag 20260315, ORG.SYSTEM.DATE 20260401 | 15-Mar-2026 (tag wins) | Pass |
+| UT-D07 | no tag, ORG.SYSTEM.DATE 20260401, T24 TODAY 20260402 | 01-Apr-2026 | Pass |
+| UT-D08 | no tag, no ORG.SYSTEM.DATE, T24 TODAY 20260402 | 02-Apr-2026 | Pass |
+| UT-D09 | none of them | server clock (logged as FALLBACK) | Pass |
+| UT-C04 | AAA CURRENCY USD | transaction currency USD | Pass |
+| UT-C05 | AAA CURRENCY blank, arrangement EGP | EGP | Pass |
 
 ## Reports
 
@@ -154,6 +183,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-E13 | Transactions | dates, all customers | all customers' transactions in the range | Pass |
 | UT-E14 | Transactions | OVERRIDDEN Y | only daily / monthly / max CIF overrides (not "limit not defined"); OVERRIDES column from the activity | Pass |
 | UT-E15 | Transactions | no customer, no date / from > to / 20261131 / > 92 days | CUSTOMER.OR.DATE / DATE.RANGE / INVALID.DATE / RANGE.TOO.LONG | Pass |
+| UT-E17 | Transactions | any | column 10 TXN.REF = AAA TXN.CONTRACT.ID (e.g. FT26091ABCDE); 10 columns | Pass |
 | UT-E16 | Summary, 1,000 customers | `LOG_DETAIL_ENABLED` false | 3 log lines (instead of ~3,000) | Pass |
 
 ## Controllers in T24 (DEV only)
@@ -167,3 +197,5 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-T05 | Enquiry `setIds` lines shown in the right columns; EB.ERROR messages | §14.4 |
 | UT-T06 | AA.ARRANGEMENT.ACTIVITY OVERRIDE read (live and `$NAU`) for the overridden-transactions report | REPORTS R10 |
 | UT-T07 | AAA ACTIVITY.CLASS filled at UNAUTH for FT/TT credits and debits (and for user-defined activities linked to the two classes) | §13 #3 |
+| UT-T08 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, INITIATION.TYPE filled at UNAUTH; ORG.SYSTEM.DATE unchanged on re-input / DELETE / AUTH-REV | GAPS A1, A4, A5 |
+| UT-T09 | `Session.getCurrentVariable("!TODAY")` returns the T24 date (DEV: 01 APR 2026, not the server clock) | GAPS G1 |

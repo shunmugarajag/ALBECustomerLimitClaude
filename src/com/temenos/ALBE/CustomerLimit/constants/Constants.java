@@ -86,13 +86,33 @@ public final class Constants {
     public static final String STATUS_DELETE = "DELETE";
     public static final String STATUS_AUTH_REV = "AUTH-REV";
 
+    // -------------------------------------------------------------------------
+    // Which activities are counted (the routines can be attached to any activity)
+    // -------------------------------------------------------------------------
     /**
-     * Core AA.ACTIVITY.CLASS of credit activities. Compared with the AAA field ACTIVITY.CLASS
-     * (system filled), so user-defined activities linked to this class are covered too.
+     * Separator in the AA.ACTIVITY.CLASS id <PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>,
+     * e.g. ACCOUNTS-CREDIT-ARRANGEMENT. The AAA field ACTIVITY.CLASS is filled by the system,
+     * so user-defined activities linked to a class are covered too.
      */
-    public static final String ACTIVITY_CLASS_CREDIT = "ACCOUNTS-CREDIT-ARRANGEMENT";
-    /** Core AA.ACTIVITY.CLASS of debit activities (compared with the AAA field ACTIVITY.CLASS). */
-    public static final String ACTIVITY_CLASS_DEBIT = "ACCOUNTS-DEBIT-ARRANGEMENT";
+    public static final String ACTIVITY_CLASS_SEPARATOR = "-";
+    /** Position of the ACTION in the activity class id (0 = product line). */
+    public static final int ACTIVITY_CLASS_ACTION_POS = 1;
+    /** Class actions that move money INTO the account (counted as credit), any product line. */
+    public static final String[] CREDIT_ACTIONS = { "CREDIT" };
+    /** Class actions that move money OUT of the account (counted as debit), any product line. */
+    public static final String[] DEBIT_ACTIONS = { "DEBIT" };
+    /**
+     * AAA INITIATION.TYPE values that are counted (agreed: all types). Remove a value here to stop
+     * counting it, e.g. SECONDARY (charges) or SCHEDULED*EOD. A blank type is always counted.
+     */
+    public static final String[] COUNTED_INITIATION_TYPES = { "USER", "TRANSACTION", "SECONDARY", "SCHEDULED*SOD",
+            "SCHEDULED*EOD", "PAY*SOD", "PAY*EOD", "NOLOG" };
+
+    // -------------------------------------------------------------------------
+    // T24 session values
+    // -------------------------------------------------------------------------
+    /** T24 common variable with the current T24 (business) date, YYYYMMDD. */
+    public static final String T24_TODAY_VARIABLE = "!TODAY";
 
     // -------------------------------------------------------------------------
     // EB.ALBE.TXN.DETAILS.LIMIT CREDIT.DEBIT.FLAG values
@@ -131,6 +151,8 @@ public final class Constants {
     public static final BigDecimal SAME_CURRENCY_RATE = BigDecimal.ONE;
     /** Decimals kept after converting an amount to the limit currency. */
     public static final int AMOUNT_SCALE = 2;
+    /** Decimals of a rate worked out from the activity's LCY amount (logged / kept on the request). */
+    public static final int RATE_SCALE = 6;
 
     // -------------------------------------------------------------------------
     // EB.OVERRIDE ids

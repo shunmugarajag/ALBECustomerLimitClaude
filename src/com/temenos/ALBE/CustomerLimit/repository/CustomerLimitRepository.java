@@ -1,13 +1,14 @@
 package com.temenos.ALBE.CustomerLimit.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
 import com.temenos.t24.api.hook.system.Enquiry;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
-import com.temenos.api.TField;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
@@ -32,7 +33,8 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
- *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, for the transaction report)
+ *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, TXN.CONTRACT.ID - transaction report)
+ *                 Session                    T24 date (!TODAY), local currency
  *
  *               Read methods return null (or an empty list) when nothing is found;
  *               write / delete methods return true on success. Callers decide what
@@ -41,6 +43,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 21-Nov-2026   Development      T24 date and local currency; readActivity for the report
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -330,29 +333,23 @@ public class CustomerLimitRepository {
     // =========================================================================
 
     /**
-     * OVERRIDE values of AA.ARRANGEMENT.ACTIVITY <aaaId>: the overrides accepted on the activity.
+     * AA.ARRANGEMENT.ACTIVITY <aaaId> for the transaction report (OVERRIDE, TXN.CONTRACT.ID).
      * Reads the live record first, then the unauthorised one ($NAU) for activities not yet
-     * authorised. Empty list if the activity cannot be read or has no overrides.
+     * authorised. Null if the activity cannot be read.
      */
-    public List<String> readActivityOverrides(String finMnemonic, String aaaId) {
-        LogUtil.detail(CLASS_NAME, "readActivityOverrides", "READ", Constants.AAA_TABLE + ">" + aaaId);
+    public AaArrangementActivityRecord readActivity(String finMnemonic, String aaaId) {
+        LogUtil.detail(CLASS_NAME, "readActivity", "READ", Constants.AAA_TABLE + ">" + aaaId);
         for (String suffix : new String[] { "", Constants.NAU_SUFFIX }) {
             try {
                 AaArrangementActivityRecord aaaRec = new AaArrangementActivityRecord(
                         daObj.getRecord(finMnemonic, Constants.AAA_TABLE, suffix, aaaId));
-                List<String> values = new java.util.ArrayList<>();
-                for (TField overrideField : aaaRec.getOverride()) {
-                    values.add(overrideField.getValue());
-                }
-                LogUtil.detail(CLASS_NAME, "readActivityOverrides", "FOUND", Constants.AAA_TABLE + suffix + ">"
-                        + aaaId + " overrides=" + values.size());
-                return values;
+                LogUtil.detail(CLASS_NAME, "readActivity", "FOUND", Constants.AAA_TABLE + suffix + ">" + aaaId);
+                return aaaRec;
             } catch (Exception e) {
-                LogUtil.detail(CLASS_NAME, "readActivityOverrides", "NOT FOUND", Constants.AAA_TABLE + suffix + ">"
-                        + aaaId);
+                LogUtil.detail(CLASS_NAME, "readActivity", "NOT FOUND", Constants.AAA_TABLE + suffix + ">" + aaaId);
             }
         }
-        return List.of();
+        return null;
     }
 
     /** New empty EB.ALBE.TXN.DETAILS.LIMIT record, to be filled and written. */
@@ -411,6 +408,39 @@ public class CustomerLimitRepository {
         LogUtil.error(CLASS_NAME, "readExchangeRate", "NOT CONFIGURED", "table " + Constants.EXCH_RATE_TABLE
                 + " configured but the read is not implemented yet");
         return null;
+    }
+
+    // =========================================================================
+    // T24 session: date and local currency
+    // =========================================================================
+
+    /**
+     * Current T24 date (common variable !TODAY), not the server clock; null if it cannot be read.
+     * DEV runs on a T24 date far from the server clock, so the clock must not be used for counting.
+     */
+    public LocalDate getT24Today() {
+        try {
+            String today = ssObj.getCurrentVariable(Constants.T24_TODAY_VARIABLE);
+            LocalDate date = ValidationUtil.toDate(today);
+            LogUtil.info(CLASS_NAME, "getT24Today", date == null ? "INVALID" : "FOUND", Constants.T24_TODAY_VARIABLE
+                    + "=" + today);
+            return date;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "getT24Today", "FAILED", Constants.T24_TODAY_VARIABLE, e);
+            return null;
+        }
+    }
+
+    /** Local currency of the current company (Session); "" if it cannot be read. */
+    public String getLocalCurrency() {
+        try {
+            String lcy = ssObj.getLocalCurrency();
+            LogUtil.info(CLASS_NAME, "getLocalCurrency", "FOUND", "lcy=" + lcy);
+            return lcy == null ? "" : lcy.trim();
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "getLocalCurrency", "FAILED", "local currency", e);
+            return "";
+        }
     }
 
     // =========================================================================

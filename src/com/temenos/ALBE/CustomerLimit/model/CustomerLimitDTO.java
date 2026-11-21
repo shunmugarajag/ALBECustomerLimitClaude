@@ -47,6 +47,11 @@ public class CustomerLimitDTO {
     private BigDecimal exchangeRate = BigDecimal.ONE;
     /** Credit / debit amount in the transaction currency, before conversion. */
     private BigDecimal originalAmount = BigDecimal.ZERO;
+    /**
+     * Same amount in local currency as given by T24 on the activity (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY);
+     * used instead of a rate lookup when the limit currency is the local currency. 0 if not given.
+     */
+    private BigDecimal amountLcy = BigDecimal.ZERO;
     /** True when no exchange rate was found between the two currencies. */
     private boolean rateMissing = false;
     /** Currency that has no rate to the limit currency (transaction or account currency). */
@@ -93,6 +98,9 @@ public class CustomerLimitDTO {
 
     public BigDecimal getOriginalAmount() { return originalAmount; }
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
+
+    public BigDecimal getAmountLcy() { return amountLcy; }
+    public void setAmountLcy(BigDecimal amountLcy) { this.amountLcy = amountLcy == null ? BigDecimal.ZERO : amountLcy; }
 
     /** True when no exchange rate was found from a currency to the limit currency. */
     public boolean isRateMissing() { return rateMissing; }
@@ -148,7 +156,7 @@ public class CustomerLimitDTO {
     public String toString() {
         return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", date=" + transactionDate
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
-                + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount
+                + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount + ", amountLcy=" + amountLcy
                 + ", rateMissing=" + rateMissing + ", valid=" + valid
                 + ", limitMissing=" + limitMissing + ", undefinedLimits=" + undefinedLimits
                 + ", breaches=" + breaches.size() + "]";

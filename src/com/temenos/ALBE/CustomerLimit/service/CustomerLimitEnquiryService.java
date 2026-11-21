@@ -15,6 +15,8 @@ import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
+import com.temenos.api.TField;
+import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
@@ -231,6 +233,15 @@ public class CustomerLimitEnquiryService {
         return ids;
     }
 
+    /** OVERRIDE values of the activity (empty list if none). */
+    private List<String> overrideValues(AaArrangementActivityRecord aaaRec) {
+        List<String> values = new ArrayList<>();
+        for (TField overrideField : aaaRec.getOverride()) {
+            values.add(overrideField.getValue());
+        }
+        return values;
+    }
+
     /** YYYYMM of every month from fromMonth to toMonth (inclusive). */
     private List<String> monthsBetween(YearMonth fromMonth, YearMonth toMonth) {
         List<String> months = new ArrayList<>();
@@ -285,9 +296,13 @@ public class CustomerLimitEnquiryService {
             row.creditDebitFlag = ValidationUtil.nvl(txnRec.getCreditDebitFlag().getValue());
             row.effectiveDate = ValidationUtil.nvl(txnRec.getEffDate().getValue());
             row.amount = ValidationUtil.nvl(txnRec.getTxnAmount().getValue());
-            // Accepted overrides come from the activity itself (no extra field in EB.ALBE.TXN.DETAILS.LIMIT).
-            row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR,
-                    albeOverrideIds(repository.readActivityOverrides(finMnemonic, row.aaaId)));
+            // Accepted overrides and the FT / TT reference come from the activity itself
+            // (no extra fields in EB.ALBE.TXN.DETAILS.LIMIT).
+            AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, row.aaaId);
+            if (aaaRec != null) {
+                row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR, albeOverrideIds(overrideValues(aaaRec)));
+                row.txnReference = ValidationUtil.nvl(aaaRec.getTxnContractId().getValue()).trim();
+            }
             if (!overriddenOnly || row.isLimitOverridden()) {
                 rows.add(row);
             }

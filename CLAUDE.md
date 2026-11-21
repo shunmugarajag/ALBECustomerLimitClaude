@@ -25,7 +25,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | All literals in `constants/Constants.java` | table names, ids, override ids, messages, selection field names, limits |
 | Validate a request **once**, in the controller | services trust it; common value checks in `util/ValidationUtil` |
 | Logging only through `util/LogUtil` (standard format) | `ALBE.CUSTOMER.LIMIT \| Class.method \| EVENT \| details` |
-| Server date for counting | kept in the activity REMARKS (see 4) |
+| **T24 date** for counting (not the server clock) | REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (see 4) |
 | Don't critique the user's **sample** routines | user said "ignore gaps in the sample" |
 | Keep `'\u00FE'` / `'\u00FD'` as **ASCII escapes** | file tools turn them into raw bytes – check with `LC_ALL=C grep -P '[^\x00-\x7F]' -r src` (must print nothing) |
 | Commit + push to `main` when work is done | end commit messages with the attribution lines the session provides |
@@ -46,17 +46,18 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | Function | Hook (EB.API) | Flow |
 |---|---|---|
 | **Limit creation** | `CustomerLimitCreationController` – VERSION CUSTOMER,ALBE.CORP **Auth routine**, `postUpdateRequest` | at customer authorisation: if `cifLimitExists` = FALSE copy GEN.PARAM `CUSTOMER.LIMIT` → CIF.LIMIT. TRUE (amendment) or null (read failed) → **never overwrite**. No delete flow. |
-| **Daily / monthly** | `DailyMonthlyLimitController` – ACTIVITY.API on ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | `defaultFieldValues` (UNAUTH): append `ALBE.LIMIT.DATE=YYYYMMDD` to AAA **REMARKS** (first input only). `validateRecord` (UNAUTH): check + overrides. `postCoreTableUpdate`: UNAUTH count (earlier input of same AAA reversed first), DELETE reverse, AUTH nothing, AUTH-REV reverse (fallback: today if no record). |
+| **Daily / monthly** | `DailyMonthlyLimitController` – ACTIVITY.API, **any activity** (normally ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT); mapping in `ActivityRequestBuilder` | `defaultFieldValues` (UNAUTH, counted activities only): append `ALBE.LIMIT.DATE=<T24 date>` to AAA **REMARKS** (first input only). `validateRecord` (UNAUTH): check + overrides. `postCoreTableUpdate`: UNAUTH count (earlier input of same AAA reversed first), DELETE reverse, AUTH nothing, AUTH-REV reverse (fallback: today if no record). |
 | **Maximum CIF** | `MaximumCifLimitController` – ACTIVITY.API, credit only, `validateRecord` | sum of WORKING.BALANCE of all customer accounts (converted) + credit vs MAX.CIF.BALANCE |
 | **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
 
-Key rules: date for every step = REMARKS tag (else today); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ALBE.CIF.LIMIT.NOT.DEFINED` once; technical failure → logged, transaction **not** blocked.
+Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ALBE.CIF.LIMIT.NOT.DEFINED` once; technical failure → logged, transaction **not** blocked.
 
 ## 5. Code map
 
 ```
 controller/   CustomerLimitCreationController, DailyMonthlyLimitController, MaximumCifLimitController,
+              ActivityRequestBuilder (common AAA -> request mapping for any activity),
               CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController
 service/      DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
               CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse),
@@ -79,30 +80,30 @@ constants/    Constants (the only final class)
 | Counted date in **AAA REMARKS** tag, TXN.DETAILS id `<cust>-<date>-<AAA>` | user's idea; keeps table structure; direct read by key even for reversal on a later day (an earlier SYSTEM.DATE field was removed) |
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
 | GEN.PARAM record id **`CUSTOMER.LIMIT`** | user; was SYSTEM |
-| Currency conversion to the limit CCY; txn CCY = AA.ARRANGEMENT CURRENCY | user; rate source still pending (E1) |
+| Currency conversion to the limit CCY; txn CCY = AAA CURRENCY (else AA.ARRANGEMENT); limit CCY = LCY → AAA TXN.AMOUNT.LCY | user; rate source still pending for foreign-CCY limits and max CIF accounts (E1) |
 | Overridden-transactions report reads **AA.ARRANGEMENT.ACTIVITY OVERRIDE** at report time (live, then `$NAU`) | no table field allowed; "overridden" = limit-exceed overrides only (`Constants.LIMIT_EXCEED_OVERRIDES`) |
 | Enquiry range caps 92 days / 24 months; TXN report needs customer or date | protect online system |
 | Per-record trace logs at `detail` level | performance; `LOG_DETAIL_ENABLED=false` in production |
 | Strict date/month parsing | Java's default turned 20261131 into 30-Nov |
-| Credit/debit by AAA **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT`, `ValidationUtil.isCredit/DebitActivityClass`) | user asked (change 1); name-contains test let max CIF run on non-money activities; linked user activities covered |
+| Routines common for **any activity**: credit/debit by the **ACTIVITY.CLASS action** (`Constants.CREDIT_ACTIONS/DEBIT_ACTIONS`, any product line), INITIATION.TYPE list (all), ORIG.TXN.AMT, LCY amount | user (21-Nov): "common for all activities"; chose "any activity with TXN.AMOUNT, balance sign" – sign not available at validateRecord (no accounting yet; R25 TransactionData has no amount) → class action used; all initiation types; ORIG.TXN.AMT; TXN.AMOUNT.LCY |
+| T24 date instead of server clock | DEV: ORG.SYSTEM.DATE 01 APR 2026 vs clock 29 OCT 26 |
 
 HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM instead of EB.ALBE.GEN.CIF.LIMIT, counted date in REMARKS, currency conversion.
 
 ## 7. Open items (see `docs/GAPS.md`)
 
 - **E1 exchange rate**: `CustomerLimitRepository.readExchangeRate` returns null until the bank answers (table – suggested core CURRENCY –, field, mid/buy/sell, market, quote direction). Until then other currencies → `EB-ALBE.EXCH.RATE.MISSING`, check skipped.
-- **G1** JVM time zone for `LocalDate.now()` (use T24 TODAY or Cairo zone) – code only
+- **G1 fixed** (T24 date); **G4 mitigated** (ORG.SYSTEM.DATE fallback)
 - **G2** lost update on parallel inputs (needs lock API) – team decision
 - **G3** partial writes (fail the transaction or let through) – team decision
-- **G4** REMARKS tag removed on re-input → double count – code only
 - **G5** REMARKS max length – confirm length
 - **G6** blank CIF.LIMIT CCY → use GEN.PARAM CCY – code only
 - **G7** accounts in other companies, **G8** ACCOUNT SELECT fallback (G9 fixed: credit/debit by ACTIVITY.CLASS)
-- **G1 seen in DEV**: T24 date (ORG.SYSTEM.DATE 01 APR 2026) ≠ server clock – `LocalDate.now()` is wrong there. AAA findings **A1–A6** in GAPS.md (ORG.SYSTEM.DATE as counted date, COB UNAUTH.PROCESS, INITIATION.TYPE, ORIG.TXN.AMT, TXN.AMOUNT.LCY for E1, TXN.CONTRACT.ID for the report) – waiting for a DEV credit/debit AAA from the user
+- AAA findings **A1–A7** implemented (GAPS.md). DEV checks left: ORG.SYSTEM.DATE stable on re-input/DELETE/AUTH-REV (then drop the REMARKS tag + G5), COB UNAUTH.PROCESS decision, ORIG.TXN.AMT / TXN.AMOUNT.LCY filled at UNAUTH, `!TODAY` via Session. Waiting for a DEV credit/debit AAA from the user (user's Edge is granted read-only for screenshots).
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). Still open: the **ALBE table JAR** (must be generated in T24 – cannot be generated outside T24) and its getter/setter names; DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
-- Last offer to the user not yet answered: fix G1, G4, G5, G6 now.
+- Remaining small code gaps: G5, G6.
 
 ## 8. Testing (outside T24)
 
@@ -121,7 +122,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 67 cases (61 pass outside T24, 6 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 97 cases (88 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

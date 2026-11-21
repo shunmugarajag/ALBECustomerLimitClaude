@@ -4,6 +4,14 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – common for all activities (AAA findings A1–A7)
+- New `controller/ActivityRequestBuilder` used by both ACTIVITY.API routines – they can be attached to **any activity**. Counted when the activity has an amount and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line); INITIATION.TYPE checked against a list (all types counted).
+- Amount = **ORIG.TXN.AMT** if filled (full original amount), else TXN.AMOUNT.
+- Counted date = REMARKS tag → **ORG.SYSTEM.DATE** → **T24 TODAY** – the server clock is no longer used (G1 fixed; DEV runs on a T24 date months away from the clock). The REMARKS tag is written with the T24 date. Report defaults ("today") also use T24 TODAY.
+- Limit in local currency: the activity's **TXN.AMOUNT.LCY** is used instead of a rate lookup (E1 partly solved).
+- Transaction report: new column 10 **TXN.REF** (FT / TT reference from the activity).
+- Transaction currency from the activity's CURRENCY (arrangement CURRENCY as fallback).
+
 ### Changed – credit / debit by activity class (G9)
 - Daily/monthly and maximum CIF routines decide credit or debit from the activity's **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`) instead of looking for CREDIT/DEBIT in the activity name. Other activities are skipped completely; the maximum CIF check no longer runs on non-money activities. User-defined activities linked to these classes are picked up.
 - `docs/GAPS.md`: G9 closed; G1 raised (DEV T24 date differs from the server clock); new section with AAA findings A1–A6 to confirm in DEV.

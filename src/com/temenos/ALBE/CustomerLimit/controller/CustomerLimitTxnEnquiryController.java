@@ -80,10 +80,12 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
         if (error == null) {
             error = CustomerLimitEnquiryValidator.checkDateRange(fromDate, toDate);
         }
+        CustomerLimitRepository repository = new CustomerLimitRepository(this);
         if (error == null && ValidationUtil.isBlank(customerId)) {
-            // All customers: always a closed, limited range.
+            // All customers: always a closed, limited range (open end = the T24 date, not the server clock).
             if (ValidationUtil.isBlank(toDate)) {
-                toDate = LocalDate.now().format(Constants.DAILY_ID_FORMAT);
+                LocalDate today = repository.getT24Today();
+                toDate = (today != null ? today : LocalDate.now()).format(Constants.DAILY_ID_FORMAT);
             }
             if (ValidationUtil.isBlank(fromDate)) {
                 fromDate = toDate;
@@ -100,7 +102,7 @@ public class CustomerLimitTxnEnquiryController extends Enquiry {
 
         List<String> lines;
         try {
-            CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(new CustomerLimitRepository(this));
+            CustomerLimitEnquiryService service = new CustomerLimitEnquiryService(repository);
             List<LimitTxnRow> rows = service.getTransactions(customerId, fromDate, toDate,
                     CustomerLimitEnquiryValidator.isYes(overridden));
             lines = CustomerLimitEnquiryView.toTxnLines(rows);

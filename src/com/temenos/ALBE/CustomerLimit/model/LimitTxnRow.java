@@ -13,6 +13,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 21-Nov-2026   Development      TXN.REF (FT / TT reference from the activity)
  *-----------------------------------------------------------------------------
  */
 public class LimitTxnRow {
@@ -29,6 +30,8 @@ public class LimitTxnRow {
     public String amount;
     /** EB-ALBE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
     public String overrides = "";
+    /** FT / TT reference of the transaction (AAA TXN.CONTRACT.ID); blank for activities input directly. */
+    public String txnReference = "";
 
     /** True when the transaction was accepted with a limit-exceed override (daily, monthly, max CIF). */
     public boolean isLimitOverridden() {
@@ -45,6 +48,6 @@ public class LimitTxnRow {
     @Override
     public String toString() {
         return "LimitTxnRow[id=" + recordId + ", flag=" + creditDebitFlag + ", amount=" + amount
-                + ", countedDate=" + countedDate + ", overrides=" + overrides + "]";
+                + ", countedDate=" + countedDate + ", overrides=" + overrides + ", txnRef=" + txnReference + "]";
     }
 }

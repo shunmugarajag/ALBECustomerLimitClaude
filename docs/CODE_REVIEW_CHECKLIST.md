@@ -48,7 +48,8 @@ Tick every line before a change is merged to `main`. These are the project's sta
 
 ## 6. Behaviour
 
-- [ ] Counted date taken from the activity REMARKS tag (`ALBE.LIMIT.DATE=`), today only as fallback.
+- [ ] Counted date taken from the activity REMARKS tag (`ALBE.LIMIT.DATE=`), else ORG.SYSTEM.DATE / T24 TODAY – never `LocalDate.now()` except as the logged last resort.
+- [ ] Activity mapping only through `ActivityRequestBuilder` (amount, direction, initiation type, date) – no activity rules in the controllers.
 - [ ] Breach only when used + amount is **above** the limit.
 - [ ] Re-input: the AAA's earlier input is reversed / excluded first.
 - [ ] Totals never below 0.

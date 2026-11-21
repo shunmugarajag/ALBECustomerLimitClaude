@@ -5,22 +5,22 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for
 
 | # | Gap | Risk | Fix needs | Status |
 |---|---|---|---|---|
-| G1 | Counted date follows the JVM clock, not the T24 date | **High – seen in DEV** | code only | open |
+| G1 | Counted date follows the JVM clock, not the T24 date | High – seen in DEV | code only | **fixed 21-Nov-2026** (T24 date) |
 | G2 | Parallel inputs for the same customer can lose an update | High | lock API (confirm) | open – team decision |
 | G3 | Partial update when one of the three writes fails | High | behaviour decision | open – team decision |
-| G4 | REMARKS date tag can be removed on re-input | Medium | code only | open |
+| G4 | REMARKS date tag can be removed on re-input | Low (was Medium) | code only | **mitigated** – ORG.SYSTEM.DATE fallback |
 | G5 | REMARKS can exceed its maximum length | Medium | field length (confirm) | open |
 | G6 | Blank CCY on EB.ALBE.CIF.LIMIT skips conversion | Medium | code only | open |
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
-| E1 | Exchange rate lookup not connected | High (for other currencies) | bank answers (section E1) | **pending bank** |
+| E1 | Exchange rate lookup not connected | Medium (was High) | bank answers (section E1) | **partly solved** – LCY limits use TXN.AMOUNT.LCY; foreign-CCY limits and max CIF accounts still pending |
 
 Already fine (checked): no shared state between calls (no static data, session per call); reversals use the stored amount (no new conversion); totals never below 0; validation and counting use the same REMARKS date even across midnight; enquiries never write.
 
 ---
 
-## G1 – Counted date follows the JVM time zone
+## G1 – Counted date follows the JVM time zone – FIXED
 
 | | |
 |---|---|
@@ -30,6 +30,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Impact** | Wrong daily bucket for about 2 hours every night (month buckets wrong at month end). |
 | **Fix** | One method `CustomerLimitRepository.getToday()` used everywhere instead of `LocalDate.now()`. Either T24 `TODAY` from `Session` (business date – moves at COB) **or** the server date in a fixed bank time zone (`Constants.BANK_ZONE = "Africa/Cairo"`). |
 | **Decision** | Business date (TODAY) or calendar date in Cairo time? (Agreed so far: "server date" → calendar date in Cairo time.) |
+| **Fixed (21-Nov-2026)** | `ActivityRequestBuilder.getT24Date`: REMARKS tag → AAA **ORG.SYSTEM.DATE** → T24 TODAY (`Session.getCurrentVariable("!TODAY")`, `CustomerLimitRepository.getT24Today`) → server clock only as a logged last resort. The REMARKS tag is written with the same T24 date; enquiry defaults ("today") use T24 TODAY. Decision taken: **T24 date**. |
 | **Seen in DEV (21-Nov-2026)** | AAA `AAACT260914FPVCZWL`: ORG.SYSTEM.DATE **01 APR 2026** (T24 date) but DATE.TIME **29 OCT 26** (server clock). DEV runs on a T24 date months away from the clock, so `LocalDate.now()` gives day/month buckets that do not match T24. Strong case for the T24 date – the AAA field **ORG.SYSTEM.DATE** ("initial T24 system date while processing the activity", system maintained) could be used directly; see A1 below. |
 
 ## G2 – Parallel inputs for the same customer can lose an update
@@ -64,6 +65,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Impact** | Double utilisation for that transaction. |
 | **Fix** | On re-input with no tag, look for an earlier record of the AAA (`@ID LIKE <customer>-...-<AAA>`, only in this rare case) and restore its date in REMARKS; log a warning. |
 | **Decision** | None needed (code only). Optionally: ask users not to edit the tag. |
+| **Mitigated (21-Nov-2026)** | Without the tag the activity's ORG.SYSTEM.DATE is used (and written back as the tag), which is the T24 date of the first input – so the re-input finds the same record. Remaining risk only if ORG.SYSTEM.DATE changes on re-input (DEV check A1). |
 
 ## G5 – REMARKS can exceed its maximum length
 
@@ -116,18 +118,19 @@ Already fine (checked): no shared state between calls (no static data, session p
 
 ---
 
-## Findings from the activity record (AAA) – to confirm in DEV
+## Findings from the activity record (AAA) – implemented 21-Nov-2026
 
-Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV AAA. None needs a table change.
+Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV AAA. None needs a table change. The routines are now **common for all activities** (`controller/ActivityRequestBuilder`).
 
-| # | Point | What core says | Possible use | To confirm in DEV |
-|---|---|---|---|---|
-| A1 | **ORG.SYSTEM.DATE** | "initial T24 system date while processing the activity", system maintained | Counted date instead of the REMARKS tag – closes G1, G4, G5 and removes `defaultFieldValues` | filled already at UNAUTH `validateRecord`; unchanged on DELETE and AUTH-REV |
-| A2 | COB and unauthorised credits/debits | AA.DECISION.PARAMETER UNAUTH.PROCESS: `IGNORE.TRANSACTION.ACTIVITIES` keeps them over COB; `DEFAULT` deletes them at COB and re-initiates after COB | With DEFAULT: our DELETE reverses, the re-initiated input counts again – on the **next** day | which decision is set |
-| A3 | INITIATION.TYPE | USER, TRANSACTION, SECONDARY, SCHEDULED… | Count only TRANSACTION (FT/TT) if secondary debits (e.g. charges) must not count | bank rule |
-| A4 | ORIG.TXN.AMT vs TXN.AMOUNT | when part of an amount goes to a secondary activity, TXN.AMOUNT holds only the difference | use ORIG.TXN.AMT for the limit if the full amount must count | bank rule |
-| A5 | TXN.AMOUNT.LCY / TXN.EXCH.RATE | transaction amount in local currency and the rate used | if the limit CCY is always EGP, use TXN.AMOUNT.LCY – no rate table needed (E1) | limit CCY always EGP? |
-| A6 | TXN.CONTRACT.ID / TXN.SYSTEM.ID | FT / TT id and source of the transaction | show the FT/TT reference in the transaction report (read at report time, like overrides) | – |
+| # | Point | Implemented | Still to confirm in DEV |
+|---|---|---|---|
+| A1 | **ORG.SYSTEM.DATE** ("initial T24 system date while processing the activity") | Counted date: REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY → clock (logged). The tag is kept (written with the T24 date) until DEV confirms ORG.SYSTEM.DATE is stable; then the tag (G5) and `defaultFieldValues` can go. | filled at UNAUTH `defaultFieldValues` / `validateRecord`; unchanged on re-input, DELETE and AUTH-REV |
+| A2 | COB: AA.DECISION.PARAMETER UNAUTH.PROCESS | No code – configuration. `IGNORE.TRANSACTION.ACTIVITIES` keeps unauthorised credits/debits over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them (counted again, on the tagged day if REMARKS is kept). | which decision is set; whether the re-initiated AAA keeps its REMARKS |
+| A3 | INITIATION.TYPE | **All types counted** (agreed). List in `Constants.COUNTED_INITIATION_TYPES`; remove a value (e.g. SECONDARY) to stop counting it. Blank = counted. | – |
+| A4 | ORIG.TXN.AMT vs TXN.AMOUNT | **ORIG.TXN.AMT if filled**, else TXN.AMOUNT (agreed). Overrides are still raised on TXN.AMOUNT. | ORIG.TXN.AMT filled for FT/TT credits |
+| A5 | TXN.AMOUNT.LCY | When the limit CCY is the **local currency** (Session LCY) and the currencies differ, the activity's LCY amount (ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY) is used – no rate lookup (agreed). | TXN.AMOUNT.LCY filled at UNAUTH |
+| A6 | TXN.CONTRACT.ID | New report column 10 **TXN.REF** (read from the activity at report time, like the overrides). | – |
+| A7 | **Direction for any activity** | Credit / debit by the **action** of ACTIVITY.CLASS (`<PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>`): `Constants.CREDIT_ACTIONS` {CREDIT}, `DEBIT_ACTIONS` {DEBIT}, any product line; activity without an amount or with another action → skipped. The sign of the balance movement (asked for) is **not available** when the limit is checked: `validateRecord` runs before any accounting, and R25 `TransactionData` has no amount/sign – so the class action is the only reliable source at input. | other money actions the bank wants counted (e.g. CAPITALISE?) → add to the lists |
 
 ---
 
@@ -139,7 +142,8 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 |---|---|
 | Transaction currency = limit currency | rate 1, checks run normally |
 | A currency blank | treated as same currency (see G6) |
-| Different currencies | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ALBE.EXCH.RATE.MISSING**, limit check **skipped** |
+| Different currencies, limit CCY = local currency | the activity's **TXN.AMOUNT.LCY** (or ORIG.TXN.AMT.LCY) is used – no rate needed (21-Nov-2026) |
+| Different currencies, limit CCY ≠ local currency | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ALBE.EXCH.RATE.MISSING**, limit check **skipped** |
 | Maximum CIF, account in another currency | same – rate-missing override, check skipped |
 
 Ready: conversion of the transaction and of account balances, 2-decimal rounding, converted amounts stored in UTILISED.LIMIT / TXN.DETAILS (reversals do not convert again). Missing: only the **rate lookup**.
@@ -172,7 +176,7 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 
 ## Suggested order
 
-1. **G1, G4, G5, G6** – small, code only, no behaviour risk.
+1. **G5, G6** – small, code only, no behaviour risk (G1 fixed, G4 mitigated). DEV check A1 may remove G5 altogether.
 2. **E1** – as soon as the bank answers the five questions.
 3. **G2, G3** – after the team decision (lock API, fail vs. let through).
 4. **G7, G8** – after the confirmations listed (G9 done).

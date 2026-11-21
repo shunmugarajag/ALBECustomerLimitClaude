@@ -70,6 +70,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
 | `controller` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
 | `controller` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
+| `controller` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, ACTIVITY.CLASS action, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
 | `controller` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
 | `controller` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
 | `controller` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
@@ -116,9 +117,10 @@ Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-table
 |---|---|
 | customerId | AA.ARRANGEMENT CUSTOMER (first) |
 | transactionId | AAA id (`arrangementContext.getArrangementActivityId()`); arrangement id as fallback. Maximum CIF check: arrangement id |
-| transactionDate | counted date from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input = server date); today if the tag is missing |
-| creditAmount / debitAmount | TXN.AMOUNT; credit or debit decided by the AAA **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`); any other class skipped |
-| transactionCurrency | AA.ARRANGEMENT CURRENCY |
+| transactionDate | counted date: REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input with the T24 date) → AAA ORG.SYSTEM.DATE → T24 TODAY (`Session !TODAY`) → server clock (logged last resort) |
+| creditAmount / debitAmount | ORIG.TXN.AMT if filled, else TXN.AMOUNT; credit or debit by the **action** of the AAA ACTIVITY.CLASS (`CREDIT` / `DEBIT`, any product line); INITIATION.TYPE must be counted (all types); otherwise skipped – `controller/ActivityRequestBuilder`, common for all activities |
+| amountLcy | ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY – used instead of a rate when the limit currency is the local currency |
+| transactionCurrency | AAA CURRENCY, else AA.ARRANGEMENT CURRENCY |
 | limitCurrency, exchangeRate, originalAmount | set by `CurrencyConversionService` |
 | breaches, undefinedLimits, limitMissing, rateMissing | results, used by the view |
 
@@ -413,3 +415,4 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 21-Nov-2026 | Common for all activities (`ActivityRequestBuilder`): class action CREDIT/DEBIT any product line, INITIATION.TYPE list, ORIG.TXN.AMT, TXN.AMOUNT.LCY when limit CCY = LCY, T24 date (ORG.SYSTEM.DATE / !TODAY) instead of the server clock (G1); TXN.REF column in the transaction report |

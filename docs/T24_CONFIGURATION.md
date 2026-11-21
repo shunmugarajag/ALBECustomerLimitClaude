@@ -84,7 +84,7 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 
 ### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – no change)*
 
-ID (HLSD): **`<customer>-<YYYYMMDD>-<AAA id>`**, e.g. `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = server date the amount was counted on, kept in the activity REMARKS (see step 8).
+ID (HLSD): **`<customer>-<YYYYMMDD>-<AAA id>`**, e.g. `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
 
 | Field | Type | Value |
 |---|---|---|
@@ -212,7 +212,9 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 - Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
 - **REMARKS:** `defaultFieldValues` appends `ALBE.LIMIT.DATE=YYYYMMDD` to the activity REMARKS at first input (user text is kept; a re-input keeps the first date). Users should not delete this tag. Without it a rejection / reversal uses today's date.
-- Credit or debit is taken from the activity's **ACTIVITY.CLASS** (filled by the system): exactly `ACCOUNTS-CREDIT-ARRANGEMENT` = credit, `ACCOUNTS-DEBIT-ARRANGEMENT` = debit. User-defined activities linked to these classes work without a code change; activities of any other class are skipped (attaching the routines there does nothing).
+- **The routines can be attached to any activity.** An activity is counted when (1) the **action** of its ACTIVITY.CLASS (`<PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>`, filled by the system) is `CREDIT` (credit) or `DEBIT` (debit) – any product line, user-defined activities included; (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Anything else is skipped – attaching the routines there does nothing. More actions can be added in `Constants.CREDIT_ACTIONS` / `DEBIT_ACTIONS`.
+- **Date:** the T24 date – REMARKS tag, else the activity's ORG.SYSTEM.DATE, else T24 TODAY (server clock only as a logged last resort).
+- **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again; the REMARKS tag, if kept, keeps the original day).
 - The maximum CIF check is for **credit** activities only.
 - ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).
 - Rebuild / re-authorise the product (AA.PRODUCT.DESIGNER proof and publish) as usual so the arrangements pick up the new condition.

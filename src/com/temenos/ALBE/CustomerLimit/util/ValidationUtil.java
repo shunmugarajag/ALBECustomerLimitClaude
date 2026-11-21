@@ -104,13 +104,38 @@ public class ValidationUtil {
         return !isBlank(ccy1) && !isBlank(ccy2) && ccy1.trim().equalsIgnoreCase(ccy2.trim());
     }
 
-    /** True when the AAA ACTIVITY.CLASS is the core credit class ACCOUNTS-CREDIT-ARRANGEMENT. */
-    public static boolean isCreditActivityClass(String activityClass) {
-        return Constants.ACTIVITY_CLASS_CREDIT.equals(nvl(activityClass).trim());
+    /** ACTION part of an activity class id <PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>; "" if not there. */
+    public static String activityAction(String activityClass) {
+        String[] parts = nvl(activityClass).trim().split(Constants.ACTIVITY_CLASS_SEPARATOR);
+        return parts.length > Constants.ACTIVITY_CLASS_ACTION_POS ? parts[Constants.ACTIVITY_CLASS_ACTION_POS].trim()
+                : "";
     }
 
-    /** True when the AAA ACTIVITY.CLASS is the core debit class ACCOUNTS-DEBIT-ARRANGEMENT. */
+    /** True when the activity class action moves money in (Constants.CREDIT_ACTIONS), any product line. */
+    public static boolean isCreditActivityClass(String activityClass) {
+        return contains(Constants.CREDIT_ACTIONS, activityAction(activityClass));
+    }
+
+    /** True when the activity class action moves money out (Constants.DEBIT_ACTIONS), any product line. */
     public static boolean isDebitActivityClass(String activityClass) {
-        return Constants.ACTIVITY_CLASS_DEBIT.equals(nvl(activityClass).trim());
+        return contains(Constants.DEBIT_ACTIONS, activityAction(activityClass));
+    }
+
+    /** True when activities of this INITIATION.TYPE are counted; a blank type is counted. */
+    public static boolean isCountedInitiationType(String initiationType) {
+        return isBlank(initiationType) || contains(Constants.COUNTED_INITIATION_TYPES, initiationType.trim());
+    }
+
+    /** True when value (not blank) is one of the values (exact, case sensitive like T24 ids). */
+    public static boolean contains(String[] values, String value) {
+        if (isBlank(value)) {
+            return false;
+        }
+        for (String candidate : values) {
+            if (candidate.equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
