@@ -84,6 +84,7 @@ constants/    Constants (the only final class)
 | Enquiry range caps 92 days / 24 months; TXN report needs customer or date | protect online system |
 | Per-record trace logs at `detail` level | performance; `LOG_DETAIL_ENABLED=false` in production |
 | Strict date/month parsing | Java's default turned 20261131 into 30-Nov |
+| Credit/debit by AAA **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT`, `ValidationUtil.isCredit/DebitActivityClass`) | user asked (change 1); name-contains test let max CIF run on non-money activities; linked user activities covered |
 
 HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM instead of EB.ALBE.GEN.CIF.LIMIT, counted date in REMARKS, currency conversion.
 
@@ -96,7 +97,8 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **G4** REMARKS tag removed on re-input → double count – code only
 - **G5** REMARKS max length – confirm length
 - **G6** blank CIF.LIMIT CCY → use GEN.PARAM CCY – code only
-- **G7** accounts in other companies, **G8** ACCOUNT SELECT fallback, **G9** credit/debit by activity name
+- **G7** accounts in other companies, **G8** ACCOUNT SELECT fallback (G9 fixed: credit/debit by ACTIVITY.CLASS)
+- **G1 seen in DEV**: T24 date (ORG.SYSTEM.DATE 01 APR 2026) ≠ server clock – `LocalDate.now()` is wrong there. AAA findings **A1–A6** in GAPS.md (ORG.SYSTEM.DATE as counted date, COB UNAUTH.PROCESS, INITIATION.TYPE, ORIG.TXN.AMT, TXN.AMOUNT.LCY for E1, TXN.CONTRACT.ID for the report) – waiting for a DEV credit/debit AAA from the user
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). Still open: the **ALBE table JAR** (must be generated in T24 – cannot be generated outside T24) and its getter/setter names; DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.

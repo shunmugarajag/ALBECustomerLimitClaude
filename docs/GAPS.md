@@ -5,7 +5,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for
 
 | # | Gap | Risk | Fix needs | Status |
 |---|---|---|---|---|
-| G1 | Counted date follows the JVM time zone | High | code only | open |
+| G1 | Counted date follows the JVM clock, not the T24 date | **High – seen in DEV** | code only | open |
 | G2 | Parallel inputs for the same customer can lose an update | High | lock API (confirm) | open – team decision |
 | G3 | Partial update when one of the three writes fails | High | behaviour decision | open – team decision |
 | G4 | REMARKS date tag can be removed on re-input | Medium | code only | open |
@@ -13,7 +13,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for
 | G6 | Blank CCY on EB.ALBE.CIF.LIMIT skips conversion | Medium | code only | open |
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
-| G9 | Credit / debit decided by the activity name | Low | code only | open |
+| G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
 | E1 | Exchange rate lookup not connected | High (for other currencies) | bank answers (section E1) | **pending bank** |
 
 Already fine (checked): no shared state between calls (no static data, session per call); reversals use the stored amount (no new conversion); totals never below 0; validation and counting use the same REMARKS date even across midnight; enquiries never write.
@@ -30,6 +30,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Impact** | Wrong daily bucket for about 2 hours every night (month buckets wrong at month end). |
 | **Fix** | One method `CustomerLimitRepository.getToday()` used everywhere instead of `LocalDate.now()`. Either T24 `TODAY` from `Session` (business date – moves at COB) **or** the server date in a fixed bank time zone (`Constants.BANK_ZONE = "Africa/Cairo"`). |
 | **Decision** | Business date (TODAY) or calendar date in Cairo time? (Agreed so far: "server date" → calendar date in Cairo time.) |
+| **Seen in DEV (21-Nov-2026)** | AAA `AAACT260914FPVCZWL`: ORG.SYSTEM.DATE **01 APR 2026** (T24 date) but DATE.TIME **29 OCT 26** (server clock). DEV runs on a T24 date months away from the clock, so `LocalDate.now()` gives day/month buckets that do not match T24. Strong case for the T24 date – the AAA field **ORG.SYSTEM.DATE** ("initial T24 system date while processing the activity", system maintained) could be used directly; see A1 below. |
 
 ## G2 – Parallel inputs for the same customer can lose an update
 
@@ -105,14 +106,28 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Fix** | Remove the fallback (no entry = no accounts). |
 | **Decision** | Confirm CUSTOMER.ACCOUNT is always maintained. |
 
-## G9 – Credit / debit decided by the activity name
+## G9 – Credit / debit decided by the activity name – FIXED
 
 | | |
 |---|---|
-| **Where** | `DailyMonthlyLimitController.buildRequest`, `MaximumCifLimitController` |
-| **Problem** | `CREDIT` / `DEBIT` found anywhere in the activity name. A future activity with both words, or neither, is misread or skipped. |
-| **Fix** | List the exact activity names per side in `Constants` (credit activities, debit activities). |
-| **Decision** | None needed; the list grows when new activities are attached. |
+| **Where** | `DailyMonthlyLimitController` (`defaultFieldValues`, `buildRequest`), `MaximumCifLimitController` |
+| **Was** | `CREDIT` / `DEBIT` found anywhere in the activity name; the maximum CIF check ran for every activity whose name had no `DEBIT` (also non-money activities). |
+| **Now (21-Nov-2026)** | The system-filled AAA field **ACTIVITY.CLASS** is compared exactly with `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT` (`Constants.ACTIVITY_CLASS_CREDIT/DEBIT`, `ValidationUtil.isCreditActivityClass/isDebitActivityClass`). User-defined activities linked to these classes are covered; any other class is skipped (no REMARKS tag, no count, no override). Confirmed in R25 javadoc that both are core AA.ACTIVITY.CLASS records and that ACTIVITY.CLASS is filled by the system (seen in DEV). |
+
+---
+
+## Findings from the activity record (AAA) – to confirm in DEV
+
+Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV AAA. None needs a table change.
+
+| # | Point | What core says | Possible use | To confirm in DEV |
+|---|---|---|---|---|
+| A1 | **ORG.SYSTEM.DATE** | "initial T24 system date while processing the activity", system maintained | Counted date instead of the REMARKS tag – closes G1, G4, G5 and removes `defaultFieldValues` | filled already at UNAUTH `validateRecord`; unchanged on DELETE and AUTH-REV |
+| A2 | COB and unauthorised credits/debits | AA.DECISION.PARAMETER UNAUTH.PROCESS: `IGNORE.TRANSACTION.ACTIVITIES` keeps them over COB; `DEFAULT` deletes them at COB and re-initiates after COB | With DEFAULT: our DELETE reverses, the re-initiated input counts again – on the **next** day | which decision is set |
+| A3 | INITIATION.TYPE | USER, TRANSACTION, SECONDARY, SCHEDULED… | Count only TRANSACTION (FT/TT) if secondary debits (e.g. charges) must not count | bank rule |
+| A4 | ORIG.TXN.AMT vs TXN.AMOUNT | when part of an amount goes to a secondary activity, TXN.AMOUNT holds only the difference | use ORIG.TXN.AMT for the limit if the full amount must count | bank rule |
+| A5 | TXN.AMOUNT.LCY / TXN.EXCH.RATE | transaction amount in local currency and the rate used | if the limit CCY is always EGP, use TXN.AMOUNT.LCY – no rate table needed (E1) | limit CCY always EGP? |
+| A6 | TXN.CONTRACT.ID / TXN.SYSTEM.ID | FT / TT id and source of the transaction | show the FT/TT reference in the transaction report (read at report time, like overrides) | – |
 
 ---
 

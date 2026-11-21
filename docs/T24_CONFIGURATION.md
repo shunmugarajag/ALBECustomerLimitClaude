@@ -212,7 +212,7 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 - Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
 - **REMARKS:** `defaultFieldValues` appends `ALBE.LIMIT.DATE=YYYYMMDD` to the activity REMARKS at first input (user text is kept; a re-input keeps the first date). Users should not delete this tag. Without it a rejection / reversal uses today's date.
-- Credit or debit is taken from the **activity name**: it must contain `CREDIT` or `DEBIT`. If other activities are added, their names must too.
+- Credit or debit is taken from the activity's **ACTIVITY.CLASS** (filled by the system): exactly `ACCOUNTS-CREDIT-ARRANGEMENT` = credit, `ACCOUNTS-DEBIT-ARRANGEMENT` = debit. User-defined activities linked to these classes work without a code change; activities of any other class are skipped (attaching the routines there does nothing).
 - The maximum CIF check is for **credit** activities only.
 - ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).
 - Rebuild / re-authorise the product (AA.PRODUCT.DESIGNER proof and publish) as usual so the arrangements pick up the new condition.

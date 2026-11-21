@@ -28,6 +28,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version (was MaximumCifLimitValidator)
+ * 21-Nov-2026   Development      Credit only by exact ACTIVITY.CLASS (was: name without DEBIT) (G9)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -45,7 +46,9 @@ public class MaximumCifLimitController extends ActivityLifecycle {
         try {
             activityStatus = arrangementContext.getActivityStatus();
             String activity = arrangementActivityRecord.getActivity().getValue();
+            String activityClass = arrangementActivityRecord.getActivityClass().getValue();
             LogUtil.info(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus + " activity=" + activity
+                    + " class=" + activityClass
                     + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
                     + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
                     + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
@@ -54,9 +57,11 @@ public class MaximumCifLimitController extends ActivityLifecycle {
                 LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
-            // HLSD: maximum balance check is for credit activities only.
-            if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
-                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "debit activity " + activity);
+            // HLSD: maximum balance check is for credit activities only (exact ACTIVITY.CLASS match,
+            // so debit and non-money activities are skipped).
+            if (!ValidationUtil.isCreditActivityClass(activityClass)) {
+                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "activity=" + activity + " class=" + activityClass
+                        + " (not " + Constants.ACTIVITY_CLASS_CREDIT + ")");
                 return arrangementActivityRecord.getValidationResponse();
             }
 

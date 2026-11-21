@@ -4,6 +4,10 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – credit / debit by activity class (G9)
+- Daily/monthly and maximum CIF routines decide credit or debit from the activity's **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`) instead of looking for CREDIT/DEBIT in the activity name. Other activities are skipped completely; the maximum CIF check no longer runs on non-money activities. User-defined activities linked to these classes are picked up.
+- `docs/GAPS.md`: G9 closed; G1 raised (DEV T24 date differs from the server clock); new section with AAA findings A1–A6 to confirm in DEV.
+
 ### Documentation
 - Release note, traceability matrix, unit test cases, support runbook, data migration note, code review checklist, this changelog.
 - `CLAUDE.md` handover context (49fbda9); `docs/GAPS.md` known gaps and exchange-rate questions (ab020c7).

@@ -74,7 +74,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
-Credit/debit is taken from the activity name (`CREDIT` / `DEBIT`). Dates use the server date.
+Credit/debit is taken from the activity's ACTIVITY.CLASS (`ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`); other classes are skipped. Dates use the server date.
 
 ### Currency conversion
 

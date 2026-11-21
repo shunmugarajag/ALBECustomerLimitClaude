@@ -25,7 +25,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API
  * Attached to : ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT
- * Description : Controller for the daily and monthly limit routine (HLSD 7.2.1 - 2).
+ *               (credit / debit decided by the AAA ACTIVITY.CLASS; any other class is skipped)
+ * Description: Controller for the daily and monthly limit routine (HLSD 7.2.1 - 2).
  *               Reads the activity, builds the request, calls DailyMonthlyLimitService
  *               and lets the view (CustomerLimitOverride) raise the overrides.
  *               No business rules and no DB access here.
@@ -45,6 +46,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version (was DailyMonthlyLimitValidator)
  * 21-Nov-2026   Development      Counted date in activity REMARKS (no table field)
+ * 21-Nov-2026   Development      Credit / debit by ACTIVITY.CLASS instead of activity name (G9)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -66,6 +68,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             LogUtil.info(CLASS_NAME, "defaultFieldValues", "START", "status=" + activityStatus);
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
                 LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
+                return;
+            }
+            // Only credit / debit activities are counted, so only they get the date tag.
+            String activityClass = arrangementActivityRecord.getActivityClass().getValue();
+            if (!ValidationUtil.isCreditActivityClass(activityClass)
+                    && !ValidationUtil.isDebitActivityClass(activityClass)) {
+                LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "class=" + activityClass
+                        + " (not credit / debit)");
                 return;
             }
 
@@ -195,6 +205,8 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             AaArrangementRecord arrangementRecord, ArrangementContext arrangementContext) {
 
         String activity = arrangementActivityRecord.getActivity().getValue();
+        // Credit / debit from the system-filled ACTIVITY.CLASS (exact match), not from the activity name.
+        String activityClass = arrangementActivityRecord.getActivityClass().getValue();
         // Amount in the transaction (arrangement) currency; the service converts it to the limit currency.
         BigDecimal amount = ValidationUtil.toAmount(arrangementActivityRecord.getTxnAmount().getValue());
 
@@ -207,15 +219,17 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         request.setTransactionDate(countedDate != null ? countedDate : LocalDate.now());
         request.setTransactionCurrency(arrangementRecord.getCurrency().getValue());
 
-        if (activity != null && activity.contains(Constants.ACTIVITY_CREDIT)) {
+        if (ValidationUtil.isCreditActivityClass(activityClass)) {
             request.setCreditAmount(amount);
-        } else if (activity != null && activity.contains(Constants.ACTIVITY_DEBIT)) {
+        } else if (ValidationUtil.isDebitActivityClass(activityClass)) {
             request.setDebitAmount(amount);
         } else {
-            LogUtil.info(CLASS_NAME, "buildRequest", "SKIP", "activity=" + activity + " is neither credit nor debit");
+            LogUtil.info(CLASS_NAME, "buildRequest", "SKIP", "activity=" + activity + " class=" + activityClass
+                    + " is neither " + Constants.ACTIVITY_CLASS_CREDIT + " nor " + Constants.ACTIVITY_CLASS_DEBIT);
             return null;
         }
-        LogUtil.info(CLASS_NAME, "buildRequest", "CALC", "activity=" + activity + " request=" + request);
+        LogUtil.info(CLASS_NAME, "buildRequest", "CALC", "activity=" + activity + " class=" + activityClass
+                + " request=" + request);
         return request;
     }
 
@@ -263,6 +277,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             ArrangementContext arrangementContext, AaArrangementRecord arrangementRecord) {
         try {
             LogUtil.info(CLASS_NAME, hook, "CALC", "activity=" + arrangementActivityRecord.getActivity().getValue()
+                    + " class=" + arrangementActivityRecord.getActivityClass().getValue()
                     + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
                     + " aaa=" + arrangementContext.getArrangementActivityId()
                     + " customer=" + arrangementRecord.getCustomer().get(0).getCustomer().getValue()

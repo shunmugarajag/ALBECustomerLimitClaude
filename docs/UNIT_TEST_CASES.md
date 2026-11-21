@@ -22,9 +22,10 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Limit creation | UT-C01 … C03 | 3 | 3 | – |
 | Counted date (REMARKS) | UT-R01 … R05 | 5 | 5 | – |
 | Request validation | UT-V01 … V06 | 6 | 6 | – |
+| Activity class (credit / debit) | UT-A01 … A04 | 4 | 4 | – |
 | Reports | UT-E01 … E16 | 16 | 16 | – |
-| Controllers in T24 | UT-T01 … T06 | 6 | – | 6 |
-| **Total** | | **67** | **61** | **6** |
+| Controllers in T24 | UT-T01 … T07 | 7 | – | 7 |
+| **Total** | | **72** | **65** | **7** |
 
 ---
 
@@ -125,6 +126,15 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-V05 | debit for maximum CIF | invalid (credit only) | Pass |
 | UT-V06 | null request / blank customer id (creation) | invalid | Pass |
 
+## Activity class (credit / debit) – added 21-Nov-2026 (G9)
+
+| Id | ACTIVITY.CLASS | Expected | Result |
+|---|---|---|---|
+| UT-A01 | `ACCOUNTS-CREDIT-ARRANGEMENT` (also with spaces around) | credit | Pass |
+| UT-A02 | `ACCOUNTS-DEBIT-ARRANGEMENT` | debit; not credit (maximum CIF skipped) | Pass |
+| UT-A03 | `DEPOSITS-NEW-ARRANGEMENT`, `ACCOUNTS-CHANGE.PRODUCT-ARRANGEMENT` | neither – daily/monthly skipped (no REMARKS tag, no count), maximum CIF skipped | Pass |
+| UT-A04 | `ACCOUNTS-CREDIT-ARRANGEMENT-X`, blank, null | neither (exact match only, no partial match) | Pass |
+
 ## Reports
 
 | Id | Report | Selection | Expected | Result |
@@ -156,3 +166,4 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-T04 | Auth routine on CUSTOMER,ALBE.CORP creates the record; "record not found" text recognised | §13 #1, #2 |
 | UT-T05 | Enquiry `setIds` lines shown in the right columns; EB.ERROR messages | §14.4 |
 | UT-T06 | AA.ARRANGEMENT.ACTIVITY OVERRIDE read (live and `$NAU`) for the overridden-transactions report | REPORTS R10 |
+| UT-T07 | AAA ACTIVITY.CLASS filled at UNAUTH for FT/TT credits and debits (and for user-defined activities linked to the two classes) | §13 #3 |

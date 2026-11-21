@@ -86,10 +86,13 @@ public final class Constants {
     public static final String STATUS_DELETE = "DELETE";
     public static final String STATUS_AUTH_REV = "AUTH-REV";
 
-    /** Activity name contains CREDIT => credit activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT). */
-    public static final String ACTIVITY_CREDIT = "CREDIT";
-    /** Activity name contains DEBIT => debit activity (e.g. ACCOUNTS-DEBIT-ARRANGEMENT). */
-    public static final String ACTIVITY_DEBIT = "DEBIT";
+    /**
+     * Core AA.ACTIVITY.CLASS of credit activities. Compared with the AAA field ACTIVITY.CLASS
+     * (system filled), so user-defined activities linked to this class are covered too.
+     */
+    public static final String ACTIVITY_CLASS_CREDIT = "ACCOUNTS-CREDIT-ARRANGEMENT";
+    /** Core AA.ACTIVITY.CLASS of debit activities (compared with the AAA field ACTIVITY.CLASS). */
+    public static final String ACTIVITY_CLASS_DEBIT = "ACCOUNTS-DEBIT-ARRANGEMENT";
 
     // -------------------------------------------------------------------------
     // EB.ALBE.TXN.DETAILS.LIMIT CREDIT.DEBIT.FLAG values

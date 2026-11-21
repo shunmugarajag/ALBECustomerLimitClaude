@@ -117,7 +117,7 @@ Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-table
 | customerId | AA.ARRANGEMENT CUSTOMER (first) |
 | transactionId | AAA id (`arrangementContext.getArrangementActivityId()`); arrangement id as fallback. Maximum CIF check: arrangement id |
 | transactionDate | counted date from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input = server date); today if the tag is missing |
-| creditAmount / debitAmount | TXN.AMOUNT; credit or debit decided by the activity name containing `CREDIT` / `DEBIT` |
+| creditAmount / debitAmount | TXN.AMOUNT; credit or debit decided by the AAA **ACTIVITY.CLASS** (exact `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT`); any other class skipped |
 | transactionCurrency | AA.ARRANGEMENT CURRENCY |
 | limitCurrency, exchangeRate, originalAmount | set by `CurrencyConversionService` |
 | breaches, undefinedLimits, limitMissing, rateMissing | results, used by the view |
@@ -412,3 +412,4 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Enquiries: limit summary and transaction report; strict date parsing |
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
+| 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |

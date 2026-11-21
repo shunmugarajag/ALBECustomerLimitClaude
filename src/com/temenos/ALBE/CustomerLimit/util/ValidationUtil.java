@@ -103,4 +103,14 @@ public class ValidationUtil {
     public static boolean sameCurrency(String ccy1, String ccy2) {
         return !isBlank(ccy1) && !isBlank(ccy2) && ccy1.trim().equalsIgnoreCase(ccy2.trim());
     }
+
+    /** True when the AAA ACTIVITY.CLASS is the core credit class ACCOUNTS-CREDIT-ARRANGEMENT. */
+    public static boolean isCreditActivityClass(String activityClass) {
+        return Constants.ACTIVITY_CLASS_CREDIT.equals(nvl(activityClass).trim());
+    }
+
+    /** True when the AAA ACTIVITY.CLASS is the core debit class ACCOUNTS-DEBIT-ARRANGEMENT. */
+    public static boolean isDebitActivityClass(String activityClass) {
+        return Constants.ACTIVITY_CLASS_DEBIT.equals(nvl(activityClass).trim());
+    }
 }
