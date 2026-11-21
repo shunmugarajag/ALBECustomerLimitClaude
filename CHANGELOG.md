@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – FUNDS.TRANSFER and TELLER routines
+- `FundsTransferLimitController` and `TellerLimitController` (version routines): limit check at input and utilisation (count at input, take back on delete and authorised reversal), for **both sides** – each customer account side for its own customer; internal / cash accounts skipped. Common code in `TransactionSideReader` and `TransactionLimitHandler`.
+- Counted id `<customer>-<date>-<FT/TT id>.<CR|DR>` in the existing EB.ALBE.TXN.DETAILS.LIMIT; report shows the FT/TT id and its overrides.
+- `Constants.AA_SKIP_TXN_SYSTEM_IDS` to avoid counting an FT/TT twice when the AA activity routines are attached too.
+
 ### Changed – common for all activities (AAA findings A1–A7)
 - Decision: the bank decides which activities get the routines; direction stays the ACTIVITY.CLASS action for now (other actions such as APPLYPAYMENT decided later).
 - New `controller/ActivityRequestBuilder` used by both ACTIVITY.API routines – they can be attached to **any activity**. Counted when the activity has an amount and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line); INITIATION.TYPE checked against a list (all types counted).

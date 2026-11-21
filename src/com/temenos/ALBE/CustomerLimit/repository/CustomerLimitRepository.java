@@ -10,12 +10,16 @@ import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
 import com.temenos.t24.api.hook.system.Enquiry;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
+import com.temenos.api.TField;
+import com.temenos.api.TStructure;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
+import com.temenos.t24.api.records.fundstransfer.FundsTransferRecord;
+import com.temenos.t24.api.records.teller.TellerRecord;
 import com.temenos.t24.api.system.DataAccess;
 import com.temenos.t24.api.system.Session;
 import com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable;
@@ -34,6 +38,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
  *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, TXN.CONTRACT.ID - transaction report)
+ *                 FUNDS.TRANSFER, TELLER     read (OVERRIDE - transaction report)
  *                 Session                    T24 date (!TODAY), local currency
  *
  *               Read methods return null (or an empty list) when nothing is found;
@@ -328,6 +333,26 @@ public class CustomerLimitRepository {
         }
     }
 
+    /**
+     * Ids of the EB.ALBE.TXN.DETAILS.LIMIT records of one customer and one counted transaction
+     * (<customer>-<YYYYMMDD>-<transactionId>), whatever the date. Used only to find the counted
+     * date of a FUNDS.TRANSFER / TELLER transaction when it is deleted or reversed.
+     */
+    public List<String> selectTxnDetailsIdsForTransaction(String customerId, String transactionId) {
+        String selection = "WITH @ID LIKE " + customerId + "-...-" + transactionId;
+        LogUtil.info(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "SELECT",
+                Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
+        try {
+            List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection);
+            List<String> result = ids == null ? List.of() : ids;
+            LogUtil.info(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FOUND", result.size() + " records");
+            return result;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FAILED", Constants.TXN_DETAILS_TABLE, e);
+            return List.of();
+        }
+    }
+
     // =========================================================================
     // AA.ARRANGEMENT.ACTIVITY (read only, for the reports)
     // =========================================================================
@@ -350,6 +375,33 @@ public class CustomerLimitRepository {
             }
         }
         return null;
+    }
+
+    /**
+     * OVERRIDE values of a FUNDS.TRANSFER or TELLER transaction (live record, then $NAU), for the
+     * transaction report. Empty list if it cannot be read.
+     */
+    public List<String> readTransactionOverrides(String finMnemonic, String application, String transactionId) {
+        LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "READ", application + ">" + transactionId);
+        for (String suffix : new String[] { "", Constants.NAU_SUFFIX }) {
+            try {
+                TStructure record = daObj.getRecord(finMnemonic, application, suffix, transactionId);
+                List<TField> overrides = Constants.TELLER_APPLICATION.equals(application)
+                        ? new TellerRecord(record).getOverride()
+                        : new FundsTransferRecord(record).getOverride();
+                List<String> values = new java.util.ArrayList<>();
+                for (TField overrideField : overrides) {
+                    values.add(overrideField.getValue());
+                }
+                LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "FOUND", application + suffix + ">"
+                        + transactionId + " overrides=" + values.size());
+                return values;
+            } catch (Exception e) {
+                LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "NOT FOUND", application + suffix + ">"
+                        + transactionId);
+            }
+        }
+        return List.of();
     }
 
     /** New empty EB.ALBE.TXN.DETAILS.LIMIT record, to be filled and written. */

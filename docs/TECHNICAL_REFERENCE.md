@@ -70,6 +70,10 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
 | `controller` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
 | `controller` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
+| `controller` | `FundsTransferLimitController`, `TellerLimitController` | `RecordLifecycle.validateRecord` (INPUT.ROUTINE) and `postUpdateRequest` (AFTER.UNAU.RTN + AUTH.ROUTINE) on FT / TT versions |
+| `controller` | `TransactionSideReader` | debit / credit side of a FUNDS.TRANSFER or TELLER record (account, customer, amount, LCY amount, currency, value date, override field) |
+| `controller` | `TransactionLimitHandler` | common FT/TT flow: per customer side validate (daily/monthly + max CIF on credit) and update by `actionFor(function, status)`: I → COUNT, D → REVERSE.DELETE, A on RNAU/REVE → REVERSE, else NONE; counted id `<FT/TT id>.<CR|DR>` |
+| `model` | `TransactionSide` | one side of an FT / TT |
 | `controller` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, ACTIVITY.CLASS action, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
 | `controller` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
 | `controller` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
@@ -415,4 +419,5 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 21-Nov-2026 | FUNDS.TRANSFER and TELLER version routines (`FundsTransferLimitController`, `TellerLimitController`, `TransactionSideReader`, `TransactionLimitHandler`): both sides, each customer side for its own customer; count at input, take back on delete / authorised reversal; `Constants.AA_SKIP_TXN_SYSTEM_IDS` against double counting; report reads FT/TT overrides |
 | 21-Nov-2026 | Common for all activities (`ActivityRequestBuilder`): class action CREDIT/DEBIT any product line, INITIATION.TYPE list, ORIG.TXN.AMT, TXN.AMOUNT.LCY when limit CCY = LCY, T24 date (ORG.SYSTEM.DATE / !TODAY) instead of the server clock (G1); TXN.REF column in the transaction report |

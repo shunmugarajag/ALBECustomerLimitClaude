@@ -135,6 +135,26 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 
 ---
 
+## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026)
+
+Built on assumptions (the questions were not answered):
+
+| # | Assumption | Alternative |
+|---|---|---|
+| F1 | **Both sides** of an FT / TT are checked and counted, each customer side for its own customer; internal / cash accounts skipped | debit side only / credit side only |
+| F2 | **Same rules as AA:** check at input; count at input (AFTER.UNAU.RTN); take back on delete and when a reversal is authorised (AUTH.ROUTINE) | count only at authorisation |
+| F3 | TXN.DETAILS id `<customer>-<date>-<FT/TT id>.<CR|DR>` | no TXN.DETAILS record for FT/TT |
+| F4 | Maximum CIF check also on the FT/TT **credit** side | daily / monthly only |
+| F5 | AA double counting: `Constants.AA_SKIP_TXN_SYSTEM_IDS` empty by default – set `{ "FT", "TT" }` when both FT/TT and AA routines are attached | – |
+
+To check in DEV: hooks firing on delete and on reversal authorisation (RECORD.STATUS seen); FT DEBIT.CUSTOMER / CREDIT.CUSTOMER and AMOUNT.DEBITED filled at INPUT.ROUTINE time; TT AMOUNT.FCY / AMOUNT.LOCAL per side.
+
+| # | Gap | Fix |
+|---|---|---|
+| G10 | TT (no processing date): re-input of an unauthorised TT on a **later** T24 day counts it on the new day without taking back the first day (FT uses PROCESSING.DATE, so not affected) | on re-input look up the earlier record by id (one SELECT) – code only |
+
+---
+
 ## Open questions – activities (kept open, 21-Nov-2026)
 
 **A. Bank (business)**

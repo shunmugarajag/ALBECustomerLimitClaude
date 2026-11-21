@@ -108,6 +108,43 @@ public final class Constants {
     public static final String[] COUNTED_INITIATION_TYPES = { "USER", "TRANSACTION", "SECONDARY", "SCHEDULED*SOD",
             "SCHEDULED*EOD", "PAY*SOD", "PAY*EOD", "NOLOG" };
 
+    /**
+     * AAA TXN.SYSTEM.ID values the ACTIVITY.API routines skip, so a transaction is never counted
+     * twice when the FUNDS.TRANSFER / TELLER version routines are attached as well.
+     * Empty = the activity routines count everything. Set to { "FT", "TT" } when the FT and TT
+     * version routines are attached to the versions used for AA accounts.
+     */
+    public static final String[] AA_SKIP_TXN_SYSTEM_IDS = {};
+
+    // -------------------------------------------------------------------------
+    // FUNDS.TRANSFER / TELLER version routines
+    // -------------------------------------------------------------------------
+    public static final String FT_APPLICATION = "FUNDS.TRANSFER";
+    public static final String TELLER_APPLICATION = "TELLER";
+    /** Transaction id prefixes, to know which application a counted transaction came from. */
+    public static final String TXN_PREFIX_AAA = "AAA";
+    public static final String TXN_PREFIX_FT = "FT";
+    public static final String TXN_PREFIX_TT = "TT";
+    /**
+     * Between the FT / TT id and the side in the counted transaction id, e.g. FT26091ABCDE.DR, so the
+     * debit and the credit side of the same transaction (same customer on both sides) stay apart.
+     */
+    public static final String TXN_SIDE_SEPARATOR = ".";
+    /** TELLER DR.CR.MARKER value meaning side 1 (ACCOUNT.1) is credited. */
+    public static final String TT_MARKER_CREDIT = "CREDIT";
+    /** TransactionContext current function: input, delete, authorise, reverse. */
+    public static final String FUNCTION_INPUT = "I";
+    public static final String FUNCTION_DELETE = "D";
+    public static final String FUNCTION_AUTHORISE = "A";
+    public static final String FUNCTION_REVERSE = "R";
+    /** What a FT / TT version routine does with the utilisation (TransactionLimitHandler.actionFor). */
+    public static final String UTIL_ACTION_COUNT = "COUNT";
+    public static final String UTIL_ACTION_REVERSE_DELETE = "REVERSE.DELETE";
+    public static final String UTIL_ACTION_REVERSE = "REVERSE";
+    public static final String UTIL_ACTION_NONE = "NONE";
+    /** RECORD.STATUS values of a reversal (input of the reversal / reversed). */
+    public static final String[] REVERSAL_STATUSES = { "RNAU", "RNAO", "REVE" };
+
     // -------------------------------------------------------------------------
     // T24 session values
     // -------------------------------------------------------------------------

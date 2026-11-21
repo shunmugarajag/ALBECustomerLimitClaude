@@ -233,6 +233,29 @@ public class CustomerLimitEnquiryService {
         return ids;
     }
 
+    /**
+     * Overrides and reference of a counted transaction, read from the transaction itself:
+     * AA.ARRANGEMENT.ACTIVITY (reference = TXN.CONTRACT.ID) or, for the FT / TT version routines
+     * (id <FT / TT id>.<CR|DR>), FUNDS.TRANSFER / TELLER (reference = the FT / TT id).
+     */
+    private void fillFromTransaction(LimitTxnRow row, String finMnemonic) {
+        if (row.aaaId.startsWith(Constants.TXN_PREFIX_AAA)) {
+            AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, row.aaaId);
+            if (aaaRec != null) {
+                row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR, albeOverrideIds(overrideValues(aaaRec)));
+                row.txnReference = ValidationUtil.nvl(aaaRec.getTxnContractId().getValue()).trim();
+            }
+            return;
+        }
+        int side = row.aaaId.lastIndexOf(Constants.TXN_SIDE_SEPARATOR);
+        String transactionId = side > 0 ? row.aaaId.substring(0, side) : row.aaaId;
+        String application = transactionId.startsWith(Constants.TXN_PREFIX_TT) ? Constants.TELLER_APPLICATION
+                : Constants.FT_APPLICATION;
+        row.txnReference = transactionId;
+        row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR,
+                albeOverrideIds(repository.readTransactionOverrides(finMnemonic, application, transactionId)));
+    }
+
     /** OVERRIDE values of the activity (empty list if none). */
     private List<String> overrideValues(AaArrangementActivityRecord aaaRec) {
         List<String> values = new ArrayList<>();
@@ -298,11 +321,7 @@ public class CustomerLimitEnquiryService {
             row.amount = ValidationUtil.nvl(txnRec.getTxnAmount().getValue());
             // Accepted overrides and the FT / TT reference come from the activity itself
             // (no extra fields in EB.ALBE.TXN.DETAILS.LIMIT).
-            AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, row.aaaId);
-            if (aaaRec != null) {
-                row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR, albeOverrideIds(overrideValues(aaaRec)));
-                row.txnReference = ValidationUtil.nvl(aaaRec.getTxnContractId().getValue()).trim();
-            }
+            fillFromTransaction(row, finMnemonic);
             if (!overriddenOnly || row.isLimitOverridden()) {
                 rows.add(row);
             }

@@ -193,7 +193,9 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | 7 | COUNTED.DATE | T24 date it was counted on (from the record id) |
 | 8 | RECORD.ID | EB.ALBE.TXN.DETAILS.LIMIT id |
 | 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (from AA.ARRANGEMENT.ACTIVITY OVERRIDE, space separated) |
-| 10 | TXN.REF | FT / TT reference of the transaction (AA.ARRANGEMENT.ACTIVITY TXN.CONTRACT.ID, read at report time); blank for activities input directly |
+| 10 | TXN.REF | FT / TT reference: AA.ARRANGEMENT.ACTIVITY TXN.CONTRACT.ID (read at report time); for transactions counted by the FT / TT version routines the FT / TT id itself |
+
+For transactions counted by the **FT / TT version routines** the AAA.ID column holds `<FT/TT id>.<CR|DR>` (e.g. `FT26091ABCDE.DR`) and the OVERRIDES come from the FUNDS.TRANSFER / TELLER record (live, then `$NAU`).
 
 ### Where the overrides come from
 

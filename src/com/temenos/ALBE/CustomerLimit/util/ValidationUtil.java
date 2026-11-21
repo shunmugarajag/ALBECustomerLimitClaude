@@ -126,6 +126,19 @@ public class ValidationUtil {
         return isBlank(initiationType) || contains(Constants.COUNTED_INITIATION_TYPES, initiationType.trim());
     }
 
+    /**
+     * Amount of a T24 "currency + amount" field such as FT AMOUNT.DEBITED ("EGP1000.00"):
+     * leading letters removed, then toAmount; 0 if blank or not a number.
+     */
+    public static BigDecimal toAmountWithoutCurrency(String value) {
+        String text = nvl(value).trim();
+        int start = 0;
+        while (start < text.length() && Character.isLetter(text.charAt(start))) {
+            start++;
+        }
+        return toAmount(text.substring(start));
+    }
+
     /** True when value (not blank) is one of the values (exact, case sensitive like T24 ids). */
     public static boolean contains(String[] values, String value) {
         if (isBlank(value)) {

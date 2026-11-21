@@ -30,7 +30,7 @@ public class LimitTxnRow {
     public String amount;
     /** EB-ALBE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
     public String overrides = "";
-    /** FT / TT reference of the transaction (AAA TXN.CONTRACT.ID); blank for activities input directly. */
+    /** FT / TT reference: AAA TXN.CONTRACT.ID, or the FT / TT id for the FT / TT version routines. */
     public String txnReference = "";
 
     /** True when the transaction was accepted with a limit-exceed override (daily, monthly, max CIF). */

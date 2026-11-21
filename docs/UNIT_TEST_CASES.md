@@ -26,8 +26,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
 | Reports | UT-E01 … E17 | 17 | 17 | – |
-| Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **97** | **88** | **9** |
+| FT / TELLER routines | UT-FT01 … FT23 | 23 | 23 | – |
+| Controllers in T24 | UT-T01 … T11 | 11 | – | 11 |
+| **Total** | | **122** | **111** | **11** |
 
 ---
 
@@ -164,6 +165,34 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-C04 | AAA CURRENCY USD | transaction currency USD | Pass |
 | UT-C05 | AAA CURRENCY blank, arrangement EGP | EGP | Pass |
 
+## FUNDS.TRANSFER / TELLER routines – 21-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-FT01 | function I, status INAU | COUNT | Pass |
+| UT-FT02 | function D | REVERSE.DELETE | Pass |
+| UT-FT03 | function A, status INAU | NONE | Pass |
+| UT-FT04 | function A, status RNAU | REVERSE | Pass |
+| UT-FT05 | function R (reversal input) | NONE | Pass |
+| UT-FT06 | FT DEBIT.ACCT.NO 1001, DEBIT.AMOUNT 3000 | debit side DR 1001 3000 | Pass |
+| UT-FT07 | FT CREDIT.AMOUNT blank, AMOUNT.CREDITED "EGP3000.00" | credit side CR 2002 3000.00 | Pass |
+| UT-FT08 | FT only DEBIT.AMOUNT entered | credit side overrides on DEBIT.AMOUNT | Pass |
+| UT-FT09 | TT cash deposit, DR.CR.MARKER DEBIT | side 1 DR (cash), side 2 CR customer 200 6000 | Pass |
+| UT-FT10 | FT 3000 from customer 100 (daily debit 2000) to 200 | override(s) raised | Pass |
+| UT-FT11 | input | debit 3000 counted for 100 | Pass |
+| UT-FT12 | input | credit 3000 counted for 200 | Pass |
+| UT-FT13 | input | TXN.DETAILS `100-20260401-FT…AAA.DR`, `200-20260401-FT…AAA.CR` | Pass |
+| UT-FT14 | re-input same day with 2500 | 2500 (earlier 3000 taken back first) | Pass |
+| UT-FT15 | authorise | no change | Pass |
+| UT-FT16 | reversal authorised on 05-Apr | taken back from 01-Apr; 05-Apr untouched | Pass |
+| UT-FT17 | after reversal | TXN.DETAILS records deleted | Pass |
+| UT-FT18 | input then delete | taken back, records deleted | Pass |
+| UT-FT19 | TT cash deposit | only customer 200 counted; cash account skipped | Pass |
+| UT-FT20 | own transfer (same customer both sides) | `…DDD.CR` and `…DDD.DR` kept apart | Pass |
+| UT-FT21 | USD 10 debit, LOC.AMT.DEBITED 485, limit EGP | 485.00 counted (no rate lookup) | Pass |
+| UT-FT22 | report for an FT-counted row | TXN.REF = FT id, OVERRIDES from FUNDS.TRANSFER | Pass |
+| UT-FT23 | AA activity with TXN.SYSTEM.ID FT, skip list empty (default) | still counted by the activity routine | Pass |
+
 ## Reports
 
 | Id | Report | Selection | Expected | Result |
@@ -199,3 +228,5 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-T07 | AAA ACTIVITY.CLASS filled at UNAUTH for FT/TT credits and debits (and for user-defined activities linked to the two classes) | §13 #3 |
 | UT-T08 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, INITIATION.TYPE filled at UNAUTH; ORG.SYSTEM.DATE unchanged on re-input / DELETE / AUTH-REV | GAPS A1, A4, A5 |
 | UT-T09 | `Session.getCurrentVariable("!TODAY")` returns the T24 date (DEV: 01 APR 2026, not the server clock) | GAPS G1 |
+| UT-T10 | FT/TT: AFTER.UNAU.RTN fires on input and delete; AUTH.ROUTINE fires on reversal authorisation (RECORD.STATUS RNAU/REVE) | T24_CONFIGURATION §8a |
+| UT-T11 | FT/TT overrides raised from INPUT.ROUTINE appear on the amount field and can be accepted | §8a |

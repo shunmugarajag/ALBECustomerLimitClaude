@@ -24,6 +24,8 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                            credit, Constants.DEBIT_ACTIONS = debit, any product line; other
  *                            actions => not counted (direction unknown)
  *                 initiation INITIATION.TYPE must be in Constants.COUNTED_INITIATION_TYPES
+ *                 source     TXN.SYSTEM.ID in Constants.AA_SKIP_TXN_SYSTEM_IDS => not counted here
+ *                            (counted by the FT / TT version routine instead; empty by default)
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
  *                 date       REMARKS tag (date counted at input) -> ORG.SYSTEM.DATE (T24 date of the
  *                            activity) -> T24 TODAY -> server clock (last resort, logged)
@@ -53,6 +55,13 @@ public class ActivityRequestBuilder {
         String activityClass = aaaRec.getActivityClass().getValue();
         String initiationType = getInitiationType(aaaRec);
         if (!isCountedActivity(activityClass, initiationType, activity)) {
+            return null;
+        }
+
+        String systemId = ValidationUtil.nvl(aaaRec.getTxnSystemId().getValue()).trim();
+        if (ValidationUtil.contains(Constants.AA_SKIP_TXN_SYSTEM_IDS, systemId)) {
+            LogUtil.info(CLASS_NAME, "build", "SKIP", "activity=" + activity + " TXN.SYSTEM.ID=" + systemId
+                    + " is counted by its own version routine (Constants.AA_SKIP_TXN_SYSTEM_IDS)");
             return null;
         }
 

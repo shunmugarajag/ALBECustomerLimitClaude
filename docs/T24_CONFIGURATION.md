@@ -172,6 +172,8 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitCreationController` | `postUpdateRequest` |
 | ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller` | `DailyMonthlyLimitController` | `defaultFieldValues`, `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller` | `MaximumCifLimitController` | `validateRecord` |
+| ALBE.CL.FT.LIMIT | `com.temenos.ALBE.CustomerLimit.controller` | `FundsTransferLimitController` | `validateRecord`, `postUpdateRequest` |
+| ALBE.CL.TT.LIMIT | `com.temenos.ALBE.CustomerLimit.controller` | `TellerLimitController` | `validateRecord`, `postUpdateRequest` |
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitSummaryEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitPeriodEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitTxnEnquiryController` | `setIds` |
@@ -218,6 +220,25 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 - The maximum CIF check is for **credit** activities only.
 - ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).
 - Rebuild / re-authorise the product (AA.PRODUCT.DESIGNER proof and publish) as usual so the arrangements pick up the new condition.
+
+---
+
+## 8a. FUNDS.TRANSFER and TELLER versions – checks and utilisation
+
+The bank chooses the FT / TT versions. On each:
+
+| VERSION field | Routine | Hook | What it does |
+|---|---|---|---|
+| INPUT.ROUTINE | ALBE.CL.FT.LIMIT / ALBE.CL.TT.LIMIT | `validateRecord` | daily / monthly check (debit and credit side) + maximum CIF check (credit side); acceptable overrides on the amount field |
+| AFTER.UNAU.RTN | same | `postUpdateRequest` | input → **count**; delete → **take back** |
+| AUTH.ROUTINE | same | `postUpdateRequest` | authorising a reversal (RECORD.STATUS RNAU / REVE) → **take back** from the day it was counted; normal authorisation → nothing |
+
+- **Both sides:** the debit side (FT DEBIT.ACCT.NO, TT side marked DEBIT) and the credit side are read; each **customer account** side is checked and counted for **its own customer** (FT DEBIT.CUSTOMER / CREDIT.CUSTOMER or TT CUSTOMER.1/2, else ACCOUNT CUSTOMER). Internal and cash accounts are skipped.
+- **Counted id:** EB.ALBE.TXN.DETAILS.LIMIT `<customer>-<YYYYMMDD>-<FT/TT id>.<CR|DR>` (same table, no structure change); the side keeps an own-account transfer's debit and credit apart.
+- **Date:** FT PROCESSING.DATE, else the T24 date; TT the T24 date. A delete or reversal finds the counted day by the id (one SELECT on EB.ALBE.TXN.DETAILS.LIMIT, only then).
+- **Amount:** FT DEBIT.AMOUNT / CREDIT.AMOUNT (else AMOUNT.DEBITED / AMOUNT.CREDITED); TT AMOUNT.FCY (else AMOUNT.LOCAL). Local-currency amount LOC.AMT.DEBITED / CREDITED, AMOUNT.LOCAL.1 / 2 – used when the limit is in local currency.
+- ⚠ **No double counting with AA:** an FT/TT on an **AA account** also raises an ACCOUNTS-CREDIT/DEBIT activity. If the ACTIVITY.API routines are attached as well, set `Constants.AA_SKIP_TXN_SYSTEM_IDS = { "FT", "TT" }` (the activity routines then skip FT/TT-initiated activities), or attach only one of the two.
+- ⚠ **To test in DEV:** does AFTER.UNAU.RTN fire on delete (function D)? Does AUTH.ROUTINE fire when a reversal is authorised, and which RECORD.STATUS does the routine see (RNAU / REVE)? If not, use the slots your team uses for the same purpose and adjust `Constants.REVERSAL_STATUSES`.
 
 ---
 
