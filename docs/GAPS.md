@@ -135,6 +135,38 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 
 ---
 
+## Open questions – activities (kept open, 21-Nov-2026)
+
+**A. Bank (business)**
+
+| # | Question | Today in code |
+|---|---|---|
+| Q1 | Which activities get each routine, per product (daily/monthly; maximum CIF – money-in only?) | bank attaches in ACTIVITY.API |
+| Q2 | Actions other than CREDIT/DEBIT (e.g. `DEPOSITS-APPLYPAYMENT-…`): credit, debit or not counted? | logged, not counted |
+| Q3 | Deposit funding: count the deposit side too (same money counted twice)? | counted once – current-account debit |
+| Q4 | Deposit payout to the current account (`ACCOUNTS-CREDIT-ARRANGEMENT`): count as credit? | counted |
+| Q5 | AA-internal credits/debits (interest, charges – `TXN.SYSTEM.ID = AAAA`): count, or FT/TT only? | all initiation types counted |
+
+**B. DEV / configuration team**
+
+| # | Question |
+|---|---|
+| Q6 | AA.DECISION.PARAMETER UNAUTH.PROCESS: `IGNORE.TRANSACTION.ACTIVITIES` or `DEFAULT` (COB deletes and re-creates unauthorised credits/debits)? |
+| Q7 | Reverse and replay: do replayed activities get new AAA ids (MASTER.AAA)? Then a replayed credit could be counted twice. |
+| Q8 | Report TXN.REF for AA-internal activities: show `AAACT…\BNK` as is, or without `\BNK`? |
+
+**C. DEV tests – unauthorised `ACCOUNTS-CREDIT-ARRANGEMENT` on a current account**
+
+| # | Check |
+|---|---|
+| Q9 | ACTIVITY.CLASS, INITIATION.TYPE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, ORG.SYSTEM.DATE filled at input |
+| Q10 | ORG.SYSTEM.DATE unchanged on re-input, DELETE, AUTH-REV (then the REMARKS tag can go) |
+| Q11 | REMARKS tag kept on DELETE and AUTH-REV |
+| Q12 | `postCoreTableUpdate` runs for DELETE and AUTH-REV |
+| Q13 | Session `!TODAY` returns the T24 date (01 APR 2026), not the server date |
+
+---
+
 ## E1 – Exchange rate lookup not connected
 
 **Today**
