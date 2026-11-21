@@ -5,6 +5,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
 ### Changed – common for all activities (AAA findings A1–A7)
+- Decision: the bank decides which activities get the routines; direction stays the ACTIVITY.CLASS action for now (other actions such as APPLYPAYMENT decided later).
 - New `controller/ActivityRequestBuilder` used by both ACTIVITY.API routines – they can be attached to **any activity**. Counted when the activity has an amount and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line); INITIATION.TYPE checked against a list (all types counted).
 - Amount = **ORIG.TXN.AMT** if filled (full original amount), else TXN.AMOUNT.
 - Counted date = REMARKS tag → **ORG.SYSTEM.DATE** → **T24 TODAY** – the server clock is no longer used (G1 fixed; DEV runs on a T24 date months away from the clock). The REMARKS tag is written with the T24 date. Report defaults ("today") also use T24 TODAY.
