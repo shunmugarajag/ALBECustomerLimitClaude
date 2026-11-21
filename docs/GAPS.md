@@ -175,4 +175,4 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 1. **G1, G4, G5, G6** – small, code only, no behaviour risk.
 2. **E1** – as soon as the bank answers the five questions.
 3. **G2, G3** – after the team decision (lock API, fail vs. let through).
-4. **G7, G8, G9** – after the confirmations listed.
+4. **G7, G8** – after the confirmations listed (G9 done).
