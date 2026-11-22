@@ -1,7 +1,7 @@
 # ALBE Customer Limit – Known Gaps and Open Points
 
 Review of the current code (21-Nov-2026). Every fix proposed here works **without changing the pre-approved table structure**.
-For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for the T24 set-up see [T24_CONFIGURATION.md](T24_CONFIGURATION.md).
+All queries and gaps in one register (raised / solved): [QUERIES_AND_GAPS.md](QUERIES_AND_GAPS.md). For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for the T24 set-up see [T24_CONFIGURATION.md](T24_CONFIGURATION.md).
 
 | # | Gap | Risk | Fix needs | Status |
 |---|---|---|---|---|

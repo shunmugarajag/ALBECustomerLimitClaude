@@ -16,6 +16,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 | [CHANGELOG.md](CHANGELOG.md) | plain-language history of changes |
 | [CLAUDE.md](CLAUDE.md) | Handover for a new (Claude) session: rules, decisions and why, code map, open items, how to test |
 | [docs/GAPS.md](docs/GAPS.md) | Known gaps and open points (no table change needed): risk, example, proposed fix, decision needed; exchange rate questions for the bank |
+| [docs/QUERIES_AND_GAPS.md](docs/QUERIES_AND_GAPS.md) | Register: functional queries (bank / BA), technical queries (DEV), decisions taken, gaps raised and solved |
 | [docs/REPORTS.md](docs/REPORTS.md) | The customer limit reports: summary, period report, transaction report (incl. overridden transactions) – selection, columns, examples, T24 set-up |
 | [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **report enquiries (step 14) and user menu and access (step 15)** |
 

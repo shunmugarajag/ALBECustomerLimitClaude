@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – query and gap register (22-Nov-2026)
+- `docs/QUERIES_AND_GAPS.md`: functional queries for the bank / BA, technical queries for DEV, decisions taken, gaps raised and solved.
+
 ### Changed – controller sub-packages (22-Nov-2026)
 - Controllers grouped by where they are attached: `controller.customer` (CUSTOMER version), `controller.activity` (ACTIVITY.API, incl. ActivityRequestBuilder), `controller.enquiry` (NOFILE reports). **EB.API package names change** – see T24_CONFIGURATION step 5.
 
