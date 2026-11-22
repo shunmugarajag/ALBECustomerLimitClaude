@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.service;
+package com.temenos.ALBE.CustomerLimit.service.activity;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

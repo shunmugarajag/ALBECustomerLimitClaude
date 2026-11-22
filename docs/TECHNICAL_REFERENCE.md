@@ -70,7 +70,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller.customer` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
 | `controller.activity` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
 | `controller.activity` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
-| `service` | `CustomerLimitEngine` | **one entry point**: transaction info + customer limit info → `checkDailyMonthly`, `checkMaxCif`, `count`, `reverse` (counted day found by the transaction if needed); `transactionKey(reference)` = root reference used by every routine; own-account transfer (other side already recorded for the customer) → not counted, 0-amount marker, reversal takes nothing back |
+| `service.activity` | `CustomerLimitEngine` | **one entry point**: transaction info + customer limit info → `checkDailyMonthly`, `checkMaxCif`, `count`, `reverse` (counted day found by the transaction if needed); `transactionKey(reference)` = root reference used by every routine; own-account transfer (other side already recorded for the customer) → not counted, 0-amount marker, reversal takes nothing back |
 | `controller.activity` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, ACTIVITY.CLASS action, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
 | `controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
 | `controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
@@ -80,13 +80,13 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `model.enquiry` | `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` | One report row each (`isOverLimit()` on summary / period) |
 | `view` | `CustomerLimitEnquiryView` | Formats the rows as `*`-separated enquiry lines (column order documented in the class) |
 | `validation` | `CustomerLimitRequestValidator` | `isValidForDailyMonthly`, `isValidForMaxCif`, `isValidCustomerId` |
-| `service` | `CustomerLimitCreationService` | `create(customerId)` – never overwrites an existing record |
-| `service` | `DailyMonthlyLimitService` | `validate`, `countAtInput`, `reverse` |
-| `service` | `MaximumCifLimitService` | `validate` – sums converted account balances |
-| `service` | `CustomerLimitReader` | Reads customer limits (CIF.LIMIT) and generic limits (GEN.PARAM) into `Limits` |
-| `service` | `CustomerLimitUtilizationUpdater` | Adds / subtracts amounts on the daily and monthly EB.ALBE.UTILISED.LIMIT records |
-| `service` | `TxnDetailsLimitRecorder` | Writes / reads / deletes EB.ALBE.TXN.DETAILS.LIMIT (what was counted, for reversal) |
-| `service` | `CurrencyConversionService` | Rate lookup and conversion to the limit currency |
+| `service.customer` | `CustomerLimitCreationService` | `create(customerId)` – never overwrites an existing record |
+| `service.activity` | `DailyMonthlyLimitService` | `validate`, `countAtInput`, `reverse` |
+| `service.activity` | `MaximumCifLimitService` | `validate` – sums converted account balances |
+| `service` (shared) | `CustomerLimitReader` | Reads customer limits (CIF.LIMIT) and generic limits (GEN.PARAM) into `Limits` |
+| `service` (shared) | `CustomerLimitUtilizationUpdater` | Adds / subtracts amounts on the daily and monthly EB.ALBE.UTILISED.LIMIT records |
+| `service.activity` | `TxnDetailsLimitRecorder` | Writes / reads / deletes EB.ALBE.TXN.DETAILS.LIMIT (what was counted, for reversal) |
+| `service.activity` | `CurrencyConversionService` | Rate lookup and conversion to the limit currency |
 | `repository` | `CustomerLimitRepository` | Every DB read / write / delete / select, each logged |
 | `model` | `CustomerLimitDTO` | The request passed through all layers, plus results (breaches, missing limits, missing rate) |
 | `model` | `Limits` | One customer's (or the generic) limits; `null` field = limit not defined |
@@ -416,6 +416,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 22-Nov-2026 | Service sub-packages `service.activity` (engine, daily/monthly, max CIF, TXN.DETAILS recorder, conversion) and `service.customer` (creation); shared Reader / UtilizationUpdater stay in `service`; no logic change |
 | 22-Nov-2026 | Report sub-packages `model.enquiry` (report rows) and `service.enquiry` (CustomerLimitEnquiryService); no logic change |
 | 22-Nov-2026 | Controller sub-packages `controller.customer`, `controller.activity`, `controller.enquiry` (EB.API package names updated) |
 | 22-Nov-2026 | FT / TELLER / ACCOUNT.PARAMETER routines **removed** – FT, TT and other postings on AA accounts arrive as activities, covered by ACTIVITY.API (classes in Git history) |

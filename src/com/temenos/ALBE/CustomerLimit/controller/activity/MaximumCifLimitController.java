@@ -3,7 +3,7 @@ package com.temenos.ALBE.CustomerLimit.controller.activity;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEngine;
+import com.temenos.ALBE.CustomerLimit.service.activity.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;

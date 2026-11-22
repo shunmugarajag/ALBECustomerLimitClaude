@@ -3,7 +3,7 @@ package com.temenos.ALBE.CustomerLimit.controller.customer;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitCreationService;
+import com.temenos.ALBE.CustomerLimit.service.customer.CustomerLimitCreationService;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.api.TStructure;

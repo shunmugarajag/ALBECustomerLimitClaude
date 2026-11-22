@@ -62,11 +62,11 @@ controller/   sub-packages by where the routine is attached:
   activity/   DailyMonthlyLimitController, MaximumCifLimitController (ACTIVITY.API),
               ActivityRequestBuilder (common AAA -> request mapping for any activity)
   enquiry/    CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE)
-service/      CustomerLimitEngine (ONE entry point: transaction info + customer limit info -> checkDailyMonthly/checkMaxCif/count/reverse; transactionKey; own transfer),
-              DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
-              CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse),
-              TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<root ref>),
+service/      shared: CustomerLimitReader, CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse)
+  activity/   CustomerLimitEngine (ONE entry point: transaction info + customer limit info -> checkDailyMonthly/checkMaxCif/count/reverse; transactionKey; own transfer),
+              DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<root ref>),
               CurrencyConversionService
+  customer/   CustomerLimitCreationService
   enquiry/    CustomerLimitEnquiryService (report rows, read only)
 repository/   CustomerLimitRepository – one constructor (T24Context); all reads/writes/selects
 model/        CustomerLimitDTO (isCredit/getAmount/logKey), Limits, LimitBreach

@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.service;
+package com.temenos.ALBE.CustomerLimit.service.activity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -9,6 +9,8 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;

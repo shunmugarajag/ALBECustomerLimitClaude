@@ -1,8 +1,9 @@
-package com.temenos.ALBE.CustomerLimit.service;
+package com.temenos.ALBE.CustomerLimit.service.customer;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;

@@ -55,7 +55,9 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version) |
 | | `controller.activity` | DailyMonthlyLimitController, MaximumCifLimitController, ActivityRequestBuilder (ACTIVITY.API) |
 | | `controller.enquiry` | CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE reports) |
-| Service | `service` | CustomerLimitEngine (one entry point), DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder, CurrencyConversionService | Business rules (limit checks, utilisation count / reverse, limit creation). |
+| Service | `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater | Shared: read limits; utilisation record ids / amounts / add / reverse. |
+| | `service.activity` | CustomerLimitEngine (one entry point), DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder, CurrencyConversionService | Limit checks, utilisation count / reverse (ACTIVITY.API). |
+| | `service.customer` | CustomerLimitCreationService | Limit creation (CUSTOMER version). |
 | | `service.enquiry` | CustomerLimitEnquiryService | Report data (read only). |
 | Validation | `validation` | CustomerLimitRequestValidator, CustomerLimitEnquiryValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
 | Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
@@ -79,7 +81,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
-**FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the ACTIVITY.API routines cover them; they call one engine, `service/CustomerLimitEngine` (transaction info + customer limit info). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – both activities of one FT share the id per customer. An **own-account transfer** (same customer on both sides) is not counted. Non-AA accounts are not covered.
+**FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the ACTIVITY.API routines cover them; they call one engine, `service/activity/CustomerLimitEngine` (transaction info + customer limit info). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – both activities of one FT share the id per customer. An **own-account transfer** (same customer on both sides) is not counted. Non-AA accounts are not covered.
 
 The activity routines can be attached to **any activity** (`controller/activity/ActivityRequestBuilder`): an activity is counted when it has an amount (ORIG.TXN.AMT, else TXN.AMOUNT) and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line, e.g. `ACCOUNTS-CREDIT-ARRANGEMENT`); other activities are skipped. Dates use the **T24 date** (REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY), not the server clock. When the limit currency is the local currency, the activity's TXN.AMOUNT.LCY is used (no rate lookup).
 

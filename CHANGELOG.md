@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – service sub-packages (22-Nov-2026)
+- `service.activity`: CustomerLimitEngine, DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder, CurrencyConversionService. `service.customer`: CustomerLimitCreationService. Shared CustomerLimitReader and CustomerLimitUtilizationUpdater stay in `service`. No logic change; EB.API entries unchanged.
+
 ### Changed – report sub-packages (22-Nov-2026)
 - Report classes moved: `model.enquiry` (LimitSummaryRow, LimitPeriodRow, LimitTxnRow) and `service.enquiry` (CustomerLimitEnquiryService). No logic change; EB.API entries unchanged (controllers did not move).
 
