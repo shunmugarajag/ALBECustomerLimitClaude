@@ -112,7 +112,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
 - **FT / TELLER / ACCOUNT.PARAMETER routines removed (22-Nov-2026)** – ACTIVITY.API covers FT/TT on AA accounts. DEV: activity created at FT input; activity overrides on the FT screen; FT delete/reversal → DELETE/AUTH-REV. Non-AA accounts not covered. S5: first activity of an own transfer may still show an override.
-- **Activity questions Q1–Q13** kept open in GAPS.md (user 21-Nov: "keep open").
+- **Open questions** live only in `docs/QUERIES_AND_GAPS.md` (FQ/TQ); the old Q1–Q13 list in GAPS.md was removed as a duplicate (22-Nov).
 - Remaining small code gap: G5. (`\<mnemonic>` strip done via root reference.) (Outdated `<AAA id>` comments fixed 22-Nov.)
 
 ## 8. Testing (outside T24)
