@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.service;
+package com.temenos.ALBE.CustomerLimit.service.enquiry;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-import com.temenos.ALBE.CustomerLimit.model.LimitPeriodRow;
-import com.temenos.ALBE.CustomerLimit.model.LimitSummaryRow;
-import com.temenos.ALBE.CustomerLimit.model.LimitTxnRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitPeriodRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitSummaryRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitTxnRow;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.api.TField;

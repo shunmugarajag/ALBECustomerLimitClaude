@@ -29,8 +29,8 @@ The controllers hold no business rules and no DB access. Inside the module every
 |---|---|
 | Controller | `CustomerLimitSummaryEnquiryController`, `CustomerLimitPeriodEnquiryController`, `CustomerLimitTxnEnquiryController` |
 | Validation | `CustomerLimitEnquiryValidator` |
-| Service | `CustomerLimitEnquiryService` (read only) |
-| Model | `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` |
+| Service | `service.enquiry.CustomerLimitEnquiryService` (read only) |
+| Model | `model.enquiry`: `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` |
 | View | `CustomerLimitEnquiryView` (column order documented in the class) |
 | Repository | `CustomerLimitRepository` – `selectCifLimitIds`, `selectUtilisedLimitIds`, `selectTxnDetailsIds`, reads |
 

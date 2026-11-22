@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.model;
+package com.temenos.ALBE.CustomerLimit.model.enquiry;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

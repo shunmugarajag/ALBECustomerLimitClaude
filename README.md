@@ -55,12 +55,14 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version) |
 | | `controller.activity` | DailyMonthlyLimitController, MaximumCifLimitController, ActivityRequestBuilder (ACTIVITY.API) |
 | | `controller.enquiry` | CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE reports) |
-| Service | `service` | CustomerLimitEngine (one entry point), DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder, CurrencyConversionService, CustomerLimitEnquiryService | Business rules (limit checks, utilisation count / reverse, limit creation, report data). |
+| Service | `service` | CustomerLimitEngine (one entry point), DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader, CustomerLimitUtilizationUpdater, TxnDetailsLimitRecorder, CurrencyConversionService | Business rules (limit checks, utilisation count / reverse, limit creation). |
+| | `service.enquiry` | CustomerLimitEnquiryService | Report data (read only). |
 | Validation | `validation` | CustomerLimitRequestValidator, CustomerLimitEnquiryValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
 | Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
 | Utility | `util` | ValidationUtil | Common value checks shared by every layer: `isBlank`, `nvl`, `isPositive`, `toAmount` (blank/invalid = 0), `toOptionalAmount` (blank = limit not defined), `toText`, `toDate` (YYYYMMDD), `sameCurrency`. No business rules. |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
-| Model | `model` | CustomerLimitDTO, Limits, LimitBreach, LimitSummaryRow, LimitPeriodRow, LimitTxnRow | Data passed between layers. |
+| Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
+| | `model.enquiry` | LimitSummaryRow, LimitPeriodRow, LimitTxnRow | One report row each. |
 | View | `view` | CustomerLimitOverride, CustomerLimitEnquiryView | Overrides on TXN.AMOUNT; enquiry lines (`*`-separated columns). |
 | Constants | `constants` | Constants | All constants: tables, record ids, statuses, activity keywords, field / key names, override ids, messages, date formats. The only `final` class. |
 

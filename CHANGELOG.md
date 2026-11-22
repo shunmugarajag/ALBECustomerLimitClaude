@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – report sub-packages (22-Nov-2026)
+- Report classes moved: `model.enquiry` (LimitSummaryRow, LimitPeriodRow, LimitTxnRow) and `service.enquiry` (CustomerLimitEnquiryService). No logic change; EB.API entries unchanged (controllers did not move).
+
 ### Added – query and gap register (22-Nov-2026)
 - `docs/QUERIES_AND_GAPS.md`: functional queries for the bank / BA, technical queries for DEV, decisions taken, gaps raised and solved.
 

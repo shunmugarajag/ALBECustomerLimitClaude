@@ -66,9 +66,11 @@ service/      CustomerLimitEngine (ONE entry point: transaction info + customer 
               DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
               CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse),
               TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<root ref>),
-              CurrencyConversionService, CustomerLimitEnquiryService (read only)
+              CurrencyConversionService
+  enquiry/    CustomerLimitEnquiryService (report rows, read only)
 repository/   CustomerLimitRepository – one constructor (T24Context); all reads/writes/selects
-model/        CustomerLimitDTO (isCredit/getAmount/logKey), Limits, LimitBreach, LimitSummaryRow, LimitPeriodRow, LimitTxnRow
+model/        CustomerLimitDTO (isCredit/getAmount/logKey), Limits, LimitBreach
+  enquiry/    LimitSummaryRow, LimitPeriodRow, LimitTxnRow (report rows)
 view/         CustomerLimitOverride, CustomerLimitEnquiryView (column order documented in the class)
 validation/   CustomerLimitRequestValidator, CustomerLimitEnquiryValidator
 util/         LogUtil (info/error/detail; detail switch LOG_DETAIL_ENABLED; never throws), ValidationUtil (isBlank, nvl, toAmount, toOptionalAmount, toDate/toMonth strict, …)

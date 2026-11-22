@@ -4,9 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-import com.temenos.ALBE.CustomerLimit.model.LimitTxnRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitTxnRow;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEnquiryService;
+import com.temenos.ALBE.CustomerLimit.service.enquiry.CustomerLimitEnquiryService;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitEnquiryValidator;

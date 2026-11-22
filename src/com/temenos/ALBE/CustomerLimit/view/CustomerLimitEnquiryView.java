@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
-import com.temenos.ALBE.CustomerLimit.model.LimitPeriodRow;
-import com.temenos.ALBE.CustomerLimit.model.LimitSummaryRow;
-import com.temenos.ALBE.CustomerLimit.model.LimitTxnRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitPeriodRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitSummaryRow;
+import com.temenos.ALBE.CustomerLimit.model.enquiry.LimitTxnRow;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 /*-----------------------------------------------------------------------------
