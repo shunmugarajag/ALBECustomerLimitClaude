@@ -114,7 +114,7 @@ public final class Constants {
     /**
      * A transaction reference is cut at these characters: "FT26091ABCDE\BNK" (company) and
      * "FT26091ABCDE;1" (history) both become "FT26091ABCDE". Every routine (activity, FT / TT
-     * version, accounting entry) counts a transaction under <root reference>.<CR|DR>, so the same
+     * version, accounting entry) counts a transaction under <root reference>, so the same
      * transaction seen from two places replaces itself instead of being counted twice.
      */
     public static final String[] REFERENCE_CUT_CHARS = { "\\", ";" };
@@ -142,11 +142,6 @@ public final class Constants {
     public static final String TXN_PREFIX_AAA = "AAA";
     public static final String TXN_PREFIX_FT = "FT";
     public static final String TXN_PREFIX_TT = "TT";
-    /**
-     * Between the FT / TT id and the side in the counted transaction id, e.g. FT26091ABCDE.DR, so the
-     * debit and the credit side of the same transaction (same customer on both sides) stay apart.
-     */
-    public static final String TXN_SIDE_SEPARATOR = ".";
     /** Between the parts of the EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-<transaction>. */
     public static final String TXN_ID_SEPARATOR = "-";
     /** TELLER DR.CR.MARKER value meaning side 1 (ACCOUNT.1) is credited. */

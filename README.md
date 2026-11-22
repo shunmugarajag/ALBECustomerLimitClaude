@@ -77,7 +77,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
-**Limit management works wherever a routine is attached** – ACCOUNT.PARAMETER (every transaction), ACTIVITY.API (AA) or FT/TT versions. All of them build transaction info and call one engine, `service/CustomerLimitEngine` (transaction info + customer limit info), and count a transaction under the same key `<reference>.<CR|DR>`, so it is never counted twice.
+**Limit management works wherever a routine is attached** – ACCOUNT.PARAMETER (every transaction), ACTIVITY.API (AA) or FT/TT versions. All of them build transaction info and call one engine, `service/CustomerLimitEngine` (transaction info + customer limit info), and count a transaction under the same key – its root reference (`FT…`, `AAACT…`) – so it is never counted twice. An **own-account transfer** (same customer on the debit and credit side) is not checked and not counted.
 
 The activity routines can be attached to **any activity** (`controller/ActivityRequestBuilder`): an activity is counted when it has an amount (ORIG.TXN.AMT, else TXN.AMOUNT) and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line, e.g. `ACCOUNTS-CREDIT-ARRANGEMENT`); other activities are skipped. Dates use the **T24 date** (REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY), not the server clock. When the limit currency is the local currency, the activity's TXN.AMOUNT.LCY is used (no rate lookup).
 

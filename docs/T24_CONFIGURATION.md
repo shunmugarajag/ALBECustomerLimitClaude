@@ -240,10 +240,11 @@ The bank chooses the FT / TT versions. On each:
 | AUTH.ROUTINE | same | `postUpdateRequest` | authorising a reversal (RECORD.STATUS RNAU / REVE) → **take back** from the day it was counted; normal authorisation → nothing |
 
 - **Both sides:** the debit side (FT DEBIT.ACCT.NO, TT side marked DEBIT) and the credit side are read; each **customer account** side is checked and counted for **its own customer** (FT DEBIT.CUSTOMER / CREDIT.CUSTOMER or TT CUSTOMER.1/2, else ACCOUNT CUSTOMER). Internal and cash accounts are skipped.
-- **Counted id:** EB.ALBE.TXN.DETAILS.LIMIT `<customer>-<YYYYMMDD>-<FT/TT id>.<CR|DR>` (same table, no structure change); the side keeps an own-account transfer's debit and credit apart.
+- **Counted id:** EB.ALBE.TXN.DETAILS.LIMIT `<customer>-<YYYYMMDD>-<FT/TT id>` (same table, no structure change).
+- **Own-account transfer** (same customer on both sides): not checked and not counted.
 - **Date:** FT PROCESSING.DATE, else the T24 date; TT the T24 date. A delete or reversal finds the counted day by the id (one SELECT on EB.ALBE.TXN.DETAILS.LIMIT, only then).
 - **Amount:** FT DEBIT.AMOUNT / CREDIT.AMOUNT (else AMOUNT.DEBITED / AMOUNT.CREDITED); TT AMOUNT.FCY (else AMOUNT.LOCAL). Local-currency amount LOC.AMT.DEBITED / CREDITED, AMOUNT.LOCAL.1 / 2 – used when the limit is in local currency.
-- **No double counting:** every routine counts a transaction under the same key `<FT/TT/AAA root reference>.<CR|DR>`, so an FT on an AA account seen by both the FT routine and the activity routine is counted **once** (the second replaces the first). The **overrides**, however, would be shown twice – attach the *check* in one place (8c).
+- **No double counting:** every routine counts a transaction under the same key `<FT/TT/AAA root reference>`, so an FT on an AA account seen by both the FT routine and the activity routine is counted **once** (the second replaces the first). The **overrides**, however, would be shown twice – attach the *check* in one place (8c).
 - ⚠ **To test in DEV:** does AFTER.UNAU.RTN fire on delete (function D)? Does AUTH.ROUTINE fire when a reversal is authorised, and which RECORD.STATUS does the routine see (RNAU / REVE)? If not, use the slots your team uses for the same purpose and adjust `Constants.REVERSAL_STATUSES`.
 
 ---
@@ -260,7 +261,8 @@ One attach point that sees **every transaction that posts to an account** (AA, F
 - **Customer entries only:** entries without CUSTOMER.ID (internal / GL accounts) and entry types other than STMT are skipped at once (keeps every posting fast).
 - **Direction:** the sign of the entry on the customer's account (+ credit, − debit); a reversing entry is matched to the original side.
 - **Amount:** AMOUNT.FCY (foreign-currency account), else AMOUNT.LCY; AMOUNT.LCY used when the limit is in local currency.
-- **Key:** TRANS.REFERENCE root (`FT…\BNK` → `FT…`) + `.CR` / `.DR` – same key as the activity and FT/TT routines.
+- **Key:** TRANS.REFERENCE root (`FT…\BNK` → `FT…`) – same key as the activity and FT routines.
+- **Own-account transfer:** the entries come one at a time – the second side (same customer, other direction) takes the first back and leaves a 0-amount marker; nothing is counted.
 - **Date:** BOOKING.DATE, else the T24 date.
 - **Skip lists (bank decides):** `Constants.STMT_SKIP_SYSTEM_IDS` (e.g. COB interest) and `STMT_SKIP_TRANSACTION_CODES` (e.g. charge codes); empty = everything counted.
 - ⚠ ACCOUNT.PARAMETER is **one bank-wide record** – if ACCT.NAU.SUBRTN / ACCOUNTING.SUBRTN already hold a routine, combine them first.

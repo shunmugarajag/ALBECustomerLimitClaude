@@ -26,8 +26,8 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                            actions => not counted (direction unknown)
  *                 initiation INITIATION.TYPE must be in Constants.COUNTED_INITIATION_TYPES
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
- *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id,
- *                            + .CR / .DR - same key as the FT / TT and accounting-entry routines
+ *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id -
+ *                            same key as the FT and accounting-entry routines
  *                 date       REMARKS tag (date counted at input) -> ORG.SYSTEM.DATE (T24 date of the
  *                            activity) -> T24 TODAY -> server clock (last resort, logged)
  *
@@ -36,7 +36,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * Modification History :
  *-----------------------------------------------------------------------------
  * 21-Nov-2026   Development      Initial Version (common for all activities)
- * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) + .CR/.DR (CustomerLimitEngine)
+ * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) (CustomerLimitEngine)
  * 22-Nov-2026   Development      AA_SKIP_TXN_SYSTEM_IDS removed - the common key prevents double counting
  *-----------------------------------------------------------------------------
  */
@@ -76,7 +76,7 @@ public class ActivityRequestBuilder {
 
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
-        request.setTransactionId(CustomerLimitEngine.transactionKey(reference, credit));
+        request.setTransactionId(CustomerLimitEngine.transactionKey(reference));
         request.setTransactionDate(getCountedDate(aaaRec, repository));
         request.setTransactionCurrency(getCurrency(aaaRec, arrangementRecord));
         request.setAmountLcy(getAmountLcy(aaaRec, useOriginal));

@@ -27,10 +27,10 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
 | Reports | UT-E01 … E17 | 17 | 17 | – |
 | FT / TELLER routines | UT-FT01 … FT23 | 23 | 23 | – |
-| Engine + accounting entries | UT-G01 … G16 | 16 | 16 | – |
+| Engine + accounting entries | UT-G01 … G19 | 19 | 19 | – |
 | Blank limit currency (error) | UT-H01 … H04 | 4 | 4 | – |
 | Controllers in T24 | UT-T01 … T13 | 13 | – | 13 |
-| **Total** | | **144** | **131** | **13** |
+| **Total** | | **147** | **134** | **13** |
 
 ---
 
@@ -173,20 +173,23 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 |---|---|---|---|
 | UT-G01 | reference `FT26091ABC\BNK` | root `FT26091ABC` | Pass |
 | UT-G02 | reference `FT26091ABC;1` | root `FT26091ABC` | Pass |
-| UT-G03 | key for `FT1\BNK`, debit | `FT1.DR` | Pass |
-| UT-G04 | entry −3000 on customer 100 | debit 3000, key `FT26091AAA.DR` | Pass |
+| UT-G03 | key for `FT1\BNK` | `FT1` | Pass |
+| UT-G04 | entry −3000 on customer 100 | debit 3000, key `FT26091AAA` | Pass |
 | UT-G05 | entry without CUSTOMER.ID | skipped | Pass |
 | UT-G06 | entry type CATEG | skipped | Pass |
 | UT-G07 | USD account, AMOUNT.FCY −10, AMOUNT.LCY −485 | debit 10 USD, LCY 485 | Pass |
 | UT-G08 | debit 3000, daily debit limit 2000 | breach | Pass |
 | UT-G09 | credit entry | daily/monthly + maximum CIF checked (2 results) | Pass |
 | UT-G10 | count from the entry | 3000 credit for 200 | Pass |
-| UT-G11 | AA activity with TXN.CONTRACT.ID `FT26091AAA\BNK` | key `FT26091AAA.CR` | Pass |
+| UT-G11 | AA activity with TXN.CONTRACT.ID `FT26091AAA\BNK` | key `FT26091AAA` | Pass |
 | UT-G12 | same transaction counted again by the activity routine | still 3000, one record (no double count) | Pass |
-| UT-G13 | reversing entry −3000 (flip) | matched to `FT26091AAA.CR` | Pass |
+| UT-G13 | reversing entry −3000 (flip) | matched to `FT26091AAA` | Pass |
 | UT-G14 | reversal booked 05-Apr | taken back from 01-Apr, record deleted | Pass |
-| UT-G15 | AA activity without FT | key `AAACT2.DR` | Pass |
+| UT-G15 | AA activity without FT | key `AAACT2` | Pass |
 | UT-G16 | override texts for ACCT.NAU.SUBRTN | list of `EB-ALBE.*` texts | Pass |
+| UT-G17 | own transfer via entries: credit side of the same customer after the debit side | no check | Pass |
+| UT-G18 | same, count | debit taken back, 0-amount marker kept | Pass |
+| UT-G19 | reversal of that own transfer on a later day (fallback on) | nothing taken back | Pass |
 
 ## Blank limit currency – 22-Nov-2026
 
@@ -213,14 +216,14 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-FT10 | FT 3000 from customer 100 (daily debit 2000) to 200 | override(s) raised | Pass |
 | UT-FT11 | input | debit 3000 counted for 100 | Pass |
 | UT-FT12 | input | credit 3000 counted for 200 | Pass |
-| UT-FT13 | input | TXN.DETAILS `100-20260401-FT…AAA.DR`, `200-20260401-FT…AAA.CR` | Pass |
+| UT-FT13 | input | TXN.DETAILS `100-20260401-FT…AAA`, `200-20260401-FT…AAA` | Pass |
 | UT-FT14 | re-input same day with 2500 | 2500 (earlier 3000 taken back first) | Pass |
 | UT-FT15 | authorise | no change | Pass |
 | UT-FT16 | reversal authorised on 05-Apr | taken back from 01-Apr; 05-Apr untouched | Pass |
 | UT-FT17 | after reversal | TXN.DETAILS records deleted | Pass |
 | UT-FT18 | input then delete | taken back, records deleted | Pass |
 | UT-FT19 | TT cash deposit | only customer 200 counted; cash account skipped | Pass |
-| UT-FT20 | own transfer (same customer both sides) | `…DDD.CR` and `…DDD.DR` kept apart | Pass |
+| UT-FT20 | own transfer (same customer both sides) | not checked, nothing counted | Pass |
 | UT-FT21 | USD 10 debit, LOC.AMT.DEBITED 485, limit EGP | 485.00 counted (no rate lookup) | Pass |
 | UT-FT22 | report for an FT-counted row | TXN.REF = FT id, OVERRIDES from FUNDS.TRANSFER | Pass |
 | UT-FT23 | AA activity with TXN.SYSTEM.ID FT, skip list empty (default) | still counted by the activity routine | Pass |

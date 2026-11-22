@@ -5,7 +5,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 /*-----------------------------------------------------------------------------
  * Description : One row of the customer limit transaction enquiry: one transaction
  *               that is currently counted in the customer's utilisation
- *               (one EB.ALBE.TXN.DETAILS.LIMIT record, id <customer>-<AAA id>).
+ *               (one EB.ALBE.TXN.DETAILS.LIMIT record, id <customer>-<YYYYMMDD>-<transaction key>).
  *               Rejected and reversed transactions are not listed: their record is
  *               deleted when the utilisation is reversed.
  *               Filled by CustomerLimitEnquiryService, formatted by CustomerLimitEnquiryView.

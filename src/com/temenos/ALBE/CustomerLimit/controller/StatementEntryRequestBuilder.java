@@ -22,8 +22,8 @@ import com.temenos.t24.api.records.stmtentry.StmtEntryRecord;
  *                 amount     AMOUNT.FCY (account in foreign currency), else AMOUNT.LCY
  *                 LCY amount AMOUNT.LCY (used when the limit is in local currency)
  *                 currency   CURRENCY
- *                 key        TRANS.REFERENCE root + .CR / .DR (same key as the activity and FT / TT
- *                            routines, so no double count)
+ *                 key        TRANS.REFERENCE root (same key as the activity and FT routines, so no
+ *                            double count)
  *                 date       BOOKING.DATE, else the T24 date
  *
  *               Skipped: entry type other than STMT, no customer, zero amount, SYSTEM.ID in
@@ -79,7 +79,7 @@ public class StatementEntryRequestBuilder {
 
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(customerId);
-        request.setTransactionId(CustomerLimitEngine.transactionKey(reference, credit));
+        request.setTransactionId(CustomerLimitEngine.transactionKey(reference));
         request.setTransactionDate(entryDate(entry, repository));
         request.setTransactionCurrency(text(entry.getCurrency()));
         request.setAmountLcy(lcy.abs());

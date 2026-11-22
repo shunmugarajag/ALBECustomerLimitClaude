@@ -10,7 +10,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 
 /*-----------------------------------------------------------------------------
  * Description : Input and result data passed between the customer limit routines.
- *               Input  : customer, AAA id, server date, transaction currency, credit or debit
+ *               Input  : customer, transaction key, T24 date, transaction currency, credit or debit
  *                        amount (converted to the limit currency by the services).
  *               Result : valid flag, last message, limitMissing flag and one LimitBreach
  *                        per breached limit (override id + amount difference).
@@ -24,7 +24,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 public class CustomerLimitDTO {
     /** CUSTOMER id (first customer of the arrangement). */
     private String customerId;
-    /** AAA id (daily/monthly routine) or arrangement id (maximum CIF routine). */
+    /** Transaction key: root reference of the FT / TT / AAA / accounting entry (CustomerLimitEngine.transactionKey). */
     private String transactionId;
     /** Server date the transaction is counted on (from the activity REMARKS tag ALBE.LIMIT.DATE; else today). */
     private LocalDate transactionDate;

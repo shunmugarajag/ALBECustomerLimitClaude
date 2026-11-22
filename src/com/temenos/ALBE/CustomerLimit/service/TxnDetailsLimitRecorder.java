@@ -16,8 +16,8 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  *               EB.ALBE.UTILISED.LIMIT (written at input), so a re-input, a rejected
  *               input or a reversal subtracts from the original day and month.
  *
- *               Record id : <customer id>-<YYYYMMDD>-<AAA id>   (HLSD format)
- *                           YYYYMMDD = server date the amount was counted on. It is kept
+ *               Record id : <customer id>-<YYYYMMDD>-<transaction key>   (HLSD format)
+ *                           YYYYMMDD = T24 date the amount was counted on. It is kept
  *                           in the activity's REMARKS (ALBE.LIMIT.DATE=YYYYMMDD, written by
  *                           DailyMonthlyLimitController.defaultFieldValues), so every later
  *                           step - also a reversal on another day - rebuilds the id and
@@ -41,7 +41,7 @@ public class TxnDetailsLimitRecorder {
         this.repository = repository;
     }
 
-    /** <customer id>-<YYYYMMDD counted on>-<AAA id> */
+    /** <customer id>-<YYYYMMDD counted on>-<transaction key: root reference of the FT / TT / AAA / entry> */
     public static String recordId(CustomerLimitDTO request) {
         return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT)
                 + "-" + request.getTransactionId();
@@ -71,7 +71,7 @@ public class TxnDetailsLimitRecorder {
     }
 
     /**
-     * Finds what was recorded for this transaction: direct read of <customer>-<date>-<AAA id>,
+     * Finds what was recorded for this transaction: direct read of <customer>-<date>-<transaction key>,
      * the date being the one the request carries (from the activity REMARKS).
      * The returned entry carries the original date (from the id), flag and amount.
      * @return 0 or 1 entries

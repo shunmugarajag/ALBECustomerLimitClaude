@@ -235,12 +235,11 @@ public class CustomerLimitEnquiryService {
 
     /**
      * Overrides and reference of a counted transaction, read from the transaction itself:
-     * AA.ARRANGEMENT.ACTIVITY (reference = TXN.CONTRACT.ID) or, for the FT / TT version routines
-     * (id <FT / TT id>.<CR|DR>), FUNDS.TRANSFER / TELLER (reference = the FT / TT id).
+     * AA.ARRANGEMENT.ACTIVITY for AAA keys, FUNDS.TRANSFER / TELLER for FT / TT keys; other
+     * applications (accounting entries) show the reference only.
      */
     private void fillFromTransaction(LimitTxnRow row, String finMnemonic) {
-        int side = row.aaaId.lastIndexOf(Constants.TXN_SIDE_SEPARATOR);
-        String transactionId = side > 0 ? row.aaaId.substring(0, side) : row.aaaId;
+        String transactionId = row.aaaId;
         row.txnReference = transactionId;
         if (transactionId.startsWith(Constants.TXN_PREFIX_AAA)) {
             AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, transactionId);
@@ -302,7 +301,7 @@ public class CustomerLimitEnquiryService {
         List<LimitTxnRow> rows = new ArrayList<>();
         String finMnemonic = repository.getFinancialMnemonic();   // once, for the AA.ARRANGEMENT.ACTIVITY reads
         for (String recordId : repository.selectTxnDetailsIds(oneCustomer ? customerId.trim() : "", days)) {
-            String[] parts = recordId.split("-", 3);   // customer, YYYYMMDD, AAA id
+            String[] parts = recordId.split("-", 3);   // customer, YYYYMMDD, transaction key
             LocalDate countedOn = parts.length == 3 ? ValidationUtil.toDate(parts[1]) : null;
             if (countedOn == null || (from != null && countedOn.isBefore(from))
                     || (to != null && countedOn.isAfter(to))) {

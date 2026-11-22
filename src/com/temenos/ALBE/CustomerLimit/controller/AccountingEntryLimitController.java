@@ -81,11 +81,10 @@ public class AccountingEntryLimitController extends AccountingEntry {
                     engine.count(transaction, entry.getAccountNumber().getValue(), entry.getValueDate().getValue());
                 }
             } else {
-                // A reversing entry has the opposite sign of the original: look for the original side
-                // first, then the entry's own side (e.g. a delete that repeats the original entry).
+                // A reversing entry has the opposite sign of the original: flip it back to the original side.
                 CustomerLimitDTO original = StatementEntryRequestBuilder.build(entryType, entry, true, repository);
-                if (original != null && engine.reverse(original, false) == 0) {
-                    engine.reverse(StatementEntryRequestBuilder.build(entryType, entry, false, repository), false);
+                if (original != null) {
+                    engine.reverse(original, false);
                 }
             }
             LogUtil.info(CLASS_NAME, "exportEntries", "END", "action=" + action + " entry=" + statementId

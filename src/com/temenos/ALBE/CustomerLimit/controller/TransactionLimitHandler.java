@@ -28,13 +28,15 @@ import com.temenos.t24.api.records.account.AccountRecord;
  *
  *               A side is a customer side when the transaction or its ACCOUNT gives a customer;
  *               internal / cash accounts are skipped. Counted transaction id:
- *               <FT / TT id>.<CR|DR>, so EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-FT...DR.
+ *               the FT / TT id, so EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-FT...;
+ *               own-account transfer (same customer on both sides) not checked or counted.
  *               No DB access here (through the repository) and no business rules (services).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 21-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine; common key
+ * 22-Nov-2026   Development      Key without .CR/.DR; own-account transfers skipped
  *-----------------------------------------------------------------------------
  */
 public class TransactionLimitHandler {
@@ -54,6 +56,9 @@ public class TransactionLimitHandler {
      */
     public int validate(String transactionId, List<TransactionSide> sides, LocalDate countedDate) {
         int raised = 0;
+        if (isOwnTransfer(sides)) {
+            return raised;
+        }
         CustomerLimitEngine engine = new CustomerLimitEngine(repository);
         for (TransactionSide side : sides) {
             CustomerLimitDTO request = toRequest(transactionId, side, countedDate);
@@ -74,7 +79,7 @@ public class TransactionLimitHandler {
         String action = actionFor(function, recordStatus);
         LogUtil.info(CLASS_NAME, "update", "ACTION", "txn=" + transactionId + " function=" + function + " status="
                 + recordStatus + " action=" + action);
-        if (Constants.UTIL_ACTION_NONE.equals(action)) {
+        if (Constants.UTIL_ACTION_NONE.equals(action) || isOwnTransfer(sides)) {
             return;
         }
         CustomerLimitEngine engine = new CustomerLimitEngine(repository);
@@ -144,7 +149,7 @@ public class TransactionLimitHandler {
         }
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(customerId);
-        request.setTransactionId(CustomerLimitEngine.transactionKey(transactionId, side.credit));
+        request.setTransactionId(CustomerLimitEngine.transactionKey(transactionId));
         request.setTransactionDate(countedDate);
         request.setTransactionCurrency(side.currency);
         request.setAmountLcy(side.amountLcy);
@@ -155,6 +160,31 @@ public class TransactionLimitHandler {
         }
         LogUtil.info(CLASS_NAME, "toRequest", "CALC", "side " + side.sideCode + " request=" + request);
         return request;
+    }
+
+    /**
+     * True when the same customer is on the debit and the credit side (own-account transfer):
+     * not checked and not counted.
+     */
+    private boolean isOwnTransfer(List<TransactionSide> sides) {
+        String debitCustomer = null;
+        String creditCustomer = null;
+        for (TransactionSide side : sides) {
+            String customer = ValidationUtil.isBlank(side.customerId) ? accountCustomer(side.accountNo)
+                    : side.customerId.trim();
+            side.customerId = customer;
+            if (side.credit) {
+                creditCustomer = customer;
+            } else {
+                debitCustomer = customer;
+            }
+        }
+        boolean own = !ValidationUtil.isBlank(debitCustomer) && debitCustomer.equals(creditCustomer);
+        if (own) {
+            LogUtil.info(CLASS_NAME, "isOwnTransfer", "SKIP", "customer=" + debitCustomer
+                    + " on both sides - own-account transfer, not checked or counted");
+        }
+        return own;
     }
 
     /** CUSTOMER of the ACCOUNT; "" for an internal account or an account that cannot be read. */

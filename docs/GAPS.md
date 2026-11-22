@@ -144,7 +144,8 @@ Built on assumptions (to confirm):
 | S1 | COB postings are counted unless the bank fills `Constants.STMT_SKIP_SYSTEM_IDS` / `STMT_SKIP_TRANSACTION_CODES` | skip COB by default |
 | S2 | Several entries of one transaction on the same account and side (amount + charges): the **last** entry counted replaces the earlier (same key) | add them up per transaction / skip charge transaction codes (S1 list) |
 | S3 | Action types: count VAL, VALAUT, ADD, ADD.AUT, CHG; take back DEL, REV, RSAO; nothing for AUT, SAO, SNP, SSS | per DEV findings |
-| S4 | Same key for every routine `<root reference>.<CR|DR>` → no double count across attach points (same counted day assumed) | – |
+| S4 | Same key for every routine `<root reference>` → no double count across attach points (same counted day assumed) | – |
+| S5 | **Own-account transfer** (same customer debit and credit) – user 22-Nov: **not counted**. FT routine sees both sides and skips; activity / entry routines see one side at a time: the second side takes the first back and leaves a 0-amount marker record (a later reversal takes nothing back). The **first** side's check may still raise overrides on these two routes. | – |
 
 To check in DEV: ACCOUNT.PARAMETER ACCT.NAU.SUBRTN / ACCOUNTING.SUBRTN free or used; hooks called at unauthorised input; action types on delete / reversal / amendment; override list shown on the screen; performance on COB.
 
@@ -158,9 +159,9 @@ Built on assumptions (the questions were not answered):
 |---|---|---|
 | F1 | **Both sides** of an FT / TT are checked and counted, each customer side for its own customer; internal / cash accounts skipped | debit side only / credit side only |
 | F2 | **Same rules as AA:** check at input; count at input (AFTER.UNAU.RTN); take back on delete and when a reversal is authorised (AUTH.ROUTINE) | count only at authorisation |
-| F3 | TXN.DETAILS id `<customer>-<date>-<FT/TT id>.<CR|DR>` | no TXN.DETAILS record for FT/TT |
+| F3 | TXN.DETAILS id `<customer>-<date>-<FT/TT id>` (`.CR/.DR` dropped 22-Nov; own transfers not counted) | no TXN.DETAILS record for FT/TT |
 | F4 | Maximum CIF check also on the FT/TT **credit** side | daily / monthly only |
-| F5 | ~~AA double counting skip list~~ – removed 22-Nov-2026: the common key `<root ref>.<CR\|DR>` prevents double counting | – |
+| F5 | ~~AA double counting skip list~~ – removed 22-Nov-2026: the common key `<root ref>` prevents double counting | – |
 
 To check in DEV: hooks firing on delete and on reversal authorisation (RECORD.STATUS seen); FT DEBIT.CUSTOMER / CREDIT.CUSTOMER and AMOUNT.DEBITED filled at INPUT.ROUTINE time; TT AMOUNT.FCY / AMOUNT.LOCAL per side.
 
