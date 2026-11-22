@@ -185,7 +185,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | Col | Field | Meaning |
 |---|---|---|
 | 1 | CUSTOMER | customer id |
-| 2 | AAA.ID | arrangement activity |
+| 2 | TXN.ID | counted transaction key `<reference>.<CR\|DR>` – the FT / TT behind the activity if any (e.g. `FT26091ABCDE.CR`), else the AAA id (e.g. `AAACT26091XYZ.DR`), or the TRANS.REFERENCE of the accounting entry |
 | 3 | ACCOUNT.NO | account |
 | 4 | CR.DR | CR / DR |
 | 5 | TXN.AMOUNT | amount counted (limit currency) |
@@ -195,7 +195,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | 9 | OVERRIDES | EB-ALBE.* overrides accepted on the transaction (from AA.ARRANGEMENT.ACTIVITY OVERRIDE, space separated) |
 | 10 | TXN.REF | FT / TT reference: AA.ARRANGEMENT.ACTIVITY TXN.CONTRACT.ID (read at report time); for transactions counted by the FT / TT version routines the FT / TT id itself |
 
-For transactions counted by the **FT / TT version routines** the AAA.ID column holds `<FT/TT id>.<CR|DR>` (e.g. `FT26091ABCDE.DR`) and the OVERRIDES come from the FUNDS.TRANSFER / TELLER record (live, then `$NAU`).
+OVERRIDES come from the transaction itself: AA.ARRANGEMENT.ACTIVITY for `AAA…` keys, FUNDS.TRANSFER / TELLER (live, then `$NAU`) for `FT…` / `TT…` keys; other applications (counted from the accounting entries) show the reference only.
 
 ### Where the overrides come from
 

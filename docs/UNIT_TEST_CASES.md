@@ -27,8 +27,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
 | Reports | UT-E01 … E17 | 17 | 17 | – |
 | FT / TELLER routines | UT-FT01 … FT23 | 23 | 23 | – |
-| Controllers in T24 | UT-T01 … T11 | 11 | – | 11 |
-| **Total** | | **122** | **111** | **11** |
+| Engine + accounting entries | UT-G01 … G16 | 16 | 16 | – |
+| Controllers in T24 | UT-T01 … T13 | 13 | – | 13 |
+| **Total** | | **140** | **127** | **13** |
 
 ---
 
@@ -165,6 +166,27 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-C04 | AAA CURRENCY USD | transaction currency USD | Pass |
 | UT-C05 | AAA CURRENCY blank, arrangement EGP | EGP | Pass |
 
+## Engine and accounting entries (wherever attached) – 22-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-G01 | reference `FT26091ABC\BNK` | root `FT26091ABC` | Pass |
+| UT-G02 | reference `FT26091ABC;1` | root `FT26091ABC` | Pass |
+| UT-G03 | key for `FT1\BNK`, debit | `FT1.DR` | Pass |
+| UT-G04 | entry −3000 on customer 100 | debit 3000, key `FT26091AAA.DR` | Pass |
+| UT-G05 | entry without CUSTOMER.ID | skipped | Pass |
+| UT-G06 | entry type CATEG | skipped | Pass |
+| UT-G07 | USD account, AMOUNT.FCY −10, AMOUNT.LCY −485 | debit 10 USD, LCY 485 | Pass |
+| UT-G08 | debit 3000, daily debit limit 2000 | breach | Pass |
+| UT-G09 | credit entry | daily/monthly + maximum CIF checked (2 results) | Pass |
+| UT-G10 | count from the entry | 3000 credit for 200 | Pass |
+| UT-G11 | AA activity with TXN.CONTRACT.ID `FT26091AAA\BNK` | key `FT26091AAA.CR` | Pass |
+| UT-G12 | same transaction counted again by the activity routine | still 3000, one record (no double count) | Pass |
+| UT-G13 | reversing entry −3000 (flip) | matched to `FT26091AAA.CR` | Pass |
+| UT-G14 | reversal booked 05-Apr | taken back from 01-Apr, record deleted | Pass |
+| UT-G15 | AA activity without FT | key `AAACT2.DR` | Pass |
+| UT-G16 | override texts for ACCT.NAU.SUBRTN | list of `EB-ALBE.*` texts | Pass |
+
 ## FUNDS.TRANSFER / TELLER routines – 21-Nov-2026
 
 | Id | Given | Expected | Result |
@@ -230,3 +252,5 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-T09 | `Session.getCurrentVariable("!TODAY")` returns the T24 date (DEV: 01 APR 2026, not the server clock) | GAPS G1 |
 | UT-T10 | FT/TT: AFTER.UNAU.RTN fires on input and delete; AUTH.ROUTINE fires on reversal authorisation (RECORD.STATUS RNAU/REVE) | T24_CONFIGURATION §8a |
 | UT-T11 | FT/TT overrides raised from INPUT.ROUTINE appear on the amount field and can be accepted | §8a |
+| UT-T12 | ACCOUNT.PARAMETER hooks: called at unauthorised input; action types on delete / reversal / amendment | §8b |
+| UT-T13 | Overrides returned by `raiseOverrides` shown on the transaction and can be accepted | §8b |

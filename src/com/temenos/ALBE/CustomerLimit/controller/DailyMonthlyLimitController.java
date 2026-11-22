@@ -6,10 +6,9 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.DailyMonthlyLimitService;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
@@ -49,6 +48,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 21-Nov-2026   Development      Credit / debit by ACTIVITY.CLASS instead of activity name (G9)
  * 21-Nov-2026   Development      Common for all activities (ActivityRequestBuilder): class action,
  *                                ORIG.TXN.AMT, TXN.AMOUNT.LCY, T24 date instead of server clock (G1)
+ * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -122,16 +122,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitRepository repository = new CustomerLimitRepository(this);
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
-            if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
+            if (request == null) {
                 return arrangementActivityRecord.getValidationResponse();
             }
 
-            // Model + service
-            DailyMonthlyLimitService service = new DailyMonthlyLimitService(repository);
-            service.validate(request);
-
-            // View
-            int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
+            // Engine (transaction info + customer limit info) + view
+            CustomerLimitDTO result = new CustomerLimitEngine(repository).checkDailyMonthly(request);
+            int raised = result == null ? 0
+                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
 
             LogUtil.info(CLASS_NAME, "validateRecord", "END", request.logKey() + " overridesRaised=" + raised
                     + " elapsedMs="
@@ -168,25 +166,25 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitRepository repository = new CustomerLimitRepository(this);
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
-            if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
+            if (request == null) {
                 return;
             }
 
-            DailyMonthlyLimitService service = new DailyMonthlyLimitService(repository);
+            CustomerLimitEngine engine = new CustomerLimitEngine(repository);
             switch (status) {
                 case Constants.STATUS_UNAUTH:   // transaction initiated: count it
                     LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
-                    service.countAtInput(request, getAccountNo(arrangementRecord),
+                    engine.count(request, getAccountNo(arrangementRecord),
                             arrangementActivityRecord.getEffectiveDate().getValue());
                     break;
                 case Constants.STATUS_DELETE:   // unauthorised input rejected: take it back
                     LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE rejected input "
                             + request.logKey());
-                    service.reverse(request, false);
+                    engine.reverse(request, false);
                     break;
                 default:                        // AUTH-REV, committed transaction reversed: take it back
                     LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE reversal " + request.logKey());
-                    service.reverse(request, true);
+                    engine.reverse(request, true);
                     break;
             }
 

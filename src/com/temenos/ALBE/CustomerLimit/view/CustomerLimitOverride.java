@@ -1,6 +1,8 @@
 package com.temenos.ALBE.CustomerLimit.view;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
@@ -28,6 +30,7 @@ import com.temenos.api.TField;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 22-Nov-2026   Development      texts(): overrides as a list (ACCOUNT.PARAMETER accounting hook)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -40,34 +43,50 @@ public class CustomerLimitOverride {
     /**
      * Raises every override the validation produced for this request on the field:
      * "limit not defined" (missing record or blank limit) once, then one per breached limit.
+     * Used where the routine owns the record (ACTIVITY.API, FT / TT version).
      * @return number of overrides raised
      */
     public static int raiseFor(TField field, CustomerLimitDTO request) {
-        int raised = 0;
+        List<String> texts = texts(request);
+        for (String text : texts) {
+            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " sent="
+                    + readable(text));
+            field.setOverride(text);
+        }
+        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
+                + texts.size());
+        return texts.size();
+    }
+
+    /**
+     * Every override the validation produced for this request, as override texts
+     * (<id> FM <param1> VM <param2>): "limit not defined" once, "no exchange rate", then one per
+     * breached limit. Used where T24 takes the overrides as a list (ACCOUNT.PARAMETER
+     * ACCT.NAU.SUBRTN) and by raiseFor.
+     */
+    public static List<String> texts(CustomerLimitDTO request) {
+        List<String> texts = new ArrayList<>();
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
-            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId()
+            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " limit not defined"
                     + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
-            raise(field, Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId());
-            raised++;
+            texts.add(build(Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId()));
         }
         if (request.isRateMissing()) {
-            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId()
-                    + " no exchange rate from "
-                    + request.getRateMissingCurrency() + " to " + request.getLimitCurrency());
-            raise(field, Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(), request.getLimitCurrency());
-            raised++;
+            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
+                    + " no exchange rate from " + request.getRateMissingCurrency() + " to "
+                    + request.getLimitCurrency());
+            texts.add(build(Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
+                    request.getLimitCurrency()));
         }
         for (LimitBreach breach : request.getBreaches()) {
-            LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " breach "
+            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId() + " breach "
                     + breach.getMessage());
-            raise(field, breach.getOverrideId(), request.getCustomerId(), breach.getDifference().toPlainString());
-            raised++;
+            texts.add(build(breach.getOverrideId(), request.getCustomerId(),
+                    breach.getDifference().toPlainString()));
         }
-        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
-                + raised);
-        return raised;
+        return texts;
     }
 
     /** Raises an override on the given field; the user can accept it and continue. */

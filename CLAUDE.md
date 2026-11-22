@@ -37,7 +37,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE: CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE |
 | EB.ALBE.CIF.LIMIT | customer id | CCY + the 5 limits (same names) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
-| EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<AAA id>`** (HLSD format) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
+| EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>.<CR\|DR>`** (root ref = FT/TT behind the AAA, else AAA id, or entry TRANS.REFERENCE) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
 
 Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` (need the generated table JARs on the Eclipse build path).
 
@@ -48,6 +48,7 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | **Limit creation** | `CustomerLimitCreationController` – VERSION CUSTOMER,ALBE.CORP **Auth routine**, `postUpdateRequest` | at customer authorisation: if `cifLimitExists` = FALSE copy GEN.PARAM `CUSTOMER.LIMIT` → CIF.LIMIT. TRUE (amendment) or null (read failed) → **never overwrite**. No delete flow. |
 | **Daily / monthly** | `DailyMonthlyLimitController` – ACTIVITY.API, **any activity** (normally ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT); mapping in `ActivityRequestBuilder` | `defaultFieldValues` (UNAUTH, counted activities only): append `ALBE.LIMIT.DATE=<T24 date>` to AAA **REMARKS** (first input only). `validateRecord` (UNAUTH): check + overrides. `postCoreTableUpdate`: UNAUTH count (earlier input of same AAA reversed first), DELETE reverse, AUTH nothing, AUTH-REV reverse (fallback: today if no record). |
 | **FT / TT** | `FundsTransferLimitController` / `TellerLimitController` – VERSION INPUT.ROUTINE (`validateRecord`) + AFTER.UNAU.RTN & AUTH.ROUTINE (`postUpdateRequest`); common `TransactionSideReader` + `TransactionLimitHandler` | both sides, each customer side for its own customer (internal/cash skipped); validate daily/monthly + max CIF (credit); I → count, D → take back, A on RNAU/REVE → take back; id `<cust>-<date>-<FT/TT id>.<CR\|DR>`; date FT PROCESSING.DATE else T24 date |
+| **Every transaction** | `AccountingEntryLimitController` – ACCOUNT.PARAMETER ACCT.NAU.SUBRTN (`raiseOverrides` → check, returns overrides) + ACCOUNTING.SUBRTN (`exportEntries` → VAL/VALAUT/ADD/ADD.AUT/CHG count, DEL/REV/RSAO take back); `StatementEntryRequestBuilder` | customer entries only; sign → CR/DR; FCY else LCY amount; key TRANS.REFERENCE root; BOOKING.DATE |
 | **Maximum CIF** | `MaximumCifLimitController` – ACTIVITY.API, credit only, `validateRecord` | sum of WORKING.BALANCE of all customer accounts (converted) + credit vs MAX.CIF.BALANCE |
 | **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
@@ -60,12 +61,14 @@ Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS acti
 controller/   CustomerLimitCreationController, DailyMonthlyLimitController, MaximumCifLimitController,
               ActivityRequestBuilder (common AAA -> request mapping for any activity),
               FundsTransferLimitController, TellerLimitController, TransactionSideReader, TransactionLimitHandler,
+              AccountingEntryLimitController, StatementEntryRequestBuilder (ACCOUNT.PARAMETER - every transaction),
               CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController
-service/      DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
+service/      CustomerLimitEngine (ONE entry point: transaction info + customer limit info -> check/count/reverse; transactionKey),
+              DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
               CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse),
               TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<AAA>),
               CurrencyConversionService, CustomerLimitEnquiryService (read only)
-repository/   CustomerLimitRepository – 3 constructors (ActivityLifecycle / RecordLifecycle / Enquiry); all reads/writes/selects
+repository/   CustomerLimitRepository – one constructor (T24Context: every hook); all reads/writes/selects
 model/        CustomerLimitDTO (isCredit/getAmount/logKey), Limits, LimitBreach, LimitSummaryRow, LimitPeriodRow, LimitTxnRow, TransactionSide
 view/         CustomerLimitOverride, CustomerLimitEnquiryView (column order documented in the class)
 validation/   CustomerLimitRequestValidator, CustomerLimitEnquiryValidator
@@ -89,6 +92,7 @@ constants/    Constants (the only final class)
 | Strict date/month parsing | Java's default turned 20261131 into 30-Nov |
 | Routines common for **any activity**: credit/debit by the **ACTIVITY.CLASS action** (`Constants.CREDIT_ACTIONS/DEBIT_ACTIONS`, any product line), INITIATION.TYPE list (all), ORIG.TXN.AMT, LCY amount | user (21-Nov): "common for all activities"; chose "any activity with TXN.AMOUNT, balance sign" – sign not available at validateRecord (no accounting yet; R25 TransactionData has no amount) → class action used; all initiation types; ORIG.TXN.AMT; TXN.AMOUNT.LCY |
 | FT and TELLER version routines (validate + utilisation) | user 21-Nov "to validate and update utilization"; other design questions unanswered → assumptions F1–F5 in GAPS (both sides, same rules as AA, id with .CR/.DR, max CIF on credit side, AA skip list empty) |
+| **Limit management wherever attached**: one engine (transaction info + customer limit info), attach points ACCOUNT.PARAMETER / ACTIVITY.API / FT-TT versions, same key `<root ref>.<CR\|DR>` everywhere | user 22-Nov "limit management should happen wherever we attach"; AccountingEntry hook found in R25 (AC_AccountHook.jar) |
 | T24 date instead of server clock | DEV: ORG.SYSTEM.DATE 01 APR 2026 vs clock 29 OCT 26 |
 | Bank decides where the routines are attached; code generic; direction = ACTIVITY.CLASS action **for now** | user 21-Nov; FT/TT source/destination account reading discussed, not chosen; other actions (APPLYPAYMENT…) and deposit payouts: decide later (GAPS A7/A8) |
 
@@ -107,7 +111,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). Still open: the **ALBE table JAR** (must be generated in T24 – cannot be generated outside T24) and its getter/setter names; DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
-- **FT/TT routines PARKED (user 22-Nov-2026)** – code stays in `main` but is not part of the release and not attached in T24; do not extend or change it until the user un-parks it. Open when resumed: assumptions F1–F5 + G10 (GAPS.md), 7 business questions, DEV hook checks.
+- **Wherever attached (22-Nov-2026):** ACCOUNT.PARAMETER accounting hook added; assumptions **S1–S4** in GAPS (COB counted unless skip lists filled; last entry per key wins; action-type mapping; same key across routines). FT/TT parked then **un-parked** the same day as an attach point; F1–F5 + G10 still open.
 - **Activity questions Q1–Q13** kept open in GAPS.md (user 21-Nov: "keep open").
 - Remaining small code gaps: G5, G6. Offered, not answered: strip `\<mnemonic>` from TXN.CONTRACT.ID in the TXN.REF report column.
 
@@ -128,7 +132,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 122 cases (111 pass outside T24, 11 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 140 cases (127 pass outside T24, 13 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

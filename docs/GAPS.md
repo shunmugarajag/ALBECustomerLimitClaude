@@ -135,9 +135,22 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 
 ---
 
-## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026) – **PARKED 22-Nov-2026**
+## Limit management wherever attached – ACCOUNT.PARAMETER accounting hook (22-Nov-2026)
 
-> Parked by the user. The code stays in the repository but is not attached in T24 and not part of release 1.0. The points below are open for when the work resumes.
+Built on assumptions (to confirm):
+
+| # | Assumption | Alternative |
+|---|---|---|
+| S1 | COB postings are counted unless the bank fills `Constants.STMT_SKIP_SYSTEM_IDS` / `STMT_SKIP_TRANSACTION_CODES` | skip COB by default |
+| S2 | Several entries of one transaction on the same account and side (amount + charges): the **last** entry counted replaces the earlier (same key) | add them up per transaction / skip charge transaction codes (S1 list) |
+| S3 | Action types: count VAL, VALAUT, ADD, ADD.AUT, CHG; take back DEL, REV, RSAO; nothing for AUT, SAO, SNP, SSS | per DEV findings |
+| S4 | Same key for every routine `<root reference>.<CR|DR>` → no double count across attach points (same counted day assumed) | – |
+
+To check in DEV: ACCOUNT.PARAMETER ACCT.NAU.SUBRTN / ACCOUNTING.SUBRTN free or used; hooks called at unauthorised input; action types on delete / reversal / amendment; override list shown on the screen; performance on COB.
+
+## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026)
+
+> Parked on 22-Nov-2026 and made available again the same day as one of the attach points ("limit management wherever we attach"). The points below are still open.
 
 Built on assumptions (the questions were not answered):
 

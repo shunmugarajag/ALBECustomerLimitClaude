@@ -7,6 +7,7 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.api.TField;
@@ -27,6 +28,8 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                 source     TXN.SYSTEM.ID in Constants.AA_SKIP_TXN_SYSTEM_IDS => not counted here
  *                            (counted by the FT / TT version routine instead; empty by default)
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
+ *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id,
+ *                            + .CR / .DR - same key as the FT / TT and accounting-entry routines
  *                 date       REMARKS tag (date counted at input) -> ORG.SYSTEM.DATE (T24 date of the
  *                            activity) -> T24 TODAY -> server clock (last resort, logged)
  *
@@ -35,6 +38,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * Modification History :
  *-----------------------------------------------------------------------------
  * 21-Nov-2026   Development      Initial Version (common for all activities)
+ * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) + .CR/.DR (CustomerLimitEngine)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -73,13 +77,18 @@ public class ActivityRequestBuilder {
             return null;
         }
 
+        // Same key wherever the routine is attached: the FT / TT behind the activity if there is one.
+        boolean credit = ValidationUtil.isCreditActivityClass(activityClass);
+        String contractId = ValidationUtil.rootReference(aaaRec.getTxnContractId().getValue());
+        String reference = ValidationUtil.isBlank(contractId) ? aaaId : contractId;
+
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
-        request.setTransactionId(aaaId);
+        request.setTransactionId(CustomerLimitEngine.transactionKey(reference, credit));
         request.setTransactionDate(getCountedDate(aaaRec, repository));
         request.setTransactionCurrency(getCurrency(aaaRec, arrangementRecord));
         request.setAmountLcy(getAmountLcy(aaaRec, useOriginal));
-        if (ValidationUtil.isCreditActivityClass(activityClass)) {
+        if (credit) {
             request.setCreditAmount(amount);
         } else {
             request.setDebitAmount(amount);

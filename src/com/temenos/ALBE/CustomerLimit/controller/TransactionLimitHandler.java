@@ -7,11 +7,9 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.TransactionSide;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.DailyMonthlyLimitService;
-import com.temenos.ALBE.CustomerLimit.service.MaximumCifLimitService;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.account.AccountRecord;
 
@@ -36,6 +34,7 @@ import com.temenos.t24.api.records.account.AccountRecord;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 21-Nov-2026   Development      Initial Version
+ * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine; common key
  *-----------------------------------------------------------------------------
  */
 public class TransactionLimitHandler {
@@ -49,26 +48,20 @@ public class TransactionLimitHandler {
     }
 
     /**
-     * Input check of every customer side; overrides on the side's amount field.
+     * Input check of every customer side (daily / monthly and maximum CIF through
+     * CustomerLimitEngine); overrides on the side's amount field.
      * @return number of overrides raised
      */
     public int validate(String transactionId, List<TransactionSide> sides, LocalDate countedDate) {
         int raised = 0;
+        CustomerLimitEngine engine = new CustomerLimitEngine(repository);
         for (TransactionSide side : sides) {
             CustomerLimitDTO request = toRequest(transactionId, side, countedDate);
             if (request == null) {
                 continue;
             }
-            if (CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
-                new DailyMonthlyLimitService(repository).validate(request);
-                raised += CustomerLimitOverride.raiseFor(side.amountField, request);
-            }
-            if (side.credit) {
-                CustomerLimitDTO maxCifRequest = toRequest(transactionId, side, countedDate);
-                if (maxCifRequest != null && CustomerLimitRequestValidator.isValidForMaxCif(maxCifRequest)) {
-                    new MaximumCifLimitService(repository).validate(maxCifRequest);
-                    raised += CustomerLimitOverride.raiseFor(side.amountField, maxCifRequest);
-                }
+            for (CustomerLimitDTO result : engine.checkAll(request)) {
+                raised += CustomerLimitOverride.raiseFor(side.amountField, result);
             }
         }
         LogUtil.info(CLASS_NAME, "validate", "END", "txn=" + transactionId + " overridesRaised=" + raised);
@@ -84,21 +77,16 @@ public class TransactionLimitHandler {
         if (Constants.UTIL_ACTION_NONE.equals(action)) {
             return;
         }
-        DailyMonthlyLimitService service = new DailyMonthlyLimitService(repository);
+        CustomerLimitEngine engine = new CustomerLimitEngine(repository);
         for (TransactionSide side : sides) {
             CustomerLimitDTO request = toRequest(transactionId, side, countedDate);
-            if (request == null || !CustomerLimitRequestValidator.isValidForDailyMonthly(request)) {
+            if (request == null) {
                 continue;
             }
             if (Constants.UTIL_ACTION_COUNT.equals(action)) {
-                service.countAtInput(request, side.accountNo, side.valueDate);
+                engine.count(request, side.accountNo, side.valueDate);
             } else {
-                // Taken back from the day it was counted on (found by the transaction id).
-                LocalDate counted = findCountedDate(request.getCustomerId(), request.getTransactionId());
-                if (counted != null) {
-                    request.setTransactionDate(counted);
-                }
-                service.reverse(request, Constants.UTIL_ACTION_REVERSE.equals(action));
+                engine.reverse(request, Constants.UTIL_ACTION_REVERSE.equals(action));
             }
         }
     }
@@ -156,7 +144,7 @@ public class TransactionLimitHandler {
         }
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(customerId);
-        request.setTransactionId(transactionId + Constants.TXN_SIDE_SEPARATOR + side.sideCode);
+        request.setTransactionId(CustomerLimitEngine.transactionKey(transactionId, side.credit));
         request.setTransactionDate(countedDate);
         request.setTransactionCurrency(side.currency);
         request.setAmountLcy(side.amountLcy);
@@ -176,19 +164,5 @@ public class TransactionLimitHandler {
         }
         AccountRecord accountRec = repository.readAccount(finMnemonic, accountNo);
         return accountRec == null ? "" : ValidationUtil.nvl(accountRec.getCustomer().getValue()).trim();
-    }
-
-    /** Date the transaction side was counted on, from its EB.ALBE.TXN.DETAILS.LIMIT id; null if none. */
-    private LocalDate findCountedDate(String customerId, String transactionId) {
-        for (String recordId : repository.selectTxnDetailsIdsForTransaction(customerId, transactionId)) {
-            String[] parts = recordId.split("-", 3);
-            LocalDate date = parts.length == 3 ? ValidationUtil.toDate(parts[1]) : null;
-            if (date != null) {
-                LogUtil.info(CLASS_NAME, "findCountedDate", "FOUND", "id=" + recordId);
-                return date;
-            }
-        }
-        LogUtil.info(CLASS_NAME, "findCountedDate", "NOT FOUND", "customer=" + customerId + " txn=" + transactionId);
-        return null;
     }
 }

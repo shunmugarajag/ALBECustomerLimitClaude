@@ -99,6 +99,22 @@ public class CustomerLimitDTO {
     public BigDecimal getOriginalAmount() { return originalAmount; }
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
 
+    /**
+     * New request with the same transaction info (customer, transaction, date, currency, amounts)
+     * and no check results - one request per check (daily / monthly, maximum CIF).
+     */
+    public CustomerLimitDTO copyTransaction() {
+        CustomerLimitDTO copy = new CustomerLimitDTO();
+        copy.setCustomerId(customerId);
+        copy.setTransactionId(transactionId);
+        copy.setTransactionDate(transactionDate);
+        copy.setTransactionCurrency(transactionCurrency);
+        copy.setCreditAmount(creditAmount);
+        copy.setDebitAmount(debitAmount);
+        copy.setAmountLcy(amountLcy);
+        return copy;
+    }
+
     public BigDecimal getAmountLcy() { return amountLcy; }
     public void setAmountLcy(BigDecimal amountLcy) { this.amountLcy = amountLcy == null ? BigDecimal.ZERO : amountLcy; }
 

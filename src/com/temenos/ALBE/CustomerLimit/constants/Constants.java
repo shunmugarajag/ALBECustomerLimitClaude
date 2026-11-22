@@ -117,6 +117,31 @@ public final class Constants {
     public static final String[] AA_SKIP_TXN_SYSTEM_IDS = {};
 
     // -------------------------------------------------------------------------
+    // Counted transaction key - the same for every place a routine is attached
+    // -------------------------------------------------------------------------
+    /**
+     * A transaction reference is cut at these characters: "FT26091ABCDE\BNK" (company) and
+     * "FT26091ABCDE;1" (history) both become "FT26091ABCDE". Every routine (activity, FT / TT
+     * version, accounting entry) counts a transaction under <root reference>.<CR|DR>, so the same
+     * transaction seen from two places replaces itself instead of being counted twice.
+     */
+    public static final String[] REFERENCE_CUT_CHARS = { "\\", ";" };
+
+    // -------------------------------------------------------------------------
+    // ACCOUNT.PARAMETER accounting hook (AccountingEntryLimitController)
+    // -------------------------------------------------------------------------
+    /** Only statement entries (customer accounts) are checked; CATEG / CONSOL / FWD are skipped. */
+    public static final String STMT_ENTRY_TYPE = "STMT";
+    /** Entry action types that count the entry (input, input + authorise, forward input, change). */
+    public static final String[] STMT_COUNT_ACTIONS = { "VAL", "VALAUT", "ADD", "ADD.AUT", "CHG" };
+    /** Entry action types that take the entry back (delete, reversal, reversal with auto-approved overrides). */
+    public static final String[] STMT_REVERSE_ACTIONS = { "DEL", "REV", "RSAO" };
+    /** STMT.ENTRY SYSTEM.ID values that are not counted (e.g. COB interest / charges). Bank decides; empty = all. */
+    public static final String[] STMT_SKIP_SYSTEM_IDS = {};
+    /** STMT.ENTRY TRANSACTION.CODE values that are not counted (e.g. charge codes). Bank decides; empty = all. */
+    public static final String[] STMT_SKIP_TRANSACTION_CODES = {};
+
+    // -------------------------------------------------------------------------
     // FUNDS.TRANSFER / TELLER version routines
     // -------------------------------------------------------------------------
     public static final String FT_APPLICATION = "FUNDS.TRANSFER";
@@ -130,6 +155,8 @@ public final class Constants {
      * debit and the credit side of the same transaction (same customer on both sides) stay apart.
      */
     public static final String TXN_SIDE_SEPARATOR = ".";
+    /** Between the parts of the EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-<transaction>. */
+    public static final String TXN_ID_SEPARATOR = "-";
     /** TELLER DR.CR.MARKER value meaning side 1 (ACCOUNT.1) is credited. */
     public static final String TT_MARKER_CREDIT = "CREDIT";
     /** TransactionContext current function: input, delete, authorise, reverse. */

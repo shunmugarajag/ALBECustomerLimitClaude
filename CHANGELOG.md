@@ -4,6 +4,13 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – limit management wherever attached (22-Nov-2026)
+- One engine, `CustomerLimitEngine`: works only with transaction info + customer limit info; every routine calls it.
+- New attach point for **every transaction**: `AccountingEntryLimitController` on ACCOUNT.PARAMETER (ACCT.NAU.SUBRTN check, ACCOUNTING.SUBRTN count / take back), with `StatementEntryRequestBuilder`.
+- Same counted key for every routine: `<root reference>.<CR|DR>` (the FT/TT behind an AA activity if any) – a transaction seen by two routines is counted once.
+- FT / TELLER routines available again as an attach point.
+- Repository: one constructor for every hook (T24Context). Transaction report column 2 renamed TXN.ID.
+
 ### Parked – FUNDS.TRANSFER and TELLER routines (22-Nov-2026)
 - Work on the FT / TT routines is parked: code kept, not attached, not part of release 1.0.
 

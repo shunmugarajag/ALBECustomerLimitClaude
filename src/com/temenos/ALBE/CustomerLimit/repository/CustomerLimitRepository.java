@@ -6,11 +6,9 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
-import com.temenos.t24.api.hook.system.Enquiry;
-import com.temenos.t24.api.hook.system.RecordLifecycle;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.api.TField;
+import com.temenos.tafj.api.client.impl.T24Context;
 import com.temenos.api.TStructure;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
@@ -49,6 +47,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 21-Nov-2026   Development      T24 date and local currency; readActivity for the report
+ * 22-Nov-2026   Development      One constructor for every hook (T24Context)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -60,45 +59,22 @@ public class CustomerLimitRepository {
     private final EbAlbeUtilisedLimitTable utilisedLimitTable;
     private final EbAlbeTxnDetailsLimitTable txnDetailsTable;
 
-    // At most one of these is set; used only to create new (empty) generated records.
-    // Enquiries only read, so for them both are null.
-    private final ActivityLifecycle activityHook;
-    private final RecordLifecycle recordHook;
+    /** The hook the routine runs in; used to create new (empty) generated records. */
+    private final T24Context context;
 
-    /** Constructor for the ACTIVITY.API routines (DailyMonthlyLimitController, MaximumCifLimitController). */
-    public CustomerLimitRepository(ActivityLifecycle hook) {
+    /**
+     * One constructor for every hook (ACTIVITY.API, version routine, ACCOUNT.PARAMETER accounting
+     * hook, enquiry): all T24 Java hooks extend T24Context, so limit management works wherever
+     * the bank attaches a routine.
+     */
+    public CustomerLimitRepository(T24Context hook) {
         this.daObj = new DataAccess(hook);
         this.ssObj = new Session(hook);
         this.cifLimitTable = new EbAlbeCifLimitTable(hook);
         this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
         this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
-        this.activityHook = hook;
-        this.recordHook = null;
-        LogUtil.info(CLASS_NAME, "init", "CREATED", "for ACTIVITY.API hook " + hook.getClass().getSimpleName());
-    }
-
-    /** Constructor for the version routine (CustomerLimitCreationController). */
-    public CustomerLimitRepository(RecordLifecycle hook) {
-        this.daObj = new DataAccess(hook);
-        this.ssObj = new Session(hook);
-        this.cifLimitTable = new EbAlbeCifLimitTable(hook);
-        this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
-        this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
-        this.activityHook = null;
-        this.recordHook = hook;
-        LogUtil.info(CLASS_NAME, "init", "CREATED", "for version hook " + hook.getClass().getSimpleName());
-    }
-
-    /** Constructor for the enquiry routines (read and select only, no new records). */
-    public CustomerLimitRepository(Enquiry hook) {
-        this.daObj = new DataAccess(hook);
-        this.ssObj = new Session(hook);
-        this.cifLimitTable = new EbAlbeCifLimitTable(hook);
-        this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
-        this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
-        this.activityHook = null;
-        this.recordHook = null;
-        LogUtil.info(CLASS_NAME, "init", "CREATED", "for enquiry hook " + hook.getClass().getSimpleName());
+        this.context = hook;
+        LogUtil.info(CLASS_NAME, "init", "CREATED", "for hook " + hook.getClass().getSimpleName());
     }
 
     // =========================================================================
@@ -180,7 +156,7 @@ public class CustomerLimitRepository {
     /** New empty EB.ALBE.CIF.LIMIT record, to be filled and written. */
     public EbAlbeCifLimitRecord newCifLimitRecord() {
         LogUtil.info(CLASS_NAME, "newCifLimitRecord", "NEW", Constants.CIF_LIMIT_TABLE + " record");
-        return activityHook != null ? new EbAlbeCifLimitRecord(activityHook) : new EbAlbeCifLimitRecord(recordHook);
+        return new EbAlbeCifLimitRecord(context);
     }
 
     /** Writes EB.ALBE.CIF.LIMIT <customer id>. */
@@ -264,8 +240,7 @@ public class CustomerLimitRepository {
     /** New empty EB.ALBE.UTILISED.LIMIT record (first transaction of the day / month). */
     public EbAlbeUtilisedLimitRecord newUtilisedLimitRecord() {
         LogUtil.info(CLASS_NAME, "newUtilisedLimitRecord", "NEW", Constants.UTILISED_LIMIT_TABLE + " record");
-        return activityHook != null ? new EbAlbeUtilisedLimitRecord(activityHook)
-                : new EbAlbeUtilisedLimitRecord(recordHook);
+        return new EbAlbeUtilisedLimitRecord(context);
     }
 
     /** Writes EB.ALBE.UTILISED.LIMIT <id>. */
@@ -407,8 +382,7 @@ public class CustomerLimitRepository {
     /** New empty EB.ALBE.TXN.DETAILS.LIMIT record, to be filled and written. */
     public EbAlbeTxnDetailsLimitRecord newTxnDetailsRecord() {
         LogUtil.info(CLASS_NAME, "newTxnDetailsRecord", "NEW", Constants.TXN_DETAILS_TABLE + " record");
-        return activityHook != null ? new EbAlbeTxnDetailsLimitRecord(activityHook)
-                : new EbAlbeTxnDetailsLimitRecord(recordHook);
+        return new EbAlbeTxnDetailsLimitRecord(context);
     }
 
     /** Writes EB.ALBE.TXN.DETAILS.LIMIT <id>. */

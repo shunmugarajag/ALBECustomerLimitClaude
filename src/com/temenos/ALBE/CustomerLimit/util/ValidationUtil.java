@@ -139,6 +139,21 @@ public class ValidationUtil {
         return toAmount(text.substring(start));
     }
 
+    /**
+     * Root of a transaction reference: cut at the first Constants.REFERENCE_CUT_CHARS character
+     * ("FT26091ABCDE\\BNK" and "FT26091ABCDE;1" give "FT26091ABCDE"); "" if blank.
+     */
+    public static String rootReference(String reference) {
+        String text = nvl(reference).trim();
+        for (String cut : Constants.REFERENCE_CUT_CHARS) {
+            int pos = text.indexOf(cut);
+            if (pos >= 0) {
+                text = text.substring(0, pos);
+            }
+        }
+        return text.trim();
+    }
+
     /** True when value (not blank) is one of the values (exact, case sensitive like T24 ids). */
     public static boolean contains(String[] values, String value) {
         if (isBlank(value)) {

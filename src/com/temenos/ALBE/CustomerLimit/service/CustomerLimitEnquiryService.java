@@ -239,19 +239,21 @@ public class CustomerLimitEnquiryService {
      * (id <FT / TT id>.<CR|DR>), FUNDS.TRANSFER / TELLER (reference = the FT / TT id).
      */
     private void fillFromTransaction(LimitTxnRow row, String finMnemonic) {
-        if (row.aaaId.startsWith(Constants.TXN_PREFIX_AAA)) {
-            AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, row.aaaId);
+        int side = row.aaaId.lastIndexOf(Constants.TXN_SIDE_SEPARATOR);
+        String transactionId = side > 0 ? row.aaaId.substring(0, side) : row.aaaId;
+        row.txnReference = transactionId;
+        if (transactionId.startsWith(Constants.TXN_PREFIX_AAA)) {
+            AaArrangementActivityRecord aaaRec = repository.readActivity(finMnemonic, transactionId);
             if (aaaRec != null) {
                 row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR, albeOverrideIds(overrideValues(aaaRec)));
-                row.txnReference = ValidationUtil.nvl(aaaRec.getTxnContractId().getValue()).trim();
             }
             return;
         }
-        int side = row.aaaId.lastIndexOf(Constants.TXN_SIDE_SEPARATOR);
-        String transactionId = side > 0 ? row.aaaId.substring(0, side) : row.aaaId;
+        if (!transactionId.startsWith(Constants.TXN_PREFIX_FT) && !transactionId.startsWith(Constants.TXN_PREFIX_TT)) {
+            return;     // other applications (counted from the accounting entries): reference only
+        }
         String application = transactionId.startsWith(Constants.TXN_PREFIX_TT) ? Constants.TELLER_APPLICATION
                 : Constants.FT_APPLICATION;
-        row.txnReference = transactionId;
         row.overrides = String.join(Constants.OVERRIDE_LIST_SEPARATOR,
                 albeOverrideIds(repository.readTransactionOverrides(finMnemonic, application, transactionId)));
     }

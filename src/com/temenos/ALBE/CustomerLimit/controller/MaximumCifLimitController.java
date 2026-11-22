@@ -3,10 +3,9 @@ package com.temenos.ALBE.CustomerLimit.controller;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.MaximumCifLimitService;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
@@ -31,6 +30,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 20-Nov-2026   Development      Initial Version (was MaximumCifLimitValidator)
  * 21-Nov-2026   Development      Credit only by ACTIVITY.CLASS (was: name without DEBIT) (G9)
  * 21-Nov-2026   Development      Common activity mapping (ActivityRequestBuilder): ORIG.TXN.AMT, LCY amount
+ * 22-Nov-2026   Development      Check through CustomerLimitEngine
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -72,16 +72,11 @@ public class MaximumCifLimitController extends ActivityLifecycle {
                 return arrangementActivityRecord.getValidationResponse();
             }
             LogUtil.info(CLASS_NAME, "validateRecord", "CALC", "request=" + request);
-            if (!CustomerLimitRequestValidator.isValidForMaxCif(request)) {
-                return arrangementActivityRecord.getValidationResponse();
-            }
 
-            // Service
-            MaximumCifLimitService service = new MaximumCifLimitService(repository);
-            service.validate(request);
-
-            // View
-            int raised = CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), request);
+            // Engine (transaction info + customer limit info) + view
+            CustomerLimitDTO result = new CustomerLimitEngine(repository).checkMaxCif(request);
+            int raised = result == null ? 0
+                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
 
             LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId()
                     + " overridesRaised="
