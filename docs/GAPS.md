@@ -135,7 +135,9 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 
 ---
 
-## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026)
+## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026) – **PARKED 22-Nov-2026**
+
+> Parked by the user. The code stays in the repository but is not attached in T24 and not part of release 1.0. The points below are open for when the work resumes.
 
 Built on assumptions (the questions were not answered):
 

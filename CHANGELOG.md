@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Parked – FUNDS.TRANSFER and TELLER routines (22-Nov-2026)
+- Work on the FT / TT routines is parked: code kept, not attached, not part of release 1.0.
+
 ### Added – FUNDS.TRANSFER and TELLER routines
 - `FundsTransferLimitController` and `TellerLimitController` (version routines): limit check at input and utilisation (count at input, take back on delete and authorised reversal), for **both sides** – each customer account side for its own customer; internal / cash accounts skipped. Common code in `TransactionSideReader` and `TransactionLimitHandler`.
 - Counted id `<customer>-<date>-<FT/TT id>.<CR|DR>` in the existing EB.ALBE.TXN.DETAILS.LIMIT; report shows the FT/TT id and its overrides.

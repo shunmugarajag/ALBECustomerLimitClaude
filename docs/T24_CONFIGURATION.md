@@ -223,7 +223,9 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 ---
 
-## 8a. FUNDS.TRANSFER and TELLER versions – checks and utilisation
+## 8a. FUNDS.TRANSFER and TELLER versions – checks and utilisation – **PARKED**
+
+> Parked (22-Nov-2026): do **not** attach these routines yet. Kept here for when the work resumes.
 
 The bank chooses the FT / TT versions. On each:
 
