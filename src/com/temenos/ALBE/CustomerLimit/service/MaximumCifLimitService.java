@@ -26,6 +26,7 @@ import com.temenos.t24.api.records.account.AccountRecord;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitService {
@@ -54,6 +55,12 @@ public class MaximumCifLimitService {
         if (limits == null) {
             LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMIT record");
             request.setLimitMissing(true);
+            return;
+        }
+        if (ValidationUtil.isBlank(limits.ccy)) {
+            LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + customerId
+                    + " EB.ALBE.CIF.LIMIT CCY is blank - error, transaction blocked");
+            request.setLimitCcyMissing(true);
             return;
         }
         BigDecimal maximumCifLimit = limits.maxCifBalance;

@@ -163,6 +163,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMIT CCY is blank |
 
 `view.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
 

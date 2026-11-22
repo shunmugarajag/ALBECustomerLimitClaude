@@ -18,6 +18,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 22-Nov-2026   Development      limitCcyMissing (blank CIF.LIMIT CCY = error); copyTransaction
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitDTO {
@@ -37,6 +38,8 @@ public class CustomerLimitDTO {
     private boolean valid = true;
     /** True when the customer has no EB.ALBE.CIF.LIMIT record. */
     private boolean limitMissing = false;
+    /** True when the EB.ALBE.CIF.LIMIT record has a blank CCY. */
+    private boolean limitCcyMissing = false;
     /** One entry per breached limit, raised as an override by the routine. */
     private final List<LimitBreach> breaches = new ArrayList<>();
     /** Currency of the transaction (AA.ARRANGEMENT CURRENCY). */
@@ -146,6 +149,15 @@ public class CustomerLimitDTO {
         }
     }
 
+    /** True when the customer's EB.ALBE.CIF.LIMIT has a blank CCY (error - blocks the transaction). */
+    public boolean isLimitCcyMissing() { return limitCcyMissing; }
+    public void setLimitCcyMissing(boolean limitCcyMissing) {
+        this.limitCcyMissing = limitCcyMissing;
+        if (limitCcyMissing) {
+            valid = false;
+        }
+    }
+
     /** True when at least one required limit field is blank. */
     public boolean isLimitNotDefined() { return !undefinedLimits.isEmpty(); }
     public List<String> getUndefinedLimits() { return Collections.unmodifiableList(undefinedLimits); }
@@ -174,7 +186,7 @@ public class CustomerLimitDTO {
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
                 + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount + ", amountLcy=" + amountLcy
                 + ", rateMissing=" + rateMissing + ", valid=" + valid
-                + ", limitMissing=" + limitMissing + ", undefinedLimits=" + undefinedLimits
+                + ", limitMissing=" + limitMissing + ", limitCcyMissing=" + limitCcyMissing + ", undefinedLimits=" + undefinedLimits
                 + ", breaches=" + breaches.size() + "]";
     }
 }

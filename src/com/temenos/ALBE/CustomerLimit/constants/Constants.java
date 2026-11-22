@@ -223,6 +223,12 @@ public final class Constants {
     public static final String OVR_LIMIT_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
     /** Exchange rate not available from & to & (transaction currency, limit currency) */
     public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
+    /**
+     * ERROR (blocks the transaction): Limit currency not defined for Customer & - the customer's
+     * EB.ALBE.CIF.LIMIT has a blank CCY. EB.ERROR record (and an EB.OVERRIDE record with the same
+     * id for the ACCOUNT.PARAMETER hook, which can only return overrides).
+     */
+    public static final String ERR_LIMIT_CCY_MISSING = "EB-ALBE.CIF.LIMIT.CCY.MISSING";
 
     /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
     public static final String OVERRIDE_ID_PREFIX = "EB-ALBE.";

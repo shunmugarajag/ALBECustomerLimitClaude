@@ -53,7 +53,7 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
 
-Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ALBE.CIF.LIMIT.NOT.DEFINED` once; technical failure → logged, transaction **not** blocked.
+Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ALBE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked.
 
 ## 5. Code map
 
@@ -82,6 +82,7 @@ constants/    Constants (the only final class)
 |---|---|
 | Count utilisation at **input** (UNAUTH); reverse on DELETE and AUTH-REV | user: unauthorised transactions must count; rejected and reversed ones must be taken back; accepted-override transactions count |
 | Breach → **acceptable override**, incl. missing record / blank limit | user changed "reject with error" to override |
+| Blank CIF.LIMIT **CCY → error** (blocks) | user 22-Nov: "CCY can't be blank, if so throw error"; chose "at transaction time – block" |
 | Counted date in **AAA REMARKS** tag, TXN.DETAILS id `<cust>-<date>-<AAA>` | user's idea; keeps table structure; direct read by key even for reversal on a later day (an earlier SYSTEM.DATE field was removed) |
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
 | GEN.PARAM record id **`CUSTOMER.LIMIT`** | user; was SYSTEM |
@@ -105,7 +106,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **G2** lost update on parallel inputs (needs lock API) – team decision
 - **G3** partial writes (fail the transaction or let through) – team decision
 - **G5** REMARKS max length – confirm length
-- **G6** blank CIF.LIMIT CCY → use GEN.PARAM CCY – code only
+- **G6 fixed** (22-Nov): blank CIF.LIMIT CCY → **error** EB-ALBE.CIF.LIMIT.CCY.MISSING, transaction blocked (user); ACCOUNT.PARAMETER path can only return it as override
 - **G7** accounts in other companies, **G8** ACCOUNT SELECT fallback (G9 fixed: credit/debit by ACTIVITY.CLASS)
 - AAA findings **A1–A7** implemented (GAPS.md). DEV checks left: ORG.SYSTEM.DATE stable on re-input/DELETE/AUTH-REV (then drop the REMARKS tag + G5), COB UNAUTH.PROCESS decision, ORIG.TXN.AMT / TXN.AMOUNT.LCY filled at UNAUTH, `!TODAY` via Session. Waiting for a DEV credit/debit AAA from the user (user's Edge is granted read-only for screenshots).
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). Still open: the **ALBE table JAR** (must be generated in T24 – cannot be generated outside T24) and its getter/setter names; DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
@@ -113,7 +114,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
 - **Wherever attached (22-Nov-2026):** ACCOUNT.PARAMETER accounting hook added; assumptions **S1–S4** in GAPS (COB counted unless skip lists filled; last entry per key wins; action-type mapping; same key across routines). FT available as attach point; **TELLER parked again (22-Nov)** – don't change `TellerLimitController`; G10 parked with it; F1–F4 open; `AA_SKIP_TXN_SYSTEM_IDS` removed (common key prevents double count).
 - **Activity questions Q1–Q13** kept open in GAPS.md (user 21-Nov: "keep open").
-- Remaining small code gaps: G5, G6. Offered, not answered: strip `\<mnemonic>` from TXN.CONTRACT.ID in the TXN.REF report column.
+- Remaining small code gap: G5. (`\<mnemonic>` strip done via root reference.) Offered, not answered: fix the outdated `<AAA id>` comments in `TxnDetailsLimitRecorder`.
 
 ## 8. Testing (outside T24)
 
@@ -132,7 +133,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 140 cases (127 pass outside T24, 13 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 144 cases (131 pass outside T24, 13 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

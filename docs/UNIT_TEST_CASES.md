@@ -28,8 +28,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Reports | UT-E01 … E17 | 17 | 17 | – |
 | FT / TELLER routines | UT-FT01 … FT23 | 23 | 23 | – |
 | Engine + accounting entries | UT-G01 … G16 | 16 | 16 | – |
+| Blank limit currency (error) | UT-H01 … H04 | 4 | 4 | – |
 | Controllers in T24 | UT-T01 … T13 | 13 | – | 13 |
-| **Total** | | **140** | **127** | **13** |
+| **Total** | | **144** | **131** | **13** |
 
 ---
 
@@ -186,6 +187,15 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-G14 | reversal booked 05-Apr | taken back from 01-Apr, record deleted | Pass |
 | UT-G15 | AA activity without FT | key `AAACT2.DR` | Pass |
 | UT-G16 | override texts for ACCT.NAU.SUBRTN | list of `EB-ALBE.*` texts | Pass |
+
+## Blank limit currency – 22-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-H01 | EB.ALBE.CIF.LIMIT CCY blank, credit 5000 | one result flagged limitCcyMissing; maximum CIF not run | Pass |
+| UT-H02 | same, ACTIVITY.API / FT path | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
+| UT-H03 | same, ACCOUNT.PARAMETER path | returned in the override list | Pass |
+| UT-H04 | CCY filled again | normal checks (2 results for a credit) | Pass |
 
 ## FUNDS.TRANSFER / TELLER routines – 21-Nov-2026
 

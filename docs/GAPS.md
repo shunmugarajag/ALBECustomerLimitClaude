@@ -10,7 +10,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md); for
 | G3 | Partial update when one of the three writes fails | High | behaviour decision | open – team decision |
 | G4 | REMARKS date tag can be removed on re-input | Low (was Medium) | code only | **mitigated** – ORG.SYSTEM.DATE fallback |
 | G5 | REMARKS can exceed its maximum length | Medium | field length (confirm) | open |
-| G6 | Blank CCY on EB.ALBE.CIF.LIMIT skips conversion | Medium | code only | open |
+| G6 | Blank CCY on EB.ALBE.CIF.LIMIT skips conversion | Medium | code only | **fixed 22-Nov-2026** – error, transaction blocked |
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
@@ -77,7 +77,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Fix** | Check the length; if it does not fit, keep the tag and shorten the user text (or put the tag first). |
 | **Decision** | Confirm the REMARKS maximum length on AA.ARRANGEMENT.ACTIVITY and which text may be shortened. |
 
-## G6 – Blank CCY on EB.ALBE.CIF.LIMIT skips conversion
+## G6 – Blank CCY on EB.ALBE.CIF.LIMIT skips conversion – FIXED
 
 | | |
 |---|---|
@@ -86,7 +86,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Example** | CIF.LIMIT CCY blank, transaction 1,000 USD → compared as 1,000 against EGP limits. |
 | **Impact** | Checks far too lenient for foreign-currency transactions of that customer. |
 | **Fix** | Blank CIF.LIMIT CCY → use the EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` CCY, else the local currency; log it. |
-| **Decision** | None needed (code only). |
+| **Decision (22-Nov-2026)** | User: the CCY can't be blank – **error at transaction time, the transaction is blocked**. Done: both checks set `limitCcyMissing`; the view raises the **error** `EB-ALBE.CIF.LIMIT.CCY.MISSING` (ACTIVITY.API, FT). The ACCOUNT.PARAMETER hook can only return overrides, so there it comes back as an override with the same id – check in DEV whether it can be made non-approvable. |
 
 ## G7 – Accounts in other companies count as 0 (maximum CIF)
 
@@ -209,7 +209,7 @@ To check in DEV: hooks firing on delete and on reversal authorisation (RECORD.ST
 | Case | Result |
 |---|---|
 | Transaction currency = limit currency | rate 1, checks run normally |
-| A currency blank | treated as same currency (see G6) |
+| Limit currency blank | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING, transaction blocked (G6) |
 | Different currencies, limit CCY = local currency | the activity's **TXN.AMOUNT.LCY** (or ORIG.TXN.AMT.LCY) is used – no rate needed (21-Nov-2026) |
 | Different currencies, limit CCY ≠ local currency | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ALBE.EXCH.RATE.MISSING**, limit check **skipped** |
 | Maximum CIF, account in another currency | same – rate-missing override, check skipped |
@@ -244,7 +244,7 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 
 ## Suggested order
 
-1. **G5, G6** – small, code only, no behaviour risk (G1 fixed, G4 mitigated). DEV check A1 may remove G5 altogether.
+1. **G5** – small, code only (G6 fixed), no behaviour risk (G1 fixed, G4 mitigated). DEV check A1 may remove G5 altogether.
 2. **E1** – as soon as the bank answers the five questions.
 3. **G2, G3** – after the team decision (lock API, fail vs. let through).
 4. **G7, G8** – after the confirmations listed (G9 done).

@@ -31,6 +31,7 @@ import com.temenos.api.TField;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      texts(): overrides as a list (ACCOUNT.PARAMETER accounting hook)
+ * 22-Nov-2026   Development      Blank limit CCY: error EB-ALBE.CIF.LIMIT.CCY.MISSING (blocks)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -47,6 +48,11 @@ public class CustomerLimitOverride {
      * @return number of overrides raised
      */
     public static int raiseFor(TField field, CustomerLimitDTO request) {
+        if (request.isLimitCcyMissing()) {
+            // Blank limit currency: an error, not an override - the transaction cannot be committed.
+            raiseError(field, Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId());
+            return 1;
+        }
         List<String> texts = texts(request);
         for (String text : texts) {
             LogUtil.info(CLASS_NAME, "raiseFor", "OVERRIDE", "customer=" + request.getCustomerId() + " sent="
@@ -66,6 +72,13 @@ public class CustomerLimitOverride {
      */
     public static List<String> texts(CustomerLimitDTO request) {
         List<String> texts = new ArrayList<>();
+        if (request.isLimitCcyMissing()) {
+            // The accounting hook can only return overrides: the same id is set up as EB.OVERRIDE too.
+            LogUtil.error(CLASS_NAME, "texts", "NO CCY", "customer=" + request.getCustomerId()
+                    + " limit currency blank - returned as " + Constants.ERR_LIMIT_CCY_MISSING);
+            texts.add(build(Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId()));
+            return texts;
+        }
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " limit not defined"

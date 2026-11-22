@@ -10,6 +10,7 @@ import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
+import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
 
@@ -33,6 +34,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitService {
@@ -73,6 +75,12 @@ public class DailyMonthlyLimitService {
             return;
         }
         LogUtil.info(CLASS_NAME, "validate", "CALC", "limits=" + limits);
+        if (ValidationUtil.isBlank(limits.ccy)) {
+            LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + request.getCustomerId()
+                    + " EB.ALBE.CIF.LIMIT CCY is blank - error, transaction blocked");
+            request.setLimitCcyMissing(true);
+            return;
+        }
 
         // Compare in the limit currency: convert the transaction amount if its currency differs.
         if (!currencyService.convertRequest(request, limits.ccy)) {

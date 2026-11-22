@@ -78,6 +78,9 @@ public class CustomerLimitEngine {
         CustomerLimitDTO dailyMonthly = checkDailyMonthly(transaction);
         if (dailyMonthly != null) {
             results.add(dailyMonthly);
+            if (dailyMonthly.isLimitCcyMissing()) {
+                return results;     // error already given once; no second check on a blank currency
+            }
         }
         CustomerLimitDTO maxCif = checkMaxCif(transaction);
         if (maxCif != null) {

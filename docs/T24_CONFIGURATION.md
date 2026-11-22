@@ -149,6 +149,9 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | customer id – only for the ACCOUNT.PARAMETER hook (8b), which can only return overrides; make it non-approvable if your release allows |
+
+**EB.ERROR** (blocks the transaction – ACTIVITY.API and FT routines): `EB-ALBE.CIF.LIMIT.CCY.MISSING` – "Limit currency not defined for Customer &" (customer id). Raised when the customer's EB.ALBE.CIF.LIMIT has a blank CCY.
 
 The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are filled in the override text **(confirm)**.
 

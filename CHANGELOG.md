@@ -5,6 +5,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
 ### Changed – 22-Nov-2026
+- Blank CCY on a customer's EB.ALBE.CIF.LIMIT is now an **error** (`EB-ALBE.CIF.LIMIT.CCY.MISSING`) – the transaction is blocked (G6). Before, it was compared without conversion.
 - `Constants.AA_SKIP_TXN_SYSTEM_IDS` removed: the common counted key already prevents double counting.
 - TELLER routine parked again (not attached; teller covered by ACCOUNT.PARAMETER or ACTIVITY.API); G10 parked with it.
 
