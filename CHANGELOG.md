@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – controller sub-packages (22-Nov-2026)
+- Controllers grouped by where they are attached: `controller.customer` (CUSTOMER version), `controller.activity` (ACTIVITY.API, incl. ActivityRequestBuilder), `controller.enquiry` (NOFILE reports). **EB.API package names change** – see T24_CONFIGURATION step 5.
+
 ### Removed – 22-Nov-2026
 - FUNDS.TRANSFER, TELLER and ACCOUNT.PARAMETER routines (`FundsTransferLimitController`, `TellerLimitController`, `TransactionSideReader`, `TransactionLimitHandler`, `TransactionSide`, `AccountingEntryLimitController`, `StatementEntryRequestBuilder`): FT, teller and other postings on AA accounts arrive as `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activities, so the ACTIVITY.API routines cover them. Kept: one engine, counted key = FT behind the activity, own-account transfers not counted. The removed code is in the Git history.
 

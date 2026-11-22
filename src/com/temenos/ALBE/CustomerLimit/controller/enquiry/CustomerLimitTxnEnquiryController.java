@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.controller;
+package com.temenos.ALBE.CustomerLimit.controller.enquiry;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.controller;
+package com.temenos.ALBE.CustomerLimit.controller.activity;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;

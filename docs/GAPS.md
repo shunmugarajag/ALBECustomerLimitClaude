@@ -120,7 +120,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 
 ## Findings from the activity record (AAA) – implemented 21-Nov-2026
 
-Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV AAA. None needs a table change. The routines are now **common for all activities** (`controller/ActivityRequestBuilder`).
+Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV AAA. None needs a table change. The routines are now **common for all activities** (`controller/activity/ActivityRequestBuilder`).
 
 | # | Point | Implemented | Still to confirm in DEV |
 |---|---|---|---|

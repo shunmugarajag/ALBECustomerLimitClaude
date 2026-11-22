@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.controller;
+package com.temenos.ALBE.CustomerLimit.controller.activity;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

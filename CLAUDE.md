@@ -18,7 +18,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 |---|---|
 | **Do not change the table structure** – it is pre-approved | No new fields, no new tables. (OVERRIDE.IDS and SYSTEM.DATE were added once and **removed** for this reason.) |
 | **Ask on design points, don't assume** | Use a short question with options; if unanswered, state the assumption made. |
-| MVC layers; hook classes are `…Controller` | controller / service / repository / model / view / validation / util / constants |
+| MVC layers; hook classes are `…Controller` | controller (sub-packages customer / activity / enquiry) / service / repository / model / view / validation / util / constants |
 | **All DB access only in `repository/CustomerLimitRepository`**, each call logged | no `DataAccess`/`Session`/Table class anywhere else |
 | **No inner classes, no interfaces** (no lambdas-as-interfaces design, no nested types) | plain public classes; `Comparator` lambda in a `sort` call is fine |
 | **No `final` classes except `Constants`** | utility classes use a private constructor instead |
@@ -57,9 +57,11 @@ Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS acti
 ## 5. Code map
 
 ```
-controller/   CustomerLimitCreationController, DailyMonthlyLimitController, MaximumCifLimitController,
-              ActivityRequestBuilder (common AAA -> request mapping for any activity),
-              CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController
+controller/   sub-packages by where the routine is attached:
+  customer/   CustomerLimitCreationController (VERSION CUSTOMER,ALBE.CORP)
+  activity/   DailyMonthlyLimitController, MaximumCifLimitController (ACTIVITY.API),
+              ActivityRequestBuilder (common AAA -> request mapping for any activity)
+  enquiry/    CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE)
 service/      CustomerLimitEngine (ONE entry point: transaction info + customer limit info -> checkDailyMonthly/checkMaxCif/count/reverse; transactionKey; own transfer),
               DailyMonthlyLimitService, MaximumCifLimitService, CustomerLimitCreationService, CustomerLimitReader,
               CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse),

@@ -67,14 +67,14 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 
 | Package | Class | Responsibility |
 |---|---|---|
-| `controller` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
-| `controller` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
-| `controller` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
+| `controller.customer` | `CustomerLimitCreationController` | `RecordLifecycle.postUpdateRequest` – customer authorised: calls `CustomerLimitCreationService.create` |
+| `controller.activity` | `DailyMonthlyLimitController` | `ActivityLifecycle.validateRecord` (check) and `postCoreTableUpdate` (count / reverse utilisation) |
+| `controller.activity` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
 | `service` | `CustomerLimitEngine` | **one entry point**: transaction info + customer limit info → `checkDailyMonthly`, `checkMaxCif`, `count`, `reverse` (counted day found by the transaction if needed); `transactionKey(reference)` = root reference used by every routine; own-account transfer (other side already recorded for the customer) → not counted, 0-amount marker, reversal takes nothing back |
-| `controller` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, ACTIVITY.CLASS action, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
-| `controller` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
-| `controller` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
-| `controller` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
+| `controller.activity` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, ACTIVITY.CLASS action, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
+| `controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
+| `controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
+| `controller.enquiry` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
 | `validation` | `CustomerLimitEnquiryValidator` | Enquiry selection checks: dates, months, ranges, range length, period given, customer or date |
 | `service` | `CustomerLimitEnquiryService` | Builds the report rows (read only) |
 | `model` | `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` | One report row each (`isOverLimit()` on summary / period) |
@@ -119,7 +119,7 @@ Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-table
 | customerId | AA.ARRANGEMENT CUSTOMER (first) |
 | transactionId | AAA id (`arrangementContext.getArrangementActivityId()`); arrangement id as fallback. Maximum CIF check: arrangement id |
 | transactionDate | counted date: REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input with the T24 date) → AAA ORG.SYSTEM.DATE → T24 TODAY (`Session !TODAY`) → server clock (logged last resort) |
-| creditAmount / debitAmount | ORIG.TXN.AMT if filled, else TXN.AMOUNT; credit or debit by the **action** of the AAA ACTIVITY.CLASS (`CREDIT` / `DEBIT`, any product line); INITIATION.TYPE must be counted (all types); otherwise skipped – `controller/ActivityRequestBuilder`, common for all activities |
+| creditAmount / debitAmount | ORIG.TXN.AMT if filled, else TXN.AMOUNT; credit or debit by the **action** of the AAA ACTIVITY.CLASS (`CREDIT` / `DEBIT`, any product line); INITIATION.TYPE must be counted (all types); otherwise skipped – `controller/activity/ActivityRequestBuilder`, common for all activities |
 | amountLcy | ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY – used instead of a rate when the limit currency is the local currency |
 | transactionCurrency | AAA CURRENCY, else AA.ARRANGEMENT CURRENCY |
 | limitCurrency, exchangeRate, originalAmount | set by `CurrencyConversionService` |
@@ -416,6 +416,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 22-Nov-2026 | Controller sub-packages `controller.customer`, `controller.activity`, `controller.enquiry` (EB.API package names updated) |
 | 22-Nov-2026 | FT / TELLER / ACCOUNT.PARAMETER routines **removed** – FT, TT and other postings on AA accounts arrive as activities, covered by ACTIVITY.API (classes in Git history) |
 | 22-Nov-2026 | Key without `.CR/.DR`; own-account transfers (same customer both sides) not checked or counted |
 | 22-Nov-2026 | Limit management wherever attached: `CustomerLimitEngine` (one entry point), `AccountingEntryLimitController` + `StatementEntryRequestBuilder` (ACCOUNT.PARAMETER, every transaction), same counted key `<root reference>.<CR\|DR>` for all routines (no double count), repository with one `T24Context` constructor, `CustomerLimitOverride.texts`; FT/TT un-parked |

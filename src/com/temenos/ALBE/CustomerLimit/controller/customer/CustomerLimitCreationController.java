@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimit.controller;
+package com.temenos.ALBE.CustomerLimit.controller.customer;
 
 import java.util.List;
 
