@@ -4,6 +4,10 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – 22-Nov-2026
+- `Constants.AA_SKIP_TXN_SYSTEM_IDS` removed: the common counted key already prevents double counting.
+- TELLER routine parked again (not attached; teller covered by ACCOUNT.PARAMETER or ACTIVITY.API); G10 parked with it.
+
 ### Added – limit management wherever attached (22-Nov-2026)
 - One engine, `CustomerLimitEngine`: works only with transaction info + customer limit info; every routine calls it.
 - New attach point for **every transaction**: `AccountingEntryLimitController` on ACCOUNT.PARAMETER (ACCT.NAU.SUBRTN check, ACCOUNTING.SUBRTN count / take back), with `StatementEntryRequestBuilder`.

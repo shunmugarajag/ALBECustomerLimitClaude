@@ -108,14 +108,6 @@ public final class Constants {
     public static final String[] COUNTED_INITIATION_TYPES = { "USER", "TRANSACTION", "SECONDARY", "SCHEDULED*SOD",
             "SCHEDULED*EOD", "PAY*SOD", "PAY*EOD", "NOLOG" };
 
-    /**
-     * AAA TXN.SYSTEM.ID values the ACTIVITY.API routines skip, so a transaction is never counted
-     * twice when the FUNDS.TRANSFER / TELLER version routines are attached as well.
-     * Empty = the activity routines count everything. Set to { "FT", "TT" } when the FT and TT
-     * version routines are attached to the versions used for AA accounts.
-     */
-    public static final String[] AA_SKIP_TXN_SYSTEM_IDS = {};
-
     // -------------------------------------------------------------------------
     // Counted transaction key - the same for every place a routine is attached
     // -------------------------------------------------------------------------

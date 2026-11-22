@@ -226,7 +226,7 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 ## 8a. FUNDS.TRANSFER and TELLER versions – checks and utilisation
 
-> Optional attach point (22-Nov-2026). Limit management works **wherever the bank attaches a routine** – see 8c for how to choose.
+> Optional attach point (22-Nov-2026). Limit management works **wherever the bank attaches a routine** – see 8c for how to choose. **TELLER versions: parked** – do not attach `ALBE.CL.TT.LIMIT` yet; teller transactions are covered by 8b (or 8 on AA accounts).
 
 The bank chooses the FT / TT versions. On each:
 
@@ -269,7 +269,7 @@ One attach point that sees **every transaction that posts to an account** (AA, F
 |---|---|---|
 | ACCOUNT.PARAMETER (8b) | every posting to a customer account | one place for everything (recommended once DEV confirms the hooks) |
 | ACTIVITY.API (8) | AA activities (also FT/TT on AA accounts) | AA accounts only |
-| FT / TT versions (8a) | the chosen FT / TT versions | only some FT / TT versions, or classic accounts |
+| FT versions (8a) | the chosen FT versions | only some FT versions, or classic accounts (TELLER parked) |
 
 All three use the same engine and the same counted key, so attaching more than one never **counts** a transaction twice; only the **overrides** would appear twice – so attach the checks for one transaction path in one place.
 

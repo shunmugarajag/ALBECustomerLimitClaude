@@ -25,8 +25,6 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                            credit, Constants.DEBIT_ACTIONS = debit, any product line; other
  *                            actions => not counted (direction unknown)
  *                 initiation INITIATION.TYPE must be in Constants.COUNTED_INITIATION_TYPES
- *                 source     TXN.SYSTEM.ID in Constants.AA_SKIP_TXN_SYSTEM_IDS => not counted here
- *                            (counted by the FT / TT version routine instead; empty by default)
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
  *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id,
  *                            + .CR / .DR - same key as the FT / TT and accounting-entry routines
@@ -39,6 +37,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *-----------------------------------------------------------------------------
  * 21-Nov-2026   Development      Initial Version (common for all activities)
  * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) + .CR/.DR (CustomerLimitEngine)
+ * 22-Nov-2026   Development      AA_SKIP_TXN_SYSTEM_IDS removed - the common key prevents double counting
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -59,13 +58,6 @@ public class ActivityRequestBuilder {
         String activityClass = aaaRec.getActivityClass().getValue();
         String initiationType = getInitiationType(aaaRec);
         if (!isCountedActivity(activityClass, initiationType, activity)) {
-            return null;
-        }
-
-        String systemId = ValidationUtil.nvl(aaaRec.getTxnSystemId().getValue()).trim();
-        if (ValidationUtil.contains(Constants.AA_SKIP_TXN_SYSTEM_IDS, systemId)) {
-            LogUtil.info(CLASS_NAME, "build", "SKIP", "activity=" + activity + " TXN.SYSTEM.ID=" + systemId
-                    + " is counted by its own version routine (Constants.AA_SKIP_TXN_SYSTEM_IDS)");
             return null;
         }
 
