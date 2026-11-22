@@ -26,11 +26,10 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
 | Reports | UT-E01 … E17 | 17 | 17 | – |
-| FT / TELLER routines | UT-FT01 … FT23 | 23 | 23 | – |
-| Engine + accounting entries | UT-G01 … G19 | 19 | 19 | – |
-| Blank limit currency (error) | UT-H01 … H04 | 4 | 4 | – |
-| Controllers in T24 | UT-T01 … T13 | 13 | – | 13 |
-| **Total** | | **147** | **134** | **13** |
+| Engine, key, own transfer | UT-G01 … G22 | 12 | 12 | – |
+| Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
+| Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
+| **Total** | | **112** | **103** | **9** |
 
 ---
 
@@ -167,66 +166,30 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-C04 | AAA CURRENCY USD | transaction currency USD | Pass |
 | UT-C05 | AAA CURRENCY blank, arrangement EGP | EGP | Pass |
 
-## Engine and accounting entries (wherever attached) – 22-Nov-2026
+## Engine, counted key, own transfer – 22-Nov-2026
 
 | Id | Given | Expected | Result |
 |---|---|---|---|
 | UT-G01 | reference `FT26091ABC\BNK` | root `FT26091ABC` | Pass |
 | UT-G02 | reference `FT26091ABC;1` | root `FT26091ABC` | Pass |
-| UT-G03 | key for `FT1\BNK` | `FT1` | Pass |
-| UT-G04 | entry −3000 on customer 100 | debit 3000, key `FT26091AAA` | Pass |
-| UT-G05 | entry without CUSTOMER.ID | skipped | Pass |
-| UT-G06 | entry type CATEG | skipped | Pass |
-| UT-G07 | USD account, AMOUNT.FCY −10, AMOUNT.LCY −485 | debit 10 USD, LCY 485 | Pass |
-| UT-G08 | debit 3000, daily debit limit 2000 | breach | Pass |
-| UT-G09 | credit entry | daily/monthly + maximum CIF checked (2 results) | Pass |
-| UT-G10 | count from the entry | 3000 credit for 200 | Pass |
-| UT-G11 | AA activity with TXN.CONTRACT.ID `FT26091AAA\BNK` | key `FT26091AAA` | Pass |
-| UT-G12 | same transaction counted again by the activity routine | still 3000, one record (no double count) | Pass |
-| UT-G13 | reversing entry −3000 (flip) | matched to `FT26091AAA` | Pass |
-| UT-G14 | reversal booked 05-Apr | taken back from 01-Apr, record deleted | Pass |
-| UT-G15 | AA activity without FT | key `AAACT2` | Pass |
-| UT-G16 | override texts for ACCT.NAU.SUBRTN | list of `EB-ALBE.*` texts | Pass |
-| UT-G17 | own transfer via entries: credit side of the same customer after the debit side | no check | Pass |
-| UT-G18 | same, count | debit taken back, 0-amount marker kept | Pass |
-| UT-G19 | reversal of that own transfer on a later day (fallback on) | nothing taken back | Pass |
+| UT-G08 | debit activity 3000 from an FT, daily debit limit 2000 | breach | Pass |
+| UT-G10 | FT 3000 customer 100 → 200: debit and credit activity counted | 3000 debit for 100, 3000 credit for 200 | Pass |
+| UT-G11 | activities with TXN.CONTRACT.ID `FT26091ABCDE\BNK` | key `FT26091ABCDE` | Pass |
+| UT-G12 | same FT, two customers | `100-20260401-FT26091ABCDE`, `200-20260401-FT26091ABCDE` | Pass |
+| UT-G14 | reversal on 05-Apr without a date on the activity | taken back from 01-Apr | Pass |
+| UT-G15 | activity without FT | key = AAA id | Pass |
+| UT-G17 | own transfer: credit activity of the same customer after the debit | no check | Pass |
+| UT-G18 | same, count | nothing counted, 0-amount marker kept | Pass |
+| UT-G19 | reversal of that own transfer (fallback on) | nothing taken back | Pass |
+| UT-G22 | report row for an FT-keyed activity | TXN.ID / TXN.REF = FT id, overrides from FUNDS.TRANSFER | Pass |
 
 ## Blank limit currency – 22-Nov-2026
 
 | Id | Given | Expected | Result |
 |---|---|---|---|
-| UT-H01 | EB.ALBE.CIF.LIMIT CCY blank, credit 5000 | one result flagged limitCcyMissing; maximum CIF not run | Pass |
-| UT-H02 | same, ACTIVITY.API / FT path | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
-| UT-H03 | same, ACCOUNT.PARAMETER path | returned in the override list | Pass |
-| UT-H04 | CCY filled again | normal checks (2 results for a credit) | Pass |
-
-## FUNDS.TRANSFER / TELLER routines – 21-Nov-2026
-
-| Id | Given | Expected | Result |
-|---|---|---|---|
-| UT-FT01 | function I, status INAU | COUNT | Pass |
-| UT-FT02 | function D | REVERSE.DELETE | Pass |
-| UT-FT03 | function A, status INAU | NONE | Pass |
-| UT-FT04 | function A, status RNAU | REVERSE | Pass |
-| UT-FT05 | function R (reversal input) | NONE | Pass |
-| UT-FT06 | FT DEBIT.ACCT.NO 1001, DEBIT.AMOUNT 3000 | debit side DR 1001 3000 | Pass |
-| UT-FT07 | FT CREDIT.AMOUNT blank, AMOUNT.CREDITED "EGP3000.00" | credit side CR 2002 3000.00 | Pass |
-| UT-FT08 | FT only DEBIT.AMOUNT entered | credit side overrides on DEBIT.AMOUNT | Pass |
-| UT-FT09 | TT cash deposit, DR.CR.MARKER DEBIT | side 1 DR (cash), side 2 CR customer 200 6000 | Pass |
-| UT-FT10 | FT 3000 from customer 100 (daily debit 2000) to 200 | override(s) raised | Pass |
-| UT-FT11 | input | debit 3000 counted for 100 | Pass |
-| UT-FT12 | input | credit 3000 counted for 200 | Pass |
-| UT-FT13 | input | TXN.DETAILS `100-20260401-FT…AAA`, `200-20260401-FT…AAA` | Pass |
-| UT-FT14 | re-input same day with 2500 | 2500 (earlier 3000 taken back first) | Pass |
-| UT-FT15 | authorise | no change | Pass |
-| UT-FT16 | reversal authorised on 05-Apr | taken back from 01-Apr; 05-Apr untouched | Pass |
-| UT-FT17 | after reversal | TXN.DETAILS records deleted | Pass |
-| UT-FT18 | input then delete | taken back, records deleted | Pass |
-| UT-FT19 | TT cash deposit | only customer 200 counted; cash account skipped | Pass |
-| UT-FT20 | own transfer (same customer both sides) | not checked, nothing counted | Pass |
-| UT-FT21 | USD 10 debit, LOC.AMT.DEBITED 485, limit EGP | 485.00 counted (no rate lookup) | Pass |
-| UT-FT22 | report for an FT-counted row | TXN.REF = FT id, OVERRIDES from FUNDS.TRANSFER | Pass |
-| UT-FT23 | AA activity with TXN.SYSTEM.ID FT, skip list empty (default) | still counted by the activity routine | Pass |
+| UT-H01 | EB.ALBE.CIF.LIMIT CCY blank, credit 5000 | daily/monthly and maximum CIF checks flagged limitCcyMissing | Pass |
+| UT-H02 | same | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
+| UT-H04 | CCY filled again | normal check | Pass |
 
 ## Reports
 
@@ -263,7 +226,3 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-T07 | AAA ACTIVITY.CLASS filled at UNAUTH for FT/TT credits and debits (and for user-defined activities linked to the two classes) | §13 #3 |
 | UT-T08 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, INITIATION.TYPE filled at UNAUTH; ORG.SYSTEM.DATE unchanged on re-input / DELETE / AUTH-REV | GAPS A1, A4, A5 |
 | UT-T09 | `Session.getCurrentVariable("!TODAY")` returns the T24 date (DEV: 01 APR 2026, not the server clock) | GAPS G1 |
-| UT-T10 | FT/TT: AFTER.UNAU.RTN fires on input and delete; AUTH.ROUTINE fires on reversal authorisation (RECORD.STATUS RNAU/REVE) | T24_CONFIGURATION §8a |
-| UT-T11 | FT/TT overrides raised from INPUT.ROUTINE appear on the amount field and can be accepted | §8a |
-| UT-T12 | ACCOUNT.PARAMETER hooks: called at unauthorised input; action types on delete / reversal / amendment | §8b |
-| UT-T13 | Overrides returned by `raiseOverrides` shown on the transaction and can be accepted | §8b |

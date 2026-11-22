@@ -135,39 +135,11 @@ Found in the R25 javadoc field help (local `Transact_L3_Javadoc`) and on a DEV A
 
 ---
 
-## Limit management wherever attached – ACCOUNT.PARAMETER accounting hook (22-Nov-2026)
+## FT / TELLER / ACCOUNT.PARAMETER routines – removed (22-Nov-2026)
 
-Built on assumptions (to confirm):
+Built 21/22-Nov-2026 and removed the same day (user): FT, TT and other postings on **AA accounts** arrive as activities, so ACTIVITY.API covers them. Their open points (F1–F5, S1–S4, G10) are closed with them. Kept from that work: one engine (`CustomerLimitEngine`), counted key = root reference (FT behind the activity, else AAA id), **own-account transfer not counted** (S5: the first activity's check may still show an override).
 
-| # | Assumption | Alternative |
-|---|---|---|
-| S1 | COB postings are counted unless the bank fills `Constants.STMT_SKIP_SYSTEM_IDS` / `STMT_SKIP_TRANSACTION_CODES` | skip COB by default |
-| S2 | Several entries of one transaction on the same account and side (amount + charges): the **last** entry counted replaces the earlier (same key) | add them up per transaction / skip charge transaction codes (S1 list) |
-| S3 | Action types: count VAL, VALAUT, ADD, ADD.AUT, CHG; take back DEL, REV, RSAO; nothing for AUT, SAO, SNP, SSS | per DEV findings |
-| S4 | Same key for every routine `<root reference>` → no double count across attach points (same counted day assumed) | – |
-| S5 | **Own-account transfer** (same customer debit and credit) – user 22-Nov: **not counted**. FT routine sees both sides and skips; activity / entry routines see one side at a time: the second side takes the first back and leaves a 0-amount marker record (a later reversal takes nothing back). The **first** side's check may still raise overrides on these two routes. | – |
-
-To check in DEV: ACCOUNT.PARAMETER ACCT.NAU.SUBRTN / ACCOUNTING.SUBRTN free or used; hooks called at unauthorised input; action types on delete / reversal / amendment; override list shown on the screen; performance on COB.
-
-## FUNDS.TRANSFER / TELLER routines – open points (21-Nov-2026)
-
-> FT: available as an attach point. **TELLER: parked again (22-Nov-2026)** – `TellerLimitController` stays in the code but is not attached; teller transactions are still covered through ACCOUNT.PARAMETER (8b) or, on AA accounts, ACTIVITY.API. The points below are still open.
-
-Built on assumptions (the questions were not answered):
-
-| # | Assumption | Alternative |
-|---|---|---|
-| F1 | **Both sides** of an FT / TT are checked and counted, each customer side for its own customer; internal / cash accounts skipped | debit side only / credit side only |
-| F2 | **Same rules as AA:** check at input; count at input (AFTER.UNAU.RTN); take back on delete and when a reversal is authorised (AUTH.ROUTINE) | count only at authorisation |
-| F3 | TXN.DETAILS id `<customer>-<date>-<FT/TT id>` (`.CR/.DR` dropped 22-Nov; own transfers not counted) | no TXN.DETAILS record for FT/TT |
-| F4 | Maximum CIF check also on the FT/TT **credit** side | daily / monthly only |
-| F5 | ~~AA double counting skip list~~ – removed 22-Nov-2026: the common key `<root ref>` prevents double counting | – |
-
-To check in DEV: hooks firing on delete and on reversal authorisation (RECORD.STATUS seen); FT DEBIT.CUSTOMER / CREDIT.CUSTOMER and AMOUNT.DEBITED filled at INPUT.ROUTINE time; TT AMOUNT.FCY / AMOUNT.LOCAL per side.
-
-| # | Gap | Fix |
-|---|---|---|
-| G10 | **Parked with TELLER (22-Nov-2026).** TT (no processing date): re-input of an unauthorised TT on a **later** T24 day counts it on the new day without taking back the first day (FT uses PROCESSING.DATE, so not affected) | on re-input look up the earlier record by id (one SELECT) – code only |
+To confirm in DEV: activity created at FT input; activity overrides shown on the FT; FT delete / reversal reach the activity. Not covered: non-AA accounts.
 
 ---
 

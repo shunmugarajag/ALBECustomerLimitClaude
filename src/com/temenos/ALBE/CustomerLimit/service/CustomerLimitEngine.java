@@ -2,7 +2,6 @@ package com.temenos.ALBE.CustomerLimit.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -16,16 +15,15 @@ import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
  * Description : The one entry point of customer limit management. It works only with
  *               TRANSACTION INFO (CustomerLimitDTO: customer, transaction, date, currency,
  *               credit or debit amount) and CUSTOMER LIMIT INFO (EB.ALBE.CIF.LIMIT), so it does
- *               not depend on where the transaction comes from. Every routine - wherever the bank
- *               attaches it (ACTIVITY.API, FT / TT version, ACCOUNT.PARAMETER accounting hook) -
- *               builds the transaction info and calls this class:
+ *               not depend on where the transaction comes from (FT, TELLER and other transactions on
+ *               an AA account all arrive as an activity). The ACTIVITY.API routines build the
+ *               transaction info and call this class:
  *
  *                 checkDailyMonthly  daily / monthly credit or debit limit
  *                 checkMaxCif        maximum CIF balance (credits only)
- *                 checkAll           both - for routines that are the only check on a transaction
  *                 count              utilisation at input (an earlier input of the same
- *                                    transaction is taken back first - also when the same
- *                                    transaction arrives from a second routine: no double count);
+ *                                    transaction is taken back first - the debit and credit
+ *                                    activity of one FT share its id: no double count);
  *                                    own-account transfer (same customer on both sides): not counted
  *                 reverse            utilisation taken back, from the day it was counted on
  *
@@ -36,6 +34,7 @@ import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
  *-----------------------------------------------------------------------------
  * 22-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Key = root reference (no .CR/.DR); own-account transfers not counted
+ * 22-Nov-2026   Development      Activity routines only (FT / TELLER / ACCOUNT.PARAMETER routines removed)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitEngine {
@@ -74,23 +73,6 @@ public class CustomerLimitEngine {
         new MaximumCifLimitService(repository).validate(result);
         LogUtil.info(CLASS_NAME, "checkMaxCif", "END", result.logKey() + " breaches=" + result.getBreaches().size());
         return result;
-    }
-
-    /** Both checks; the checked requests to raise overrides for (0, 1 or 2). */
-    public List<CustomerLimitDTO> checkAll(CustomerLimitDTO transaction) {
-        List<CustomerLimitDTO> results = new ArrayList<>();
-        CustomerLimitDTO dailyMonthly = checkDailyMonthly(transaction);
-        if (dailyMonthly != null) {
-            results.add(dailyMonthly);
-            if (dailyMonthly.isLimitCcyMissing()) {
-                return results;     // error already given once; no second check on a blank currency
-            }
-        }
-        CustomerLimitDTO maxCif = checkMaxCif(transaction);
-        if (maxCif != null) {
-            results.add(maxCif);
-        }
-        return results;
     }
 
     /**
@@ -174,10 +156,9 @@ public class CustomerLimitEngine {
     }
 
     /**
-     * Counted transaction key, the same wherever the routine is attached: the root reference
-     * (e.g. FT26091ABCDE, AAACT26091XYZ). Together with the customer and the day it is the
-     * EB.ALBE.TXN.DETAILS.LIMIT id, so one transaction seen by two routines replaces itself
-     * instead of being counted twice.
+     * Counted transaction key: the root reference (e.g. FT26091ABCDE behind an activity, else the
+     * AAA id AAACT26091XYZ). Together with the customer and the day it is the
+     * EB.ALBE.TXN.DETAILS.LIMIT id.
      */
     public static String transactionKey(String reference) {
         return ValidationUtil.rootReference(reference);

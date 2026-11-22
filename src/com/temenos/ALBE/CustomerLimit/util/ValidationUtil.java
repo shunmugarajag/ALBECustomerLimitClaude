@@ -127,19 +127,6 @@ public class ValidationUtil {
     }
 
     /**
-     * Amount of a T24 "currency + amount" field such as FT AMOUNT.DEBITED ("EGP1000.00"):
-     * leading letters removed, then toAmount; 0 if blank or not a number.
-     */
-    public static BigDecimal toAmountWithoutCurrency(String value) {
-        String text = nvl(value).trim();
-        int start = 0;
-        while (start < text.length() && Character.isLetter(text.charAt(start))) {
-            start++;
-        }
-        return toAmount(text.substring(start));
-    }
-
-    /**
      * Root of a transaction reference: cut at the first Constants.REFERENCE_CUT_CHARS character
      * ("FT26091ABCDE\\BNK" and "FT26091ABCDE;1" give "FT26091ABCDE"); "" if blank.
      */

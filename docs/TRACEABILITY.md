@@ -61,8 +61,7 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | D6 | Server date (now: T24 date) | server date of the **first input**, kept in the activity REMARKS (`ALBE.LIMIT.DATE=YYYYMMDD`) and used for re-input, rejection and reversal | correct day/month even when reversed later; no table field | 21-Nov-2026 |
 | D7 | Parameter table EGP.LIMIT.VALIDATION.PARAM for products / activities (to be confirmed) | eligibility by attaching the routines in ACTIVITY.API per product / activity | HLSD 7.2.1 attaches the routines per product and activity | per HLSD 7.2.1 |
 | D8 | – | currency conversion to the limit currency (rate source pending) | transactions / accounts in another currency | 20-Nov-2026 |
-| D11 | Validation on the AA activities | limit management **wherever attached**: ACCOUNT.PARAMETER accounting entries (every transaction), ACTIVITY.API, FT/TT versions – one engine, one counted key | user 22-Nov: "limit management should happen wherever we attach" | 22-Nov-2026 |
-| D10 | AA activities only (ACTIVITY.API) | also FUNDS.TRANSFER and TELLER version routines; both sides, each customer side for its own customer | user: controllers for teller and FT to validate and update utilisation | 21-Nov-2026 |
+| D11 | – | FT / TELLER / ACCOUNT.PARAMETER routines built and **removed** 22-Nov-2026: FT / TT on AA accounts arrive as activities (ACTIVITY.API) | user 22-Nov | 22-Nov-2026 |
 | D9 | Credit / debit activities (ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT) | routines can be attached to **any** activity: counted when it has an amount and its ACTIVITY.CLASS action is CREDIT / DEBIT; amount ORIG.TXN.AMT if filled, else TXN.AMOUNT | user: common for all activities; full original amount | 21-Nov-2026 |
 
 The BA should reflect D1–D6 in the next HLSD version.

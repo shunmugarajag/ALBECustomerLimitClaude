@@ -30,7 +30,7 @@ import com.temenos.api.TField;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
- * 22-Nov-2026   Development      texts(): overrides as a list (ACCOUNT.PARAMETER accounting hook)
+ * 22-Nov-2026   Development      texts(): overrides as a list
  * 22-Nov-2026   Development      Blank limit CCY: error EB-ALBE.CIF.LIMIT.CCY.MISSING (blocks)
  *-----------------------------------------------------------------------------
  */
@@ -44,7 +44,6 @@ public class CustomerLimitOverride {
     /**
      * Raises every override the validation produced for this request on the field:
      * "limit not defined" (missing record or blank limit) once, then one per breached limit.
-     * Used where the routine owns the record (ACTIVITY.API, FT / TT version).
      * @return number of overrides raised
      */
     public static int raiseFor(TField field, CustomerLimitDTO request) {
@@ -67,13 +66,11 @@ public class CustomerLimitOverride {
     /**
      * Every override the validation produced for this request, as override texts
      * (<id> FM <param1> VM <param2>): "limit not defined" once, "no exchange rate", then one per
-     * breached limit. Used where T24 takes the overrides as a list (ACCOUNT.PARAMETER
-     * ACCT.NAU.SUBRTN) and by raiseFor.
+     * breached limit. Used by raiseFor.
      */
     public static List<String> texts(CustomerLimitDTO request) {
         List<String> texts = new ArrayList<>();
         if (request.isLimitCcyMissing()) {
-            // The accounting hook can only return overrides: the same id is set up as EB.OVERRIDE too.
             LogUtil.error(CLASS_NAME, "texts", "NO CCY", "customer=" + request.getCustomerId()
                     + " limit currency blank - returned as " + Constants.ERR_LIMIT_CCY_MISSING);
             texts.add(build(Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId()));

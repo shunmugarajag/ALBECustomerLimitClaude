@@ -113,28 +113,13 @@ public final class Constants {
     // -------------------------------------------------------------------------
     /**
      * A transaction reference is cut at these characters: "FT26091ABCDE\BNK" (company) and
-     * "FT26091ABCDE;1" (history) both become "FT26091ABCDE". Every routine (activity, FT / TT
-     * version, accounting entry) counts a transaction under <root reference>, so the same
-     * transaction seen from two places replaces itself instead of being counted twice.
+     * "FT26091ABCDE;1" (history) both become "FT26091ABCDE". An activity is counted under the
+     * root of its TXN.CONTRACT.ID (the FT / TT behind it), else its own id.
      */
     public static final String[] REFERENCE_CUT_CHARS = { "\\", ";" };
 
     // -------------------------------------------------------------------------
-    // ACCOUNT.PARAMETER accounting hook (AccountingEntryLimitController)
-    // -------------------------------------------------------------------------
-    /** Only statement entries (customer accounts) are checked; CATEG / CONSOL / FWD are skipped. */
-    public static final String STMT_ENTRY_TYPE = "STMT";
-    /** Entry action types that count the entry (input, input + authorise, forward input, change). */
-    public static final String[] STMT_COUNT_ACTIONS = { "VAL", "VALAUT", "ADD", "ADD.AUT", "CHG" };
-    /** Entry action types that take the entry back (delete, reversal, reversal with auto-approved overrides). */
-    public static final String[] STMT_REVERSE_ACTIONS = { "DEL", "REV", "RSAO" };
-    /** STMT.ENTRY SYSTEM.ID values that are not counted (e.g. COB interest / charges). Bank decides; empty = all. */
-    public static final String[] STMT_SKIP_SYSTEM_IDS = {};
-    /** STMT.ENTRY TRANSACTION.CODE values that are not counted (e.g. charge codes). Bank decides; empty = all. */
-    public static final String[] STMT_SKIP_TRANSACTION_CODES = {};
-
-    // -------------------------------------------------------------------------
-    // FUNDS.TRANSFER / TELLER version routines
+    // Transactions behind an activity (transaction report reads their overrides)
     // -------------------------------------------------------------------------
     public static final String FT_APPLICATION = "FUNDS.TRANSFER";
     public static final String TELLER_APPLICATION = "TELLER";
@@ -144,20 +129,6 @@ public final class Constants {
     public static final String TXN_PREFIX_TT = "TT";
     /** Between the parts of the EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-<transaction>. */
     public static final String TXN_ID_SEPARATOR = "-";
-    /** TELLER DR.CR.MARKER value meaning side 1 (ACCOUNT.1) is credited. */
-    public static final String TT_MARKER_CREDIT = "CREDIT";
-    /** TransactionContext current function: input, delete, authorise, reverse. */
-    public static final String FUNCTION_INPUT = "I";
-    public static final String FUNCTION_DELETE = "D";
-    public static final String FUNCTION_AUTHORISE = "A";
-    public static final String FUNCTION_REVERSE = "R";
-    /** What a FT / TT version routine does with the utilisation (TransactionLimitHandler.actionFor). */
-    public static final String UTIL_ACTION_COUNT = "COUNT";
-    public static final String UTIL_ACTION_REVERSE_DELETE = "REVERSE.DELETE";
-    public static final String UTIL_ACTION_REVERSE = "REVERSE";
-    public static final String UTIL_ACTION_NONE = "NONE";
-    /** RECORD.STATUS values of a reversal (input of the reversal / reversed). */
-    public static final String[] REVERSAL_STATUSES = { "RNAU", "RNAO", "REVE" };
 
     // -------------------------------------------------------------------------
     // T24 session values
@@ -220,8 +191,7 @@ public final class Constants {
     public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
     /**
      * ERROR (blocks the transaction): Limit currency not defined for Customer & - the customer's
-     * EB.ALBE.CIF.LIMIT has a blank CCY. EB.ERROR record (and an EB.OVERRIDE record with the same
-     * id for the ACCOUNT.PARAMETER hook, which can only return overrides).
+     * EB.ALBE.CIF.LIMIT has a blank CCY. EB.ERROR record.
      */
     public static final String ERR_LIMIT_CCY_MISSING = "EB-ALBE.CIF.LIMIT.CCY.MISSING";
 

@@ -149,9 +149,8 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
-| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | customer id – only for the ACCOUNT.PARAMETER hook (8b), which can only return overrides; make it non-approvable if your release allows |
 
-**EB.ERROR** (blocks the transaction – ACTIVITY.API and FT routines): `EB-ALBE.CIF.LIMIT.CCY.MISSING` – "Limit currency not defined for Customer &" (customer id). Raised when the customer's EB.ALBE.CIF.LIMIT has a blank CCY.
+**EB.ERROR** (blocks the transaction): `EB-ALBE.CIF.LIMIT.CCY.MISSING` – "Limit currency not defined for Customer &" (customer id). Raised when the customer's EB.ALBE.CIF.LIMIT has a blank CCY.
 
 The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are filled in the override text **(confirm)**.
 
@@ -175,9 +174,6 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitCreationController` | `postUpdateRequest` |
 | ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller` | `DailyMonthlyLimitController` | `defaultFieldValues`, `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller` | `MaximumCifLimitController` | `validateRecord` |
-| ALBE.CL.FT.LIMIT | `com.temenos.ALBE.CustomerLimit.controller` | `FundsTransferLimitController` | `validateRecord`, `postUpdateRequest` |
-| ALBE.CL.TT.LIMIT | `com.temenos.ALBE.CustomerLimit.controller` | `TellerLimitController` | `validateRecord`, `postUpdateRequest` |
-| ALBE.CL.ACCT.ENTRY.CHECK / .UPD | `com.temenos.ALBE.CustomerLimit.controller` | `AccountingEntryLimitController` | `raiseOverrides` / `exportEntries` |
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitSummaryEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitPeriodEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller` | `CustomerLimitTxnEnquiryController` | `setIds` |
@@ -227,56 +223,14 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 ---
 
-## 8a. FUNDS.TRANSFER and TELLER versions – checks and utilisation
+## 8a. FT, TELLER and other transactions – no extra routine
 
-> Optional attach point (22-Nov-2026). Limit management works **wherever the bank attaches a routine** – see 8c for how to choose. **TELLER versions: parked** – do not attach `ALBE.CL.TT.LIMIT` yet; teller transactions are covered by 8b (or 8 on AA accounts).
+An FT, a teller transaction or any other posting on an **AA account** makes T24 create an `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT` activity on that account, so the ACTIVITY.API routines of step 8 cover them. No routine is attached to FUNDS.TRANSFER / TELLER versions or ACCOUNT.PARAMETER (those routines were built on 21/22-Nov-2026 and removed the same day; they are in the Git history).
 
-The bank chooses the FT / TT versions. On each:
-
-| VERSION field | Routine | Hook | What it does |
-|---|---|---|---|
-| INPUT.ROUTINE | ALBE.CL.FT.LIMIT / ALBE.CL.TT.LIMIT | `validateRecord` | daily / monthly check (debit and credit side) + maximum CIF check (credit side); acceptable overrides on the amount field |
-| AFTER.UNAU.RTN | same | `postUpdateRequest` | input → **count**; delete → **take back** |
-| AUTH.ROUTINE | same | `postUpdateRequest` | authorising a reversal (RECORD.STATUS RNAU / REVE) → **take back** from the day it was counted; normal authorisation → nothing |
-
-- **Both sides:** the debit side (FT DEBIT.ACCT.NO, TT side marked DEBIT) and the credit side are read; each **customer account** side is checked and counted for **its own customer** (FT DEBIT.CUSTOMER / CREDIT.CUSTOMER or TT CUSTOMER.1/2, else ACCOUNT CUSTOMER). Internal and cash accounts are skipped.
-- **Counted id:** EB.ALBE.TXN.DETAILS.LIMIT `<customer>-<YYYYMMDD>-<FT/TT id>` (same table, no structure change).
-- **Own-account transfer** (same customer on both sides): not checked and not counted.
-- **Date:** FT PROCESSING.DATE, else the T24 date; TT the T24 date. A delete or reversal finds the counted day by the id (one SELECT on EB.ALBE.TXN.DETAILS.LIMIT, only then).
-- **Amount:** FT DEBIT.AMOUNT / CREDIT.AMOUNT (else AMOUNT.DEBITED / AMOUNT.CREDITED); TT AMOUNT.FCY (else AMOUNT.LOCAL). Local-currency amount LOC.AMT.DEBITED / CREDITED, AMOUNT.LOCAL.1 / 2 – used when the limit is in local currency.
-- **No double counting:** every routine counts a transaction under the same key `<FT/TT/AAA root reference>`, so an FT on an AA account seen by both the FT routine and the activity routine is counted **once** (the second replaces the first). The **overrides**, however, would be shown twice – attach the *check* in one place (8c).
-- ⚠ **To test in DEV:** does AFTER.UNAU.RTN fire on delete (function D)? Does AUTH.ROUTINE fire when a reversal is authorised, and which RECORD.STATUS does the routine see (RNAU / REVE)? If not, use the slots your team uses for the same purpose and adjust `Constants.REVERSAL_STATUSES`.
-
----
-
-## 8b. ACCOUNT.PARAMETER – limit management for every transaction
-
-One attach point that sees **every transaction that posts to an account** (AA, FT, TELLER, standing orders, payments, …), with no dependency on the application. The routine reads the accounting entry (STMT.ENTRY) and gives transaction info + customer limit info to `CustomerLimitEngine`.
-
-| ACCOUNT.PARAMETER field | EB.API (suggested) | Java class / method | What it does |
-|---|---|---|---|
-| ACCT.NAU.SUBRTN | ALBE.CL.ACCT.ENTRY.CHECK | `AccountingEntryLimitController.raiseOverrides` | input of any transaction: daily / monthly + maximum CIF check; returns the acceptable overrides |
-| ACCOUNTING.SUBRTN | ALBE.CL.ACCT.ENTRY.UPD | `AccountingEntryLimitController.exportEntries` | accounting of any transaction: action VAL, VALAUT, ADD, ADD.AUT, CHG → **count**; DEL, REV, RSAO → **take back**; others nothing |
-
-- **Customer entries only:** entries without CUSTOMER.ID (internal / GL accounts) and entry types other than STMT are skipped at once (keeps every posting fast).
-- **Direction:** the sign of the entry on the customer's account (+ credit, − debit); a reversing entry is matched to the original side.
-- **Amount:** AMOUNT.FCY (foreign-currency account), else AMOUNT.LCY; AMOUNT.LCY used when the limit is in local currency.
-- **Key:** TRANS.REFERENCE root (`FT…\BNK` → `FT…`) – same key as the activity and FT routines.
-- **Own-account transfer:** the entries come one at a time – the second side (same customer, other direction) takes the first back and leaves a 0-amount marker; nothing is counted.
-- **Date:** BOOKING.DATE, else the T24 date.
-- **Skip lists (bank decides):** `Constants.STMT_SKIP_SYSTEM_IDS` (e.g. COB interest) and `STMT_SKIP_TRANSACTION_CODES` (e.g. charge codes); empty = everything counted.
-- ⚠ ACCOUNT.PARAMETER is **one bank-wide record** – if ACCT.NAU.SUBRTN / ACCOUNTING.SUBRTN already hold a routine, combine them first.
-- ⚠ **To test in DEV:** are the hooks called for unauthorised input; which action types arrive on delete / reversal / amendment; how the returned overrides show on the screen; several entries of one transaction on the same account (amount + charges – the last one wins today, see GAPS S2).
-
-## 8c. Where to attach – choose per transaction path
-
-| Attach point | Sees | Use when |
-|---|---|---|
-| ACCOUNT.PARAMETER (8b) | every posting to a customer account | one place for everything (recommended once DEV confirms the hooks) |
-| ACTIVITY.API (8) | AA activities (also FT/TT on AA accounts) | AA accounts only |
-| FT versions (8a) | the chosen FT versions | only some FT versions, or classic accounts (TELLER parked) |
-
-All three use the same engine and the same counted key, so attaching more than one never **counts** a transaction twice; only the **overrides** would appear twice – so attach the checks for one transaction path in one place.
+- The activity of an FT carries TXN.CONTRACT.ID = the FT id, so both activities of one FT (debit customer, credit customer) are counted under `<customer>-<date>-<FT id>`.
+- **Own-account transfer** (same customer on both sides): the second activity takes the first back and leaves a 0-amount marker – nothing counted. The first activity's check may still show an override.
+- **Not covered:** non-AA (classic) accounts – they get no activity.
+- **To test in DEV:** activity created at FT **input** (not only at authorisation); activity overrides shown on the FT screen; FT delete / reversal reach the activity as DELETE / AUTH-REV.
 
 ---
 

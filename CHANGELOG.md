@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Removed – 22-Nov-2026
+- FUNDS.TRANSFER, TELLER and ACCOUNT.PARAMETER routines (`FundsTransferLimitController`, `TellerLimitController`, `TransactionSideReader`, `TransactionLimitHandler`, `TransactionSide`, `AccountingEntryLimitController`, `StatementEntryRequestBuilder`): FT, teller and other postings on AA accounts arrive as `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activities, so the ACTIVITY.API routines cover them. Kept: one engine, counted key = FT behind the activity, own-account transfers not counted. The removed code is in the Git history.
+
 ### Changed – 22-Nov-2026
 - Counted key without `.CR/.DR`: `<customer>-<date>-<reference>`. **Own-account transfers** (same customer on both sides) are not checked and not counted (user decision).
 - Blank CCY on a customer's EB.ALBE.CIF.LIMIT is now an **error** (`EB-ALBE.CIF.LIMIT.CCY.MISSING`) – the transaction is blocked (G6). Before, it was compared without conversion.

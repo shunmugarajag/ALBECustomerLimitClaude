@@ -63,9 +63,8 @@ public class CustomerLimitRepository {
     private final T24Context context;
 
     /**
-     * One constructor for every hook (ACTIVITY.API, version routine, ACCOUNT.PARAMETER accounting
-     * hook, enquiry): all T24 Java hooks extend T24Context, so limit management works wherever
-     * the bank attaches a routine.
+     * One constructor for every hook (ACTIVITY.API, version routine, enquiry): all T24 Java
+     * hooks extend T24Context.
      */
     public CustomerLimitRepository(T24Context hook) {
         this.daObj = new DataAccess(hook);
@@ -311,7 +310,7 @@ public class CustomerLimitRepository {
     /**
      * Ids of the EB.ALBE.TXN.DETAILS.LIMIT records of one customer and one counted transaction
      * (<customer>-<YYYYMMDD>-<transactionId>), whatever the date. Used only to find the counted
-     * date of a FUNDS.TRANSFER / TELLER transaction when it is deleted or reversed.
+     * date of a transaction when it is reversed on a later day and its date is not known.
      */
     public List<String> selectTxnDetailsIdsForTransaction(String customerId, String transactionId) {
         String selection = "WITH @ID LIKE " + customerId + "-...-" + transactionId;
