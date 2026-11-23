@@ -16,11 +16,13 @@ Details: [GAPS.md](GAPS.md)
 | FQ7 | Any non-AA accounts? | not covered | 🔴 |
 | FQ8 | Exchange-rate source (table, field, rate type) | LCY only | 🔴 |
 | FQ9 | Limit write fails – block or let through? | let through | 🔴 |
-| FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🔴 |
+| FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🟢 D24 |
 | FQ11 | Limits for existing customers + migrated usage | not built | 🔴 |
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
 | FQ13 | HLSD update for agreed deviations | – | 🔴 |
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
+| FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | record to set up | 🔴 user sharing the record |
+| FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
 
 ## 2. DEV checks
 
@@ -69,6 +71,8 @@ Details: [GAPS.md](GAPS.md)
 | D21 | Controller sub-packages |
 | D22 | Utilisation = direct write |
 | D23 | Migrated usage: monthly check only |
+| D24 | CIF.LIMIT created by direct write (no OFS) |
+| D25 | Limit creation only on VERSION CUSTOMER,ALBE.CORP |
 
 ## 4. Gaps
 

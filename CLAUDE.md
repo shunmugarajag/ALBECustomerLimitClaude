@@ -88,6 +88,7 @@ constants/    Constants (the only final class)
 | Counted date in **AAA REMARKS** tag, TXN.DETAILS id `<cust>-<date>-<AAA>` | user's idea; keeps table structure; direct read by key even for reversal on a later day (an earlier SYSTEM.DATE field was removed) |
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
 | GEN.PARAM record id **`CUSTOMER.LIMIT`** | user; was SYSTEM |
+| CIF.LIMIT created by **direct write** (no OFS); only VERSION **CUSTOMER,ALBE.CORP** | user 23-Nov (FQ10 / FQ16) |
 | Currency conversion to the limit CCY; txn CCY = AAA CURRENCY (else AA.ARRANGEMENT); limit CCY = LCY → AAA TXN.AMOUNT.LCY | user; rate source still pending for foreign-CCY limits and max CIF accounts (E1) |
 | Overridden-transactions report reads **AA.ARRANGEMENT.ACTIVITY OVERRIDE** at report time (live, then `$NAU`) | no table field allowed; "overridden" = limit-exceed overrides only (`Constants.LIMIT_EXCEED_OVERRIDES`) |
 | Enquiry range caps 92 days / 24 months; TXN report needs customer or date | protect online system |
@@ -133,7 +134,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **reports**, **menu & access**) |
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ14 (bank/BA), technical queries TQ1–TQ15 (DEV), decisions D1–D23, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ16 (bank/BA), technical queries TQ1–TQ15 (DEV), decisions D1–D25, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
 | `docs/UNIT_TEST_CASES.md` | 112 cases (103 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
