@@ -11,6 +11,7 @@ import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.api.TStructure;
+import com.temenos.api.exceptions.T24CoreException;
 import com.temenos.api.TValidationResponse;
 import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
 import com.temenos.t24.api.complex.aa.activityhook.TransactionData;
@@ -49,6 +50,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 21-Nov-2026   Development      Common for all activities (ActivityRequestBuilder): class action,
  *                                ORIG.TXN.AMT, TXN.AMOUNT.LCY, T24 date instead of server clock (G1)
  * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine
+ * 23-Nov-2026   Development      Block (EB-ALBE.LIMIT.UPDATE.FAILED) when a utilisation save fails (D37)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -151,6 +153,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
 
         String activityStatus = "";
         long startTime = System.currentTimeMillis();
+        CustomerLimitRepository repository = null;
         try {
             activityStatus = arrangementContext.getActivityStatus();
             LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "START", "status=" + activityStatus);
@@ -163,7 +166,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                 return;
             }
 
-            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            repository = new CustomerLimitRepository(this);
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null) {
@@ -193,6 +196,14 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
 
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "ERROR", "status=" + activityStatus, e);
+        }
+
+        // D37: a failed utilisation / TXN.DETAILS save cancels the transaction, so the
+        // customer's usage never silently misses it.
+        if (repository != null && repository.isSaveFailed()) {
+            LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "BLOCK", "status=" + activityStatus
+                    + " save failed, raising " + Constants.ERR_LIMIT_UPDATE_FAILED);
+            throw new T24CoreException("", Constants.ERR_LIMIT_UPDATE_FAILED);
         }
     }
 

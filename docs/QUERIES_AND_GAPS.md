@@ -15,7 +15,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
 | FQ7 | Any non-AA accounts? | none – all accounts are AA (bank, 23-Nov) | 🟢 D34 |
 | FQ8 | Exchange-rate source | daily/monthly: LCY amount from the activity (D36). Open only for max CIF: other accounts in foreign currency have no activity → no rate | 🟡 |
-| FQ9 | Limit write fails – block or let through? | **block** (user 23-Nov, D37) – code change pending | 🟡 |
+| FQ9 | Limit write fails – block or let through? | **block** – built: EB-ALBE.LIMIT.UPDATE.FAILED (D37); DEV: confirm the transaction rolls back (TQ18) | 🟢 D37 |
 | FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🟢 D24 |
 | FQ11 | Limits for existing customers + migrated usage | data migration loads them (DATA_MIGRATION.md) | 🟢 D29 |
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
@@ -46,6 +46,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
 | TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
+| TQ18 | Force a save failure (e.g. lock the UTILISED.LIMIT record): the transaction must be cancelled with EB-ALBE.LIMIT.UPDATE.FAILED and nothing posted | 🔴 |
 | TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 
 ## 3. Decisions
@@ -96,7 +97,7 @@ Details: [GAPS.md](GAPS.md)
 |---|---|---|---|
 | G1 | Server clock used | 🟢 | T24 date |
 | G2 | Parallel updates lose a count | 🔴 | TQ2 |
-| G3 | Partial write | 🔴 | FQ9 |
+| G3 | Partial write | 🟢 | blocked (D37) |
 | G4 | REMARKS tag lost | 🟡 | ORG.SYSTEM.DATE fallback |
 | G5 | REMARKS too long | 🔴 | TQ8 |
 | G6 | Blank limit CCY | 🟢 | error |

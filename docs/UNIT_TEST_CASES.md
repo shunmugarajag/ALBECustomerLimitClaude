@@ -29,8 +29,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Engine, key, own transfer | UT-G01 … G22 | 12 | 12 | – |
 | Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
 | GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
+| Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **116** | **107** | **9** |
+| **Total** | | **121** | **112** | **9** |
 
 ---
 
@@ -202,6 +203,16 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-H01 | EB.ALBE.CIF.LIMITS CCY blank, credit 5000 | daily/monthly and maximum CIF checks flagged limitCcyMissing | Pass |
 | UT-H02 | same | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
 | UT-H04 | CCY filled again | normal check | Pass |
+
+## Block on save failure (D37) – 23-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-B01 | normal count | not blocked | Pass |
+| UT-B02 | TXN.DETAILS write fails at count | blocked (`isSaveFailed`) → controller raises EB-ALBE.LIMIT.UPDATE.FAILED | Pass |
+| UT-B03 | UTILISED.LIMIT write fails at count | blocked | Pass |
+| UT-B04 | count ok, then reversal | not blocked after count | Pass |
+| UT-B05 | TXN.DETAILS delete fails at reversal | blocked | Pass |
 
 ## Reports
 

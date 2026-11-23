@@ -210,6 +210,12 @@ public final class Constants {
      * EB.ALBE.CIF.LIMITS has a blank CCY. EB.ERROR record.
      */
     public static final String ERR_LIMIT_CCY_MISSING = "EB-ALBE.CIF.LIMIT.CCY.MISSING";
+    /**
+     * Customer limit could not be updated - transaction cancelled. EB.ERROR record. Raised from
+     * postCoreTableUpdate when saving EB.ALBE.UTILISED.LIMIT / EB.ALBE.TXN.DETAILS.LIMIT fails
+     * (decision D37: block, so utilisation never silently misses a transaction).
+     */
+    public static final String ERR_LIMIT_UPDATE_FAILED = "EB-ALBE.LIMIT.UPDATE.FAILED";
 
     /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
     public static final String OVERRIDE_ID_PREFIX = "EB-ALBE.";

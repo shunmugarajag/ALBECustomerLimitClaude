@@ -120,6 +120,7 @@ public class CustomerLimitUtilizationUpdater {
                     + " credit " + oldCredit + " -> " + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", LABEL_RECORD + recordId, e);
+            repository.markSaveFailed(CLASS_NAME, "addToRecord " + recordId);
         }
     }
 

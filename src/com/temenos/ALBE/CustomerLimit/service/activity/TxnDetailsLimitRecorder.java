@@ -67,6 +67,7 @@ public class TxnDetailsLimitRecorder {
                     + " amount=" + request.getAmount());
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
+            repository.markSaveFailed(CLASS_NAME, "record " + recordId);
         }
     }
 
@@ -96,6 +97,7 @@ public class TxnDetailsLimitRecorder {
             LogUtil.info(CLASS_NAME, "delete", "DELETED", "id=" + recordId);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "delete", "FAILED", "id=" + recordId, e);
+            repository.markSaveFailed(CLASS_NAME, "delete " + recordId);
         }
     }
 

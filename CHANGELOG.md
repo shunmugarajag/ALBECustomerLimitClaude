@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – block when the usage cannot be saved (23-Nov-2026, D37 / FQ9)
+- If saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT fails, the transaction is now **cancelled** with the new EB.ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (before: logged and let through). New EB.ERROR record needed (T24_CONFIGURATION step 4). Tests UT-B01…B05.
+
 ### Merged – laptop edits with GitHub (23-Nov-2026)
 - The laptop's table change (EB.ALBE.CIF.LIMITS, CURRENCY, MAXIMUM.OVERALL.CIF.AMOUNT) is merged with the GEN.PARAM key change below. Compiled with 0 errors against the real R25 libs and the generated table JARs; all unit tests pass. `.classpath` stays local.
 

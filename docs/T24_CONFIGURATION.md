@@ -150,7 +150,12 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
 
-**EB.ERROR** (blocks the transaction): `EB-ALBE.CIF.LIMIT.CCY.MISSING` – "Limit currency not defined for Customer &" (customer id). Raised when the customer's EB.ALBE.CIF.LIMITS has a blank CCY.
+**EB.ERROR** (blocks the transaction):
+
+| ID | MESSAGE | Raised when |
+|---|---|---|
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
+| EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
 
 The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are filled in the override text **(confirm)**.
 

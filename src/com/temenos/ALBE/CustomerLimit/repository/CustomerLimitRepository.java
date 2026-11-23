@@ -61,6 +61,8 @@ public class CustomerLimitRepository {
 
     /** The hook the routine runs in; used to create new (empty) generated records. */
     private final T24Context context;
+    /** Set when a utilisation / TXN.DETAILS save fails; the controller then blocks (D37). */
+    private boolean saveFailed = false;
 
     /**
      * One constructor for every hook (ACTIVITY.API, version routine, enquiry): all T24 Java
@@ -74,6 +76,17 @@ public class CustomerLimitRepository {
         this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
         this.context = hook;
         LogUtil.info(CLASS_NAME, "init", "CREATED", "for hook " + hook.getClass().getSimpleName());
+    }
+
+    /** True when a utilisation / TXN.DETAILS save failed in this request (decision D37: block). */
+    public boolean isSaveFailed() {
+        return saveFailed;
+    }
+
+    /** Records a save failure noticed outside the write itself (e.g. the record could not be built). */
+    public void markSaveFailed(String className, String reason) {
+        saveFailed = true;
+        LogUtil.error(CLASS_NAME, "markSaveFailed", "FAILED", className + ": " + reason);
     }
 
     // =========================================================================
@@ -254,6 +267,7 @@ public class CustomerLimitRepository {
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "writeUtilisedLimit", "FAILED", Constants.UTILISED_LIMIT_TABLE + ">" + recordId,
                     e);
+            saveFailed = true;
             return false;
         }
     }
@@ -393,6 +407,7 @@ public class CustomerLimitRepository {
             return true;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "writeTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            saveFailed = true;
             return false;
         }
     }
@@ -406,6 +421,7 @@ public class CustomerLimitRepository {
             return true;
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "deleteTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            saveFailed = true;
             return false;
         }
     }
