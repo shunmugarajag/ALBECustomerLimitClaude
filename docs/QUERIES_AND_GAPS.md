@@ -77,6 +77,7 @@ Details: [GAPS.md](GAPS.md)
 | D26 | Code follows the GEN.PARAM key names as set up in DEV |
 | D27 | GEN.PARAM `CUSTOMER.LIMIT` is mandatory config, complete and valid – no code checks |
 | D29 | Existing customers' CIF.LIMIT (and migrated monthly usage) loaded by data migration – no code |
+| D30 | C3 accepted: customer reversal may leave an unused limit record – no code change |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -103,7 +104,7 @@ Details: [GAPS.md](GAPS.md)
 | R6 | Validation place | 🔴 | decide |
 | C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | ⚪ | GEN.PARAM is mandatory config (D27) |
 | C2 | CIF.LIMIT write fails → customer without limits, log only | 🟡 | logged; fix via CIF.LIMIT,AMEND (GEN.PARAM missing: D27) |
-| C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | 🔴 | fix (create on input / authorise only) or accept |
+| C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
 **Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6. Dependency: data migration (D29).
