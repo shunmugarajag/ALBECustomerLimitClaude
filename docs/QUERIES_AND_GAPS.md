@@ -42,7 +42,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ12 | Override text fills both `&` | 🔴 |
 | TQ13 | "Record not found" text | 🔴 |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
-| TQ15 | Report reads AAA / FT ($NAU, live) | 🔴 |
+| TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
 | TQ16 | VERSION AUTH.ROUTINE calls `postUpdateRequest` (also zero-auth); direct write allowed there | 🔴 |
 
 ## 3. Decisions
@@ -76,6 +76,7 @@ Details: [GAPS.md](GAPS.md)
 | D25 | Limit creation only on VERSION CUSTOMER,ALBE.CORP |
 | D26 | Code follows the GEN.PARAM key names as set up in DEV |
 | D27 | GEN.PARAM `CUSTOMER.LIMIT` is mandatory config, complete and valid – no code checks |
+| D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
 

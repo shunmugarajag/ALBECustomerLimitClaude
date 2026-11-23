@@ -134,7 +134,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **reports**, **menu & access**) |
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ16 (bank/BA), technical queries TQ1–TQ16 (DEV), decisions D1–D27, customer-routine gaps C1–C4, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ16 (bank/BA), technical queries TQ1–TQ16 (DEV), decisions D1–D28, customer-routine gaps C1–C4, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
 | `docs/UNIT_TEST_CASES.md` | 116 cases (107 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
