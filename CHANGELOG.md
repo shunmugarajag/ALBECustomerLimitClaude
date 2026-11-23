@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – customer routine in one class (23-Nov-2026)
+- `controller.customer.CustomerLimitCreationSingleController`: the whole limit creation in one class (reads and writes itself), same behaviour as the MVC version. An alternative for review / handover – attach only one of the two to CUSTOMER,ALBE.CORP.
+
 ### Changed – GEN.PARAM key names as set up in DEV (23-Nov-2026)
 - The DEV record `CUSTOMER.LIMIT` uses **CURRENCY** and **MAXIMUM.OVERALL.CIF.BALANCE**. The code now reads these (`Constants.PARAM_KEY_*`) and copies them to CIF.LIMIT CCY and MAX.CIF.BALANCE. Before, a new customer would have got a blank CCY and every transaction would have been blocked. Tests UT-K01…K04 added.
 

@@ -171,7 +171,7 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 
 | EB.API id | Java package | Java class | Hook method |
 |---|---|---|---|
-| ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` | `postUpdateRequest` |
+| ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` (or the one-class alternative `CustomerLimitCreationSingleController` – same behaviour, attach only one) | `postUpdateRequest` |
 | ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `defaultFieldValues`, `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller.activity` | `MaximumCifLimitController` | `validateRecord` |
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `setIds` |
