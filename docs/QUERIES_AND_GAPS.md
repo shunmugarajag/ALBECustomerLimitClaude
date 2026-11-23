@@ -14,8 +14,8 @@ Details: [GAPS.md](GAPS.md)
 | FQ5 | Interest / charges (AA-internal) – count? | yes, when posted by an activity that has the routine (D33) | 🟢 D33 |
 | FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
 | FQ7 | Any non-AA accounts? | none – all accounts are AA (bank, 23-Nov) | 🟢 D34 |
-| FQ8 | Exchange-rate source (table, field, rate type) | LCY only | 🔴 |
-| FQ9 | Limit write fails – block or let through? | let through | 🔴 |
+| FQ8 | Exchange-rate source | daily/monthly: LCY amount from the activity (D36). Open only for max CIF: other accounts in foreign currency have no activity → no rate | 🟡 |
+| FQ9 | Limit write fails – block or let through? | **block** (user 23-Nov, D37) – code change pending | 🟡 |
 | FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🟢 D24 |
 | FQ11 | Limits for existing customers + migrated usage | data migration loads them (DATA_MIGRATION.md) | 🟢 D29 |
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
@@ -86,6 +86,8 @@ Details: [GAPS.md](GAPS.md)
 | D33 | Rule: every activity that has the routine attached is counted (FQ3/FQ4/FQ5) |
 | D34 | No non-AA accounts – ACTIVITY.API covers every account (FQ7) |
 | D35 | Utilisation counted at the input stage (UNAUTH) only – also for zero-auth / COB (FQ17) |
+| D36 | Daily/monthly: amount in EGP (LCY) taken from the activity (TXN.AMOUNT.LCY) – no rate table (FQ8) |
+| D37 | Utilisation / TXN.DETAILS write fails → block the transaction (FQ9, G3) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
