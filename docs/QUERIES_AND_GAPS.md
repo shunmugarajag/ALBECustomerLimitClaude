@@ -13,7 +13,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ4 | Deposit payout to current account – count? | yes – account credit activity has the routine (D33) | 🟢 D33 |
 | FQ5 | Interest / charges (AA-internal) – count? | yes, when posted by an activity that has the routine (D33) | 🟢 D33 |
 | FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
-| FQ7 | Any non-AA accounts? | not covered | 🔴 |
+| FQ7 | Any non-AA accounts? | none – all accounts are AA (bank, 23-Nov) | 🟢 D34 |
 | FQ8 | Exchange-rate source (table, field, rate type) | LCY only | 🔴 |
 | FQ9 | Limit write fails – block or let through? | let through | 🔴 |
 | FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🟢 D24 |
@@ -83,6 +83,7 @@ Details: [GAPS.md](GAPS.md)
 | D31 | Daily/monthly routines on all account products (FQ1) |
 | D32 | Deposit side counted only if the bank attaches the routine to that activity (FQ3) |
 | D33 | Rule: every activity that has the routine attached is counted (FQ3/FQ4/FQ5) |
+| D34 | No non-AA accounts – ACTIVITY.API covers every account (FQ7) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -114,4 +115,4 @@ Details: [GAPS.md](GAPS.md)
 | C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
-**Go-live blockers:** FQ7, FQ8, TQ2–TQ6. Dependency: data migration (D29).
+**Go-live blockers:** FQ8, TQ2–TQ6. Dependency: data migration (D29).
