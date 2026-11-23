@@ -13,7 +13,7 @@ For production support and business-user questions after go-live. How the module
 | Credit activity input | ALBE.CL.MAX.CIF | checks total balance against MAX.CIF.BALANCE | override |
 | Activity deleted (unauthorised) / reversed | ALBE.CL.DAILY.MONTHLY | subtracts the amount from the original day and month; deletes the TXN.DETAILS record | totals go down |
 
-Records: daily `EB.ALBE.UTILISED.LIMIT <cust>-YYYYMMDD`, monthly `<cust>-YYYYMM`, per transaction `EB.ALBE.TXN.DETAILS.LIMIT <cust>-<YYYYMMDD>-<AAA id>`.
+Records: daily `EB.ALBE.UTILISED.LIMIT <cust>-YYYYMMDD`, monthly `<cust>-YYYYMM`, per transaction `EB.ALBE.TXN.DETAILS.LIMIT <cust>-<YYYYMMDD>-<root ref>-<arrangement>`.
 
 ## 2. Daily monitoring
 

@@ -18,7 +18,7 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R04 | 1.1.1 | Products and activities eligible for the validation chosen by the user | ACTIVITY.API product condition per product / activity (no parameter table – see D7) | #3 | Done / Deviation D7 |
 | R05 | 1.1.2 | EB.ALBE.GEN.CIF.LIMIT generic limits, id SYSTEM | EB.ALBE.GEN.PARAM record **`CUSTOMER.LIMIT`** (KEY.NAME / KEY.VALUE); `CustomerLimitReader.getGenericLimits` | UT-C02 | Deviation D2 |
 | R06 | 1.1.2 | EB.ALBE.CIF.LIMITS per customer: CCY, daily / monthly deposit and withdrawal limits, maximum CIF balance | `CustomerLimitReader.getCustomerLimits`; fields CCY, DAILY/MONTHLY.CREDIT/DEBIT.LIMIT, MAX.CIF.BALANCE | UT-D01, UT-L01 | Done |
-| R07 | 1.1.2 | EB.ALBE.TXN.DETAILS.LIMIT id `Custid-YYYYMMDD-TXN.ID` | `TxnDetailsLimitRecorder.recordId` = `<cust>-<YYYYMMDD>-<AAA id>` | UT-U01, UT-U05 | Done |
+| R07 | 1.1.2 | EB.ALBE.TXN.DETAILS.LIMIT id `Custid-YYYYMMDD-TXN.ID` | `TxnDetailsLimitRecorder.recordId` = `<cust>-<YYYYMMDD>-<root ref>-<arrangement>` | UT-U01, UT-U05 | Done |
 | R08 | 1.1.2 | TXN.DETAILS fields | approved table has ACCOUNT.NO, CREDIT.DEBIT.FLAG, EFF.DATE, TXN.AMOUNT – all written by `TxnDetailsLimitRecorder.record` | UT-U01 | Deviation D3 |
 | R09 | 1.1.2 | EB.ALBE.UTILISED.LIMIT daily `Custid-YYYYMMDD` and monthly `Custid-YYYYMM`; migrated fields only for migrated contracts | `CustomerLimitUtilizationUpdater.addToRecord`; migrated fields read only | UT-U02, UT-M02 | Done / Deviation D4 |
 | R10 | 7.2.1 | Generic limit record created by the user | step 3 of T24_CONFIGURATION | – | Done (config) |

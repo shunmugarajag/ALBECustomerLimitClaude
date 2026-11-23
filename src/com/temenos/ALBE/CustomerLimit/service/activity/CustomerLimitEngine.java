@@ -1,6 +1,5 @@
 package com.temenos.ALBE.CustomerLimit.service.activity;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,9 +21,9 @@ import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
  *                 checkDailyMonthly  daily / monthly credit or debit limit
  *                 checkMaxCif        maximum CIF balance (credits only)
  *                 count              utilisation at input (an earlier input of the same
- *                                    transaction is taken back first - the debit and credit
- *                                    activity of one FT share its id: no double count);
- *                                    own-account transfer (same customer on both sides): not counted
+ *                                    activity is taken back first); key = customer + day +
+ *                                    FT / AAA + arrangement, so both sides of an own-account
+ *                                    transfer are counted (FQ6)
  *                 reverse            utilisation taken back, from the day it was counted on
  *
  *               The request is validated here once (CustomerLimitRequestValidator); the business
@@ -35,6 +34,7 @@ import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
  * 22-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Key = root reference (no .CR/.DR); own-account transfers not counted
  * 22-Nov-2026   Development      Activity routines only (FT / TELLER / ACCOUNT.PARAMETER routines removed)
+ * 23-Nov-2026   Development      Arrangement id in the key; own-account transfers counted on both sides (FQ6)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitEngine {
@@ -53,7 +53,7 @@ public class CustomerLimitEngine {
      * "no rate" flags) for the view to raise overrides; null if the transaction info is not valid.
      */
     public CustomerLimitDTO checkDailyMonthly(CustomerLimitDTO transaction) {
-        if (!CustomerLimitRequestValidator.isValidForDailyMonthly(transaction) || isOwnTransfer(transaction)) {
+        if (!CustomerLimitRequestValidator.isValidForDailyMonthly(transaction)) {
             return null;
         }
         CustomerLimitDTO result = transaction.copyTransaction();
@@ -65,8 +65,7 @@ public class CustomerLimitEngine {
 
     /** Maximum CIF balance check (credits only); null for a debit or invalid transaction info. */
     public CustomerLimitDTO checkMaxCif(CustomerLimitDTO transaction) {
-        if (!transaction.isCredit() || !CustomerLimitRequestValidator.isValidForMaxCif(transaction)
-                || isOwnTransfer(transaction)) {
+        if (!transaction.isCredit() || !CustomerLimitRequestValidator.isValidForMaxCif(transaction)) {
             return null;
         }
         CustomerLimitDTO result = transaction.copyTransaction();
@@ -76,55 +75,16 @@ public class CustomerLimitEngine {
     }
 
     /**
-     * Counts the transaction at input; an earlier count of the same transaction (same customer,
-     * same side) is replaced. Own-account transfer (the same customer already counted on the other
-     * side of this transaction): the earlier side is taken back and the transaction is not counted -
-     * a record with amount 0 is kept as a marker so a later reversal takes nothing back.
+     * Counts the transaction at input; an earlier input of the same activity (same customer,
+     * transaction and arrangement) is replaced. Both sides of an own-account transfer are counted:
+     * they are on different arrangements, so they are two records (FQ6).
      */
     public void count(CustomerLimitDTO transaction, String accountNo, String effectiveDate) {
         if (!CustomerLimitRequestValidator.isValidForDailyMonthly(transaction)) {
             return;
         }
-        TxnDetailsLimitRecorder recorder = new TxnDetailsLimitRecorder(repository);
-        List<CustomerLimitDTO> earlier = recorder.findOriginal(transaction);
-        if (!earlier.isEmpty()) {
-            CustomerLimitDTO counted = earlier.get(0);
-            if (counted.getAmount().signum() == 0) {
-                LogUtil.info(CLASS_NAME, "count", "SKIP", "own-account transfer, not counted " + transaction.logKey());
-                return;
-            }
-            if (counted.isCredit() != transaction.isCredit()) {
-                LogUtil.info(CLASS_NAME, "count", "OWN TRANSFER", "same customer on both sides - taking back the "
-                        + (counted.isCredit() ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " side, not counted "
-                        + transaction.logKey());
-                dailyMonthlyService.reverse(transaction, false);
-                CustomerLimitDTO marker = transaction.copyTransaction();
-                marker.setCreditAmount(BigDecimal.ZERO);
-                marker.setDebitAmount(BigDecimal.ZERO);
-                recorder.record(marker, accountNo, effectiveDate);
-                return;
-            }
-        }
         LogUtil.info(CLASS_NAME, "count", "ACTION", "COUNT " + transaction.logKey());
         dailyMonthlyService.countAtInput(transaction, accountNo, effectiveDate);
-    }
-
-    /**
-     * True when this transaction is the second side of an own-account transfer: the same customer
-     * and transaction are already recorded on the other side, or as a not-counted marker (amount 0).
-     * Checks are skipped then.
-     */
-    public boolean isOwnTransfer(CustomerLimitDTO transaction) {
-        List<CustomerLimitDTO> earlier = new TxnDetailsLimitRecorder(repository).findOriginal(transaction);
-        if (earlier.isEmpty()) {
-            return false;
-        }
-        CustomerLimitDTO counted = earlier.get(0);
-        boolean own = counted.getAmount().signum() == 0 || counted.isCredit() != transaction.isCredit();
-        if (own) {
-            LogUtil.info(CLASS_NAME, "isOwnTransfer", "SKIP", "own-account transfer, no check " + transaction.logKey());
-        }
-        return own;
     }
 
     /**
@@ -140,16 +100,11 @@ public class CustomerLimitEngine {
         }
         List<CustomerLimitDTO> recorded = new TxnDetailsLimitRecorder(repository).findOriginal(transaction);
         if (recorded.isEmpty()) {
-            LocalDate counted = findCountedDate(transaction.getCustomerId(), transaction.getTransactionId());
+            LocalDate counted = findCountedDate(transaction);
             if (counted != null) {
                 transaction.setTransactionDate(counted);
                 recorded = new TxnDetailsLimitRecorder(repository).findOriginal(transaction);
             }
-        }
-        if (!recorded.isEmpty() && recorded.get(0).getAmount().signum() == 0) {
-            // Own-account transfer marker: nothing was counted, so nothing to take back (no fallback).
-            LogUtil.info(CLASS_NAME, "reverse", "SKIP", "own-account transfer, nothing counted " + transaction.logKey());
-            return 0;
         }
         LogUtil.info(CLASS_NAME, "reverse", "ACTION", "REVERSE " + transaction.logKey());
         return dailyMonthlyService.reverse(transaction, fallbackToToday);
@@ -165,16 +120,17 @@ public class CustomerLimitEngine {
     }
 
     /** Date a transaction was counted on, from its EB.ALBE.TXN.DETAILS.LIMIT id; null if none. */
-    private LocalDate findCountedDate(String customerId, String transactionId) {
-        for (String recordId : repository.selectTxnDetailsIdsForTransaction(customerId, transactionId)) {
-            String[] parts = recordId.split(Constants.TXN_ID_SEPARATOR, 3);
-            LocalDate date = parts.length == 3 ? ValidationUtil.toDate(parts[1]) : null;
+    private LocalDate findCountedDate(CustomerLimitDTO transaction) {
+        for (String recordId : repository.selectTxnDetailsIdsForTransaction(transaction.getCustomerId(),
+                transaction.getTransactionId(), ValidationUtil.nvl(transaction.getArrangementId()))) {
+            String[] parts = recordId.split(Constants.TXN_ID_SEPARATOR, 4);
+            LocalDate date = parts.length >= 3 ? ValidationUtil.toDate(parts[1]) : null;
             if (date != null) {
                 LogUtil.info(CLASS_NAME, "findCountedDate", "FOUND", "id=" + recordId);
                 return date;
             }
         }
-        LogUtil.info(CLASS_NAME, "findCountedDate", "NOT FOUND", "customer=" + customerId + " txn=" + transactionId);
+        LogUtil.info(CLASS_NAME, "findCountedDate", "NOT FOUND", transaction.logKey());
         return null;
     }
 }

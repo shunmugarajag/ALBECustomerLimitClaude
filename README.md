@@ -81,7 +81,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 The validators read limits only from EB.ALBE.CIF.LIMITS `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
-**FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the ACTIVITY.API routines cover them; they call one engine, `service/activity/CustomerLimitEngine` (transaction info + customer limit info). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – both activities of one FT share the id per customer. An **own-account transfer** (same customer on both sides) is not counted. Non-AA accounts are not covered.
+**FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the ACTIVITY.API routines cover them; they call one engine, `service/activity/CustomerLimitEngine` (transaction info + customer limit info). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – the id also carries the arrangement, so each side of an FT is its own record. An **own-account transfer** (same customer on both sides) is counted on both sides. There are no non-AA accounts.
 
 The activity routines can be attached to **any activity** (`controller/activity/ActivityRequestBuilder`): an activity is counted when it has an amount (ORIG.TXN.AMT, else TXN.AMOUNT) and the **action** of its ACTIVITY.CLASS is CREDIT or DEBIT (any product line, e.g. `ACCOUNTS-CREDIT-ARRANGEMENT`); other activities are skipped. Dates use the **T24 date** (REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY), not the server clock. When the limit currency is the local currency, the activity's TXN.AMOUNT.LCY is used (no rate lookup).
 
@@ -137,7 +137,7 @@ Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 
 **EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **structure as approved, no change**
 
-Record id (HLSD): `<customer>-<YYYYMMDD>-<AAA id>`, e.g. `100234-20261120-AAACT2632400001`; YYYYMMDD = T24 date the amount was counted on.
+Record id: `<customer>-<YYYYMMDD>-<FT/TT or AAA id>-<arrangement id>`, e.g. `100234-20261120-FT26324ABCDE-AA26324XYZ12`; YYYYMMDD = T24 date the amount was counted on.
 That date is kept in the activity **REMARKS** as `ALBE.LIMIT.DATE=YYYYMMDD` (written by `defaultFieldValues` at first input, existing text kept), so every later step – also a rejection or a reversal on another day – rebuilds the id and reads the record **directly by key** (no SELECT).
 
 | Field | Value |

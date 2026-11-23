@@ -107,7 +107,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | user (one-off) | creation |
 | EB.ALBE.CIF.LIMITS | customer id | creation; user (amend via version) | all checks |
 | EB.ALBE.UTILISED.LIMIT | daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` | utilisation update | daily / monthly check |
-| EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<YYYYMMDD>-<AAA id>` (date = counted date from the activity REMARKS) | utilisation update (input) | rejection / reversal / re-input |
+| EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<YYYYMMDD>-<FT/AAA>-<arrangement id>` (date = counted date from the activity REMARKS) | utilisation update (input) | rejection / reversal / re-input |
 | ACCOUNT, CUSTOMER.ACCOUNT, COMPANY | core | – | maximum CIF check |
 
 Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-tables).
@@ -418,6 +418,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 23-Nov-2026 | FQ6 / D39: arrangement id added to the TXN.DETAILS id; own-account transfers counted and checked on both sides (marker logic removed) |
 | 23-Nov-2026 | D37: utilisation save failure blocks the transaction (`EB-ALBE.LIMIT.UPDATE.FAILED`, `CustomerLimitRepository.isSaveFailed`) |
 | 23-Nov-2026 | GEN.PARAM keys follow the DEV record: CURRENCY, MAXIMUM.OVERALL.CIF.BALANCE (`Constants.PARAM_KEY_*`, read in `CustomerLimitReader`) |
 | 23-Nov-2026 | SonarQube findings: Constants lists `List.of` (read-only), repeated log literals as class constants, unused imports removed; no logic change |

@@ -323,11 +323,13 @@ public class CustomerLimitRepository {
 
     /**
      * Ids of the EB.ALBE.TXN.DETAILS.LIMIT records of one customer and one counted transaction
-     * (<customer>-<YYYYMMDD>-<transactionId>), whatever the date. Used only to find the counted
-     * date of a transaction when it is reversed on a later day and its date is not known.
+     * and arrangement (<customer>-<YYYYMMDD>-<transactionId>-<arrangementId>), whatever the date.
+     * Used only to find the counted date of a transaction reversed on a later day.
      */
-    public List<String> selectTxnDetailsIdsForTransaction(String customerId, String transactionId) {
-        String selection = "WITH @ID LIKE " + customerId + "-...-" + transactionId;
+    public List<String> selectTxnDetailsIdsForTransaction(String customerId, String transactionId,
+            String arrangementId) {
+        String selection = "WITH @ID LIKE " + customerId + Constants.TXN_ID_SEPARATOR + "..." + Constants.TXN_ID_SEPARATOR
+                + transactionId + Constants.TXN_ID_SEPARATOR + arrangementId;
         LogUtil.info(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "SELECT",
                 Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
         try {

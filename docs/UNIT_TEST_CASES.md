@@ -26,12 +26,12 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
 | Reports | UT-E01 … E17 | 17 | 17 | – |
-| Engine, key, own transfer | UT-G01 … G22 | 12 | 12 | – |
+| Engine, key, own transfer | UT-G01 … G22 | 13 | 13 | – |
 | Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
 | GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
 | Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **121** | **112** | **9** |
+| **Total** | | **122** | **113** | **9** |
 
 ---
 
@@ -86,7 +86,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
-| UT-U01 | nothing used | input credit 3000 (UNAUTH) | daily + monthly used 3000; TXN.DETAILS `<cust>-<date>-<AAA>` with ACCOUNT.NO, CR, EFF.DATE, 3000.00 | Pass |
+| UT-U01 | nothing used | input credit 3000 (UNAUTH) | daily + monthly used 3000; TXN.DETAILS `<cust>-<date>-<FT/AAA>-<arrangement>` with ACCOUNT.NO, CR, EFF.DATE, 3000.00 | Pass |
 | UT-U02 | daily used 3000 | input credit 4000 with accepted override | daily used 7000 (accepted override counts) | Pass |
 | UT-U03 | AAA2 counted 4000 | re-input AAA2 with 3500 | earlier 4000 removed, 3500 added → 6500; check excludes own 4000 | Pass |
 | UT-U04 | AAA2 counted | rejected (DELETE) | its amount reversed; its TXN.DETAILS record deleted | Pass |
@@ -191,9 +191,10 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-G12 | same FT, two customers | `100-20260401-FT26091ABCDE`, `200-20260401-FT26091ABCDE` | Pass |
 | UT-G14 | reversal on 05-Apr without a date on the activity | taken back from 01-Apr | Pass |
 | UT-G15 | activity without FT | key = AAA id | Pass |
-| UT-G17 | own transfer: credit activity of the same customer after the debit | no check | Pass |
-| UT-G18 | same, count | nothing counted, 0-amount marker kept | Pass |
-| UT-G19 | reversal of that own transfer (fallback on) | nothing taken back | Pass |
+| UT-G17 | own transfer: credit activity (other arrangement) after the debit | checked like any credit (FQ6) | Pass |
+| UT-G18 | same, count | both sides counted: debit 700 and credit 700, two records | Pass |
+| UT-G19 | reversal of the debit side | only the debit taken back; credit stays | Pass |
+| UT-G20 | re-input of the credit side | replaced, still 700 (no double count) | Pass |
 | UT-G22 | report row for an FT-keyed activity | TXN.ID / TXN.REF = FT id, overrides from FUNDS.TRANSFER | Pass |
 
 ## Blank limit currency – 22-Nov-2026

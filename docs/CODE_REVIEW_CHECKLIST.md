@@ -6,7 +6,7 @@ Tick every line before a change is merged to `main`. These are the project's sta
 
 - [ ] **No change to the table structure** – no new fields, no new tables (EB.ALBE.GEN.PARAM, CIF.LIMIT, UTILISED.LIMIT, TXN.DETAILS.LIMIT are pre-approved).
 - [ ] Only the approved fields are read / written (TXN.DETAILS: ACCOUNT.NO, CREDIT.DEBIT.FLAG, EFF.DATE, TXN.AMOUNT).
-- [ ] Record ids unchanged: CIF.LIMIT `<customer>`, UTILISED `<cust>-YYYYMMDD` / `<cust>-YYYYMM`, TXN.DETAILS `<cust>-<YYYYMMDD>-<AAA>`, GEN.PARAM `CUSTOMER.LIMIT`.
+- [ ] Record ids unchanged: CIF.LIMIT `<customer>`, UTILISED `<cust>-YYYYMMDD` / `<cust>-YYYYMM`, TXN.DETAILS `<cust>-<YYYYMMDD>-<root ref>-<arrangement>`, GEN.PARAM `CUSTOMER.LIMIT`.
 - [ ] UTILISED.MIGRATED.* fields are never written.
 - [ ] An existing EB.ALBE.CIF.LIMITS record is never overwritten.
 

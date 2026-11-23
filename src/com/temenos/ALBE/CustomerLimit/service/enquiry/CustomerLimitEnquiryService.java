@@ -303,8 +303,9 @@ public class CustomerLimitEnquiryService {
         List<LimitTxnRow> rows = new ArrayList<>();
         String finMnemonic = repository.getFinancialMnemonic();   // once, for the AA.ARRANGEMENT.ACTIVITY reads
         for (String recordId : repository.selectTxnDetailsIds(oneCustomer ? customerId.trim() : "", days)) {
-            String[] parts = recordId.split("-", 3);   // customer, YYYYMMDD, transaction key
-            LocalDate countedOn = parts.length == 3 ? ValidationUtil.toDate(parts[1]) : null;
+            // customer, YYYYMMDD, transaction key[, arrangement] (arrangement since 23-Nov, FQ6)
+            String[] parts = recordId.split(Constants.TXN_ID_SEPARATOR, 4);
+            LocalDate countedOn = parts.length >= 3 ? ValidationUtil.toDate(parts[1]) : null;
             if (countedOn == null || (from != null && countedOn.isBefore(from))
                     || (to != null && countedOn.isAfter(to))) {
                 continue;

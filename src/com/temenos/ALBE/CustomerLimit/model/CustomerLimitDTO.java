@@ -26,6 +26,8 @@ public class CustomerLimitDTO {
     private String customerId;
     /** Transaction key: root reference of the FT / TT / AAA / accounting entry (CustomerLimitEngine.transactionKey). */
     private String transactionId;
+    /** AA arrangement the activity belongs to: part of the TXN.DETAILS id, so both sides of an own transfer count (FQ6). */
+    private String arrangementId;
     /** Server date the transaction is counted on (from the activity REMARKS tag ALBE.LIMIT.DATE; else today). */
     private LocalDate transactionDate;
     /** Credit amount (in the limit currency once converted); zero for a debit. */
@@ -67,6 +69,8 @@ public class CustomerLimitDTO {
 
     public String getTransactionId() { return transactionId; }
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+    public String getArrangementId() { return arrangementId; }
+    public void setArrangementId(String arrangementId) { this.arrangementId = arrangementId; }
 
     public LocalDate getTransactionDate() { return transactionDate; }
     public void setTransactionDate(LocalDate transactionDate) { this.transactionDate = transactionDate; }
@@ -88,7 +92,7 @@ public class CustomerLimitDTO {
     public BigDecimal getAmount() { return isCredit() ? creditAmount : debitAmount; }
 
     /** "customer=<id> aaa=<id>" - the key that starts most log lines about this request. */
-    public String logKey() { return "customer=" + customerId + " aaa=" + transactionId; }
+    public String logKey() { return "customer=" + customerId + " txn=" + transactionId + " arrangement=" + arrangementId; }
 
     public String getTransactionCurrency() { return transactionCurrency; }
     public void setTransactionCurrency(String transactionCurrency) { this.transactionCurrency = transactionCurrency; }
@@ -110,6 +114,7 @@ public class CustomerLimitDTO {
         CustomerLimitDTO copy = new CustomerLimitDTO();
         copy.setCustomerId(customerId);
         copy.setTransactionId(transactionId);
+        copy.setArrangementId(arrangementId);
         copy.setTransactionDate(transactionDate);
         copy.setTransactionCurrency(transactionCurrency);
         copy.setCreditAmount(creditAmount);
@@ -182,7 +187,7 @@ public class CustomerLimitDTO {
     /** Compact form for log lines. */
     @Override
     public String toString() {
-        return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", date=" + transactionDate
+        return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", arrangement=" + arrangementId + ", date=" + transactionDate
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
                 + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount + ", amountLcy=" + amountLcy
                 + ", rateMissing=" + rateMissing + ", valid=" + valid

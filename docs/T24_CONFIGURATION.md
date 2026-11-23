@@ -84,7 +84,7 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 
 ### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – no change)*
 
-ID: **`<customer>-<YYYYMMDD>-<root ref>`** – root ref = the FT / TT behind the activity (TXN.CONTRACT.ID), else the AAA id – e.g. `100234-20261120-FT26324ABCDE` or `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
+ID: **`<customer>-<YYYYMMDD>-<root ref>-<arrangement id>`** – root ref = the FT / TT behind the activity (TXN.CONTRACT.ID), else the AAA id – e.g. `100234-20261120-FT26324ABCDE-AA26324XYZ12` (ID max 100 characters) (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
 
 | Field | Type | Value |
 |---|---|---|
@@ -232,9 +232,9 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 An FT, a teller transaction or any other posting on an **AA account** makes T24 create an `ACCOUNTS-CREDIT-ARRANGEMENT` / `ACCOUNTS-DEBIT-ARRANGEMENT` activity on that account, so the ACTIVITY.API routines of step 8 cover them. No routine is attached to FUNDS.TRANSFER / TELLER versions or ACCOUNT.PARAMETER (those routines were built on 21/22-Nov-2026 and removed the same day; they are in the Git history).
 
-- The activity of an FT carries TXN.CONTRACT.ID = the FT id, so both activities of one FT (debit customer, credit customer) are counted under `<customer>-<date>-<FT id>`.
-- **Own-account transfer** (same customer on both sides): the second activity takes the first back and leaves a 0-amount marker – nothing counted. The first activity's check may still show an override.
-- **Not covered:** non-AA (classic) accounts – they get no activity.
+- The activity of an FT carries TXN.CONTRACT.ID = the FT id, so each activity of an FT is counted under `<customer>-<date>-<FT id>-<arrangement id>`.
+- **Own-account transfer** (same customer on both sides): two arrangements, two records – the debit and the credit are **both checked and counted** (D39), including the max CIF check on the credit.
+- There are no non-AA (classic) accounts (D34).
 - **To test in DEV:** activity created at FT **input** (not only at authorisation); activity overrides shown on the FT screen; FT delete / reversal reach the activity as DELETE / AUTH-REV.
 
 ---
@@ -294,7 +294,7 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 |---|---|---|---|
 | 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
-| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<AAA>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
+| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<FT/AAA>-<arrangement>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
 | 4 | Credit 4000 (input) | override EB-ALBE.DAILY.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `postCoreTableUpdate \| ACTION \| COUNT` |
 | 6 | **Reject / delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| REVERSE rejected input` |

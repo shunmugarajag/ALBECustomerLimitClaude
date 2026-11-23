@@ -38,6 +38,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 21-Nov-2026   Development      Initial Version (common for all activities)
  * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) (CustomerLimitEngine)
  * 22-Nov-2026   Development      AA_SKIP_TXN_SYSTEM_IDS removed - the common key prevents double counting
+ * 23-Nov-2026   Development      Arrangement id on the request (part of the TXN.DETAILS id, FQ6)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -77,6 +78,7 @@ public class ActivityRequestBuilder {
         CustomerLimitDTO request = new CustomerLimitDTO();
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
         request.setTransactionId(CustomerLimitEngine.transactionKey(reference));
+        request.setArrangementId(ValidationUtil.nvl(aaaRec.getArrangement().getValue()).trim());
         request.setTransactionDate(getCountedDate(aaaRec, repository));
         request.setTransactionCurrency(getCurrency(aaaRec, arrangementRecord));
         request.setAmountLcy(getAmountLcy(aaaRec, useOriginal));

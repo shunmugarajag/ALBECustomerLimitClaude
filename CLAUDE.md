@@ -37,7 +37,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE (DEV record 23-Nov): **CURRENCY**, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, **MAXIMUM.OVERALL.CIF.BALANCE** (`Constants.PARAM_KEY_*`; CURRENCY → CIF.LIMIT CCY, MAXIMUM.OVERALL… → MAX.CIF.BALANCE) |
 | EB.ALBE.CIF.LIMITS (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`, 23-Nov) | customer id | CURRENCY + the 5 limits – same names as GEN.PARAM except CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
-| EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>`** (root ref = FT/TT behind the AAA, else AAA id, or entry TRANS.REFERENCE; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
+| EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>-<arrangement id>`** (root ref = FT/TT behind the AAA, else AAA id; arrangement since 23-Nov, FQ6; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
 
 Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` – generated in Design Studio (DStablejar workspace) and kept in `lib/l3-tables`: `ALBE_CustomerLimitTable.jar` (CIF.LIMITS, UTILISED.LIMIT, TXN.DETAILS.LIMIT), `ALBE_GEN_PARAM_TABLE.jar`, `ALBE_COMM_REGOFF_TABLE.jar`; all three on `.classpath`.
 
@@ -64,7 +64,7 @@ controller/   sub-packages by where the routine is attached:
   enquiry/    CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE)
 service/      shared: CustomerLimitReader, CustomerLimitUtilizationUpdater (record ids, utilisedAmount/migratedAmount, add/reverse)
   activity/   CustomerLimitEngine (ONE entry point: transaction info + customer limit info -> checkDailyMonthly/checkMaxCif/count/reverse; transactionKey; own transfer),
-              DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<root ref>),
+              DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder (record/findOriginal/delete, id <cust>-<date>-<root ref>-<arrangement>),
               CurrencyConversionService
   customer/   CustomerLimitCreationService
   enquiry/    CustomerLimitEnquiryService (report rows, read only)
@@ -83,7 +83,7 @@ constants/    Constants (the only final class)
 |---|---|
 | Count utilisation at **input** (UNAUTH); reverse on DELETE and AUTH-REV | user: unauthorised transactions must count; rejected and reversed ones must be taken back; accepted-override transactions count |
 | Breach → **acceptable override**, incl. missing record / blank limit | user changed "reject with error" to override |
-| Key **without .CR/.DR**; **own-account transfer not counted** (same customer both sides) – 2nd activity takes 1st back + 0-amount marker (reversal takes nothing back) | user 22-Nov: "customer id differs" → drop suffix, skip own transfers |
+| Key **without .CR/.DR**, **with the arrangement id**; **own-account transfer counted on both sides** (two arrangements = two records), checked like any transaction incl. max CIF | user 22-Nov: drop suffix; user 23-Nov (FQ6, D39): add arrangement id, count both sides (marker logic removed) |
 | Blank CIF.LIMIT **CCY → error** (blocks) | user 22-Nov: "CCY can't be blank, if so throw error"; chose "at transaction time – block" |
 | Counted date in **AAA REMARKS** tag, TXN.DETAILS id `<cust>-<date>-<AAA>` | user's idea; keeps table structure; direct read by key even for reversal on a later day (an earlier SYSTEM.DATE field was removed) |
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
@@ -115,7 +115,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). **ALBE table JARs generated** (laptop `lib/l3-tables`: ALBE_CustomerLimitTable.jar, ALBE_GEN_PARAM_TABLE.jar) – merged code compiles with 0 errors against them + R25 libs (23-Nov, TQ1 closed). `.classpath` is kept local (absolute C:/Temenos paths), not on GitHub. Still open: DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text → `RECORD_NOT_FOUND_MARKERS`).
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
-- **FT / TELLER / ACCOUNT.PARAMETER routines removed (22-Nov-2026)** – ACTIVITY.API covers FT/TT on AA accounts. DEV: activity created at FT input; activity overrides on the FT screen; FT delete/reversal → DELETE/AUTH-REV. No non-AA accounts exist (D34). S5: first activity of an own transfer may still show an override.
+- **FT / TELLER / ACCOUNT.PARAMETER routines removed (22-Nov-2026)** – ACTIVITY.API covers FT/TT on AA accounts. DEV: activity created at FT input; activity overrides on the FT screen; FT delete/reversal → DELETE/AUTH-REV. No non-AA accounts exist (D34). Own transfers: both sides checked and counted (D39).
 - **Open questions** live only in `docs/QUERIES_AND_GAPS.md` (FQ/TQ); the old Q1–Q13 list in GAPS.md was removed as a duplicate (22-Nov).
 - Remaining small code gap: G5. (`\<mnemonic>` strip done via root reference.) (Outdated `<AAA id>` comments fixed 22-Nov.)
 
@@ -135,7 +135,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **reports**, **menu & access**) |
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D38, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D39, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
 | `docs/UNIT_TEST_CASES.md` | 121 cases (112 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |

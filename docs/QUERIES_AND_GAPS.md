@@ -12,7 +12,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ3 | Deposit funding – count deposit side too? | depends on the activity: counted only where the routine is attached (D31: account products → deposit side not counted) | 🟢 D32 |
 | FQ4 | Deposit payout to current account – count? | yes – account credit activity has the routine (D33) | 🟢 D33 |
 | FQ5 | Interest / charges (AA-internal) – count? | yes, when posted by an activity that has the routine (D33) | 🟢 D33 |
-| FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
+| FQ6 | Own transfer handling | arrangement id in the TXN.DETAILS id; both credit and debit counted and checked (incl. max CIF) | 🟢 D39 |
 | FQ7 | Any non-AA accounts? | none – all accounts are AA (bank, 23-Nov) | 🟢 D34 |
 | FQ8 | Exchange-rate source | daily/monthly: LCY amount from the activity (D36). Open only for max CIF: other accounts in foreign currency have no activity → no rate | 🟡 |
 | FQ9 | Limit write fails – block or let through? | **block** – built: EB-ALBE.LIMIT.UPDATE.FAILED (D37); DEV: confirm the transaction rolls back (TQ18) | 🟢 D37 |
@@ -71,7 +71,7 @@ Details: [GAPS.md](GAPS.md)
 | D16 | FT / Teller / ACCOUNT.PARAMETER routines removed |
 | D17 | One engine (`CustomerLimitEngine`) |
 | D18 | Record id without `.CR/.DR` |
-| D19 | Own transfer not counted |
+| D19 | ~~Own transfer not counted~~ – replaced by D39 |
 | D20 | Blank limit CCY = error |
 | D21 | Controller sub-packages |
 | D22 | Utilisation = direct write |
@@ -90,6 +90,7 @@ Details: [GAPS.md](GAPS.md)
 | D36 | Daily/monthly: amount in EGP (LCY) taken from the activity (TXN.AMOUNT.LCY) – no rate table (FQ8) |
 | D37 | Utilisation / TXN.DETAILS write fails → block the transaction (FQ9, G3) |
 | D38 | No joint accounts – first CUSTOMER of the arrangement is the only holder (FQ18) |
+| D39 | TXN.DETAILS id = <cust>-<date>-<FT/AAA>-<arrangement>; own-account transfers counted and checked on both sides (FQ6) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -110,7 +111,7 @@ Details: [GAPS.md](GAPS.md)
 | A1–A8 | Activity fields unused | 🟢 | ActivityRequestBuilder |
 | R1 | `\BNK` in reference | 🟢 | cut off |
 | R2 | Double count across routines | 🟢 | one key |
-| R3 | Own transfer counted | 🟢 | not counted |
+| R3 | Own transfer counted | 🟢 | counted on both sides by design (D39) |
 | R4 | Loose date parsing | 🟢 | strict |
 | R5 | Code tidy-up | 🔴 | offered |
 | R6 | Validation place | 🔴 | decide |

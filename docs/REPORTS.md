@@ -174,7 +174,7 @@ The transactions currently counted in utilisation (EB.ALBE.TXN.DETAILS.LIMIT), o
 | Field | Required | Meaning |
 |---|---|---|
 | CUSTOMER | customer **or** a date | blank = all customers |
-| DATE.FROM / DATE.TO | | on the counted date (the date in the record id `<customer>-<YYYYMMDD>-<AAA>`) |
+| DATE.FROM / DATE.TO | | on the counted date (the date in the record id `<customer>-<YYYYMMDD>-<FT/AAA>-<arrangement>`) |
 | OVERRIDDEN | no | `Y` = only transactions accepted with a **limit-exceed** override (daily, monthly or max CIF), read from the activity |
 
 - Without CUSTOMER: a missing DATE.TO = today (T24 date), a missing DATE.FROM = DATE.TO; at most 92 days.

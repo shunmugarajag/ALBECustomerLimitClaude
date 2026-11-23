@@ -29,6 +29,7 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 21-Nov-2026   Development      HLSD id <customer>-<date>-<AAA>; date from AAA REMARKS
+ * 23-Nov-2026   Development      Id <customer>-<date>-<FT/AAA>-<arrangement> (FQ6)
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {
@@ -41,10 +42,14 @@ public class TxnDetailsLimitRecorder {
         this.repository = repository;
     }
 
-    /** <customer id>-<YYYYMMDD counted on>-<transaction key: root reference of the FT / TT / AAA / entry> */
+    /**
+     * <customer id>-<YYYYMMDD counted on>-<transaction key: root reference of the FT / TT / AAA>-<arrangement id>.
+     * The arrangement makes the two sides of an own-account transfer two records, so both are counted (FQ6).
+     */
     public static String recordId(CustomerLimitDTO request) {
-        return request.getCustomerId() + "-" + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT)
-                + "-" + request.getTransactionId();
+        return request.getCustomerId() + Constants.TXN_ID_SEPARATOR
+                + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT) + Constants.TXN_ID_SEPARATOR
+                + request.getTransactionId() + Constants.TXN_ID_SEPARATOR + ValidationUtil.nvl(request.getArrangementId());
     }
 
     /**
@@ -112,6 +117,7 @@ public class TxnDetailsLimitRecorder {
             CustomerLimitDTO original = new CustomerLimitDTO();
             original.setCustomerId(request.getCustomerId());
             original.setTransactionId(request.getTransactionId());
+            original.setArrangementId(request.getArrangementId());
             original.setTransactionDate(request.getTransactionDate());
             if (Constants.FLAG_CREDIT.equalsIgnoreCase(txnRec.getCreditDebitFlag().getValue())) {
                 original.setCreditAmount(amount);
