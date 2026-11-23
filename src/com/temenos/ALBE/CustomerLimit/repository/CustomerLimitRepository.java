@@ -12,7 +12,7 @@ import com.temenos.tafj.api.client.impl.T24Context;
 import com.temenos.api.TStructure;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
-import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
+import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
@@ -20,7 +20,7 @@ import com.temenos.t24.api.records.fundstransfer.FundsTransferRecord;
 import com.temenos.t24.api.records.teller.TellerRecord;
 import com.temenos.t24.api.system.DataAccess;
 import com.temenos.t24.api.system.Session;
-import com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable;
+import com.temenos.t24.api.tables.ebalbeciflimits.EbAlbeCifLimitsTable;
 import com.temenos.t24.api.tables.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitTable;
 import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
 
@@ -30,7 +30,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *               selects or deletes one thing and logs what it did.
  *
  *               Tables / files used:
- *                 EB.ALBE.CIF.LIMIT          read, write, select   (id: customer id)
+ *                 EB.ALBE.CIF.LIMITS         read, write, select   (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
  *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
@@ -55,7 +55,7 @@ public class CustomerLimitRepository {
 
     private final DataAccess daObj;
     private final Session ssObj;
-    private final EbAlbeCifLimitTable cifLimitTable;
+    private final EbAlbeCifLimitsTable cifLimitTable;
     private final EbAlbeUtilisedLimitTable utilisedLimitTable;
     private final EbAlbeTxnDetailsLimitTable txnDetailsTable;
 
@@ -69,7 +69,7 @@ public class CustomerLimitRepository {
     public CustomerLimitRepository(T24Context hook) {
         this.daObj = new DataAccess(hook);
         this.ssObj = new Session(hook);
-        this.cifLimitTable = new EbAlbeCifLimitTable(hook);
+        this.cifLimitTable = new EbAlbeCifLimitsTable(hook);
         this.utilisedLimitTable = new EbAlbeUtilisedLimitTable(hook);
         this.txnDetailsTable = new EbAlbeTxnDetailsLimitTable(hook);
         this.context = hook;
@@ -77,15 +77,15 @@ public class CustomerLimitRepository {
     }
 
     // =========================================================================
-    // EB.ALBE.CIF.LIMIT
+    // EB.ALBE.CIF.LIMITS
     // =========================================================================
 
-    /** Reads EB.ALBE.CIF.LIMIT <customer id>; null if there is no record. */
-    public EbAlbeCifLimitRecord readCifLimit(String customerId) {
+    /** Reads EB.ALBE.CIF.LIMITS <customer id>; null if there is no record. */
+    public EbAlbeCifLimitsRecord readCifLimit(String customerId) {
         LogUtil.detail(CLASS_NAME, "readCifLimit", "READ", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
-            EbAlbeCifLimitRecord cifLimitRec =
-                    new EbAlbeCifLimitRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
+            EbAlbeCifLimitsRecord cifLimitRec =
+                    new EbAlbeCifLimitsRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
             if (cifLimitRec.toString().isEmpty()) {
                 LogUtil.info(CLASS_NAME, "readCifLimit", "NOT FOUND", "empty record " + Constants.CIF_LIMIT_TABLE
                         + ">" + customerId);
@@ -100,7 +100,7 @@ public class CustomerLimitRepository {
     }
 
     /**
-     * Whether EB.ALBE.CIF.LIMIT <customer id> exists, used before creating one so an existing
+     * Whether EB.ALBE.CIF.LIMITS <customer id> exists, used before creating one so an existing
      * (possibly amended) record is never overwritten.
      * @return TRUE  record exists
      *         FALSE T24 reports no such record (or the record is empty)
@@ -109,8 +109,8 @@ public class CustomerLimitRepository {
     public Boolean cifLimitExists(String customerId) {
         LogUtil.detail(CLASS_NAME, "cifLimitExists", "READ", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
-            EbAlbeCifLimitRecord cifLimitRec =
-                    new EbAlbeCifLimitRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
+            EbAlbeCifLimitsRecord cifLimitRec =
+                    new EbAlbeCifLimitsRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
             boolean exists = !cifLimitRec.toString().isEmpty();
             LogUtil.info(CLASS_NAME, "cifLimitExists", exists ? "FOUND" : "NOT FOUND",
                     Constants.CIF_LIMIT_TABLE + ">" + customerId);
@@ -137,7 +137,7 @@ public class CustomerLimitRepository {
         return false;
     }
 
-    /** Ids of all EB.ALBE.CIF.LIMIT records (customers that have limits), sorted. */
+    /** Ids of all EB.ALBE.CIF.LIMITS records (customers that have limits), sorted. */
     public List<String> selectCifLimitIds() {
         String selection = "BY @ID";
         LogUtil.info(CLASS_NAME, "selectCifLimitIds", "SELECT", Constants.CIF_LIMIT_TABLE + " [" + selection + "]");
@@ -152,14 +152,14 @@ public class CustomerLimitRepository {
         }
     }
 
-    /** New empty EB.ALBE.CIF.LIMIT record, to be filled and written. */
-    public EbAlbeCifLimitRecord newCifLimitRecord() {
+    /** New empty EB.ALBE.CIF.LIMITS record, to be filled and written. */
+    public EbAlbeCifLimitsRecord newCifLimitRecord() {
         LogUtil.info(CLASS_NAME, "newCifLimitRecord", "NEW", Constants.CIF_LIMIT_TABLE + " record");
-        return new EbAlbeCifLimitRecord(context);
+        return new EbAlbeCifLimitsRecord(context);
     }
 
-    /** Writes EB.ALBE.CIF.LIMIT <customer id>. */
-    public boolean writeCifLimit(String customerId, EbAlbeCifLimitRecord cifLimitRec) {
+    /** Writes EB.ALBE.CIF.LIMITS <customer id>. */
+    public boolean writeCifLimit(String customerId, EbAlbeCifLimitsRecord cifLimitRec) {
         LogUtil.detail(CLASS_NAME, "writeCifLimit", "WRITE", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
             cifLimitTable.write(customerId, cifLimitRec);

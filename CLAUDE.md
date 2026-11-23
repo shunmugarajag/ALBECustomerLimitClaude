@@ -35,11 +35,11 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | Table | Id | Fields used |
 |---|---|---|
 | EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE: CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE |
-| EB.ALBE.CIF.LIMIT | customer id | CCY + the 5 limits (same names) |
+| EB.ALBE.CIF.LIMITS (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`, 23-Nov) | customer id | CURRENCY + the 5 limits – same names as GEN.PARAM except CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
 | EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>`** (root ref = FT/TT behind the AAA, else AAA id, or entry TRANS.REFERENCE; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
 
-Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` (need the generated table JARs on the Eclipse build path).
+Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` – generated in Design Studio (DStablejar workspace) and kept in `lib/l3-tables`: `ALBE_CustomerLimitTable.jar` (CIF.LIMITS, UTILISED.LIMIT, TXN.DETAILS.LIMIT), `ALBE_GEN_PARAM_TABLE.jar`, `ALBE_COMM_REGOFF_TABLE.jar`; all three on `.classpath`.
 
 ## 4. How it works (one screen)
 
@@ -88,6 +88,7 @@ constants/    Constants (the only final class)
 | Counted date in **AAA REMARKS** tag, TXN.DETAILS id `<cust>-<date>-<AAA>` | user's idea; keeps table structure; direct read by key even for reversal on a later day (an earlier SYSTEM.DATE field was removed) |
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
 | GEN.PARAM record id **`CUSTOMER.LIMIT`** | user; was SYSTEM |
+| Customer limit table is **EB.ALBE.CIF.LIMITS** (23-Nov) | user created `ALBE.CIF.LIMITS` and generated the JAR; record class `EbAlbeCifLimitsRecord`, getters `getCurrency` / `getMaximumOverallCifAmount` replace `getCcy` / `getMaxCifBalance` |
 | Currency conversion to the limit CCY; txn CCY = AAA CURRENCY (else AA.ARRANGEMENT); limit CCY = LCY → AAA TXN.AMOUNT.LCY | user; rate source still pending for foreign-CCY limits and max CIF accounts (E1) |
 | Overridden-transactions report reads **AA.ARRANGEMENT.ACTIVITY OVERRIDE** at report time (live, then `$NAU`) | no table field allowed; "overridden" = limit-exceed overrides only (`Constants.LIMIT_EXCEED_OVERRIDES`) |
 | Enquiry range caps 92 days / 24 months; TXN report needs customer or date | protect online system |

@@ -72,14 +72,14 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 | Class | Attach to | Hooks |
 |---|---|---|
-| `com.temenos.ALBE.CustomerLimit.controller.customer.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMIT `<customer>` from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. On customer amendment (authorised again) an existing record is **never overwritten**; if the read fails for any reason other than "not found", nothing is written. (HLSD 7.2.1 says After Unau; changed to Auth.) |
+| `com.temenos.ALBE.CustomerLimit.controller.customer.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMITS `<customer>` from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. On customer amendment (authorised again) an existing record is **never overwritten**; if the read fails for any reason other than "not found", nothing is written. (HLSD 7.2.1 says After Unau; changed to Auth.) |
 | `com.temenos.ALBE.CustomerLimit.controller.activity.DailyMonthlyLimitController` | ACTIVITY.API – ACCOUNTS-CREDIT-ARRANGEMENT, ACCOUNTS-DEBIT-ARRANGEMENT | `defaultFieldValues` (UNAUTH): counted date into REMARKS. `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
 | `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitSummaryEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | `setIds`: limit summary per customer (limits, used today / this month, available). Selection CUSTOMER, DATE, OVER.LIMIT (optional). |
 | `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitPeriodEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | `setIds`: per customer per day (DATE.FROM–DATE.TO) or per month (MONTH.FROM–MONTH.TO) with usage; CUSTOMER, OVER.LIMIT optional. |
 | `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitTxnEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.TXN | `setIds`: transactions counted (EB.ALBE.TXN.DETAILS.LIMIT) for one customer, or all customers in a date range; OVERRIDDEN = Y for only overridden transactions. |
 | `com.temenos.ALBE.CustomerLimit.controller.activity.MaximumCifLimitController` | ACTIVITY.API – any activity (counted credits only), normally ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
-The validators read limits only from EB.ALBE.CIF.LIMIT `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
+The validators read limits only from EB.ALBE.CIF.LIMITS `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ALBE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
 
 **FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the ACTIVITY.API routines cover them; they call one engine, `service/activity/CustomerLimitEngine` (transaction info + customer limit info). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – both activities of one FT share the id per customer. An **own-account transfer** (same customer on both sides) is not counted. Non-AA accounts are not covered.
 
@@ -87,7 +87,7 @@ The activity routines can be attached to **any activity** (`controller/activity/
 
 ### Currency conversion
 
-All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMIT `CCY`):
+All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMITS `CURRENCY`):
 
 - transaction currency = AA.ARRANGEMENT `CURRENCY`; if it differs from `CCY` the TXN.AMOUNT is converted;
 - for the maximum CIF check every account's working balance is converted from the ACCOUNT currency;
@@ -113,16 +113,16 @@ Create the tables with these field names so the generated getters match.
 | MONTHLY.DEBIT.LIMIT | monthly debit limit |
 | MAX.CIF.BALANCE | maximum CIF balance |
 
-**EB.ALBE.CIF.LIMIT** (id: customer id) – create EB.TABLE.DEFINITION `ALBE.CIF.LIMIT` with these field names
+**EB.ALBE.CIF.LIMITS** (id: customer id) – create EB.TABLE.DEFINITION `ALBE.CIF.LIMITS` with these field names
 
 | No | Field | Description | Type | Getter / Setter |
 |---|---|---|---|---|
-| 1 | CCY | Currency | Text | getCcy / setCcy |
+| 1 | CURRENCY | Currency | Text | getCurrency / setCurrency |
 | 2 | DAILY.CREDIT.LIMIT | Daily credit limit | Amount | getDailyCreditLimit / setDailyCreditLimit |
 | 3 | DAILY.DEBIT.LIMIT | Daily debit limit | Amount | getDailyDebitLimit / setDailyDebitLimit |
 | 4 | MONTHLY.CREDIT.LIMIT | Monthly credit limit | Amount | getMonthlyCreditLimit / setMonthlyCreditLimit |
 | 5 | MONTHLY.DEBIT.LIMIT | Monthly debit limit | Amount | getMonthlyDebitLimit / setMonthlyDebitLimit |
-| 6 | MAX.CIF.BALANCE | Maximum overall CIF balance | Amount | getMaxCifBalance / setMaxCifBalance |
+| 6 | MAXIMUM.OVERALL.CIF.AMOUNT | Maximum overall CIF balance | Amount | getMaximumOverallCifAmount / setMaximumOverallCifAmount |
 
 **EB.ALBE.UTILISED.LIMIT** (EB.TABLE.DEFINITION `ALBE.UTILISED.LIMIT`, confirmed)
 
@@ -167,7 +167,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
-| EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMIT CCY is blank |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
 
 `view.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
 

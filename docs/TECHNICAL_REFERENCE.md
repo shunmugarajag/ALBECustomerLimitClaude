@@ -18,7 +18,7 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 
 | # | Function | When | Result |
 |---|---|---|---|
-| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMIT `<customer>`, only if the customer has no record yet |
+| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMITS `<customer>`, only if the customer has no record yet |
 | 2 | **Daily / monthly limit check** | AA credit or debit activity input | Override if today's or this month's credit (or debit) total would go over the customer's limit |
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
@@ -105,7 +105,7 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | Table | Record id | Written by | Read by |
 |---|---|---|---|
 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | user (one-off) | creation |
-| EB.ALBE.CIF.LIMIT | customer id | creation; user (amend via version) | all checks |
+| EB.ALBE.CIF.LIMITS | customer id | creation; user (amend via version) | all checks |
 | EB.ALBE.UTILISED.LIMIT | daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` | utilisation update | daily / monthly check |
 | EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<YYYYMMDD>-<AAA id>` (date = counted date from the activity REMARKS) | utilisation update (input) | rejection / reversal / re-input |
 | ACCOUNT, CUSTOMER.ACCOUNT, COMPANY | core | – | maximum CIF check |
@@ -141,7 +141,7 @@ customer authorised
         null  -> SKIP + error log (read failed: never overwrite)
         FALSE -> read EB.ALBE.GEN.PARAM CUSTOMER.LIMIT
                    not found -> error log, nothing written
-                   found     -> write EB.ALBE.CIF.LIMIT <customer> (CCY + 5 limits)
+                   found     -> write EB.ALBE.CIF.LIMITS <customer> (CCY + 5 limits)
 ```
 
 - Runs on **every** authorisation of the customer, including amendments – the exists check makes it safe.
@@ -152,7 +152,7 @@ customer authorised
 
 ```
 build request -> validate request
-  -> read EB.ALBE.CIF.LIMIT <customer>       none -> "limit not defined" override, stop
+  -> read EB.ALBE.CIF.LIMITS <customer>       none -> "limit not defined" override, stop
   -> convert TXN.AMOUNT to limit CCY          no rate -> "rate missing" override, stop
   -> earlier input of the same AAA (TXN.DETAILS by key) -> left out of the totals (re-input)
   -> daily:   UTILISED.<CR|DR>.LIMIT of <cust>-YYYYMMDD  - earlier  + amount  vs DAILY.<CR|DR>.LIMIT
@@ -181,7 +181,7 @@ Equal to the limit is allowed; only **above** is a breach. Utilised minus earlie
 ### 5.4 Maximum CIF balance check (`validateRecord`, status UNAUTH, credit only)
 
 ```
-read EB.ALBE.CIF.LIMIT          none -> "limit not defined"; MAX.CIF.BALANCE blank -> "limit not defined"
+read EB.ALBE.CIF.LIMITS          none -> "limit not defined"; MAX.CIF.BALANCE blank -> "limit not defined"
 convert credit to limit CCY     no rate -> "rate missing"
 company financial mnemonic (COMPANY)
 customer accounts: CUSTOMER.ACCOUNT concat; fallback SELECT ACCOUNT WITH CUSTOMER EQ <id>
@@ -309,7 +309,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 
 | # | Decision | Reason |
 |---|---|---|
-| 1 | Limits only from EB.ALBE.CIF.LIMIT; GEN.PARAM only for creation | One source of truth per customer |
+| 1 | Limits only from EB.ALBE.CIF.LIMITS; GEN.PARAM only for creation | One source of truth per customer |
 | 2 | Missing record / blank limit -> acceptable override (not error) | Business decision |
 | 3 | Count utilisation at **input**, reverse at rejection and at reversal | Unauthorised transactions must count; accepted-override transactions count |
 | 4 | Server date for counting, kept in the activity REMARKS; reversal uses that date | Day/month buckets follow when the amount was counted |
@@ -376,7 +376,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 
 | Change | Where |
 |---|---|
-| New limit type | add the field to EB.ALBE.CIF.LIMIT and GEN.PARAM key -> `Constants.KEY_*`, `Limits`, `CustomerLimitReader`, `CustomerLimitCreationService`, check in the service, override in `Constants.OVR_*` |
+| New limit type | add the field to EB.ALBE.CIF.LIMITS and GEN.PARAM key -> `Constants.KEY_*`, `Limits`, `CustomerLimitReader`, `CustomerLimitCreationService`, check in the service, override in `Constants.OVR_*` |
 | New override | EB.OVERRIDE record + `Constants.OVR_*` / `MSG_*` + `LimitBreach` via `request.addBreach(...)` |
 | Exchange rate table | `Constants.EXCH_RATE_TABLE`, `EXCH_RATE_FIELD`, `CustomerLimitRepository.readExchangeRate` |
 | Any new DB access | a method in `CustomerLimitRepository` only, logged like the others |
@@ -394,7 +394,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 2 | Attach `defaultFieldValues` of ALBE.CL.DAILY.MONTHLY in ACTIVITY.API (counted date into REMARKS) | T24 |
 | 3 | HLSD update for the deviations in section 11 | BA |
 | 4 | DEV verification of the API calls in section 12 | dev |
-| 5 | One-off creation of EB.ALBE.CIF.LIMIT for customers that already exist (separate flow) | bank / dev |
+| 5 | One-off creation of EB.ALBE.CIF.LIMITS for customers that already exist (separate flow) | bank / dev |
 | 6 | Set `LOG_DETAIL_ENABLED = false` before production | dev |
 
 ---

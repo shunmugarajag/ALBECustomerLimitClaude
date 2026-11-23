@@ -6,14 +6,14 @@ import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
+import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 
 /*-----------------------------------------------------------------------------
  * Description : Business rules for the customer limit creation (HLSD 7.2.1 - 1).
  *               Called by CustomerLimitCreationController; all DB access goes through
  *               CustomerLimitRepository.
  *
- *               create : copies EB.ALBE.GEN.PARAM CUSTOMER.LIMIT into EB.ALBE.CIF.LIMIT <customer>
+ *               create : copies EB.ALBE.GEN.PARAM CUSTOMER.LIMIT into EB.ALBE.CIF.LIMITS <customer>
  *                        if the customer has no record (an existing record is never
  *                        overwritten, so limits amended for the customer stay).
  *               Called at customer authorisation, so there is no delete flow.
@@ -47,12 +47,12 @@ public class CustomerLimitCreationService {
         // limits may have been changed for this customer. Create only when T24 says "no record".
         Boolean exists = repository.cifLimitExists(customerId);
         if (exists == null) {
-            LogUtil.error(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMIT read failed for " + customerId
+            LogUtil.error(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMITS read failed for " + customerId
                     + ", not created so an existing record is not overwritten");
             return false;
         }
         if (exists) {
-            LogUtil.info(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId
+            LogUtil.info(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMITS already exists for " + customerId
                     + " (customer amendment, limits kept)");
             return false;
         }
@@ -67,13 +67,13 @@ public class CustomerLimitCreationService {
         LogUtil.info(CLASS_NAME, METHOD_CREATE, "CALC", "generic " + genericLimits);
 
         // Copy the generic limits one-to-one into the customer's record.
-        EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
-        cifLimitRec.setCcy(ValidationUtil.nvl(genericLimits.ccy));
+        EbAlbeCifLimitsRecord cifLimitRec = repository.newCifLimitRecord();
+        cifLimitRec.setCurrency(ValidationUtil.nvl(genericLimits.ccy));
         cifLimitRec.setDailyCreditLimit(ValidationUtil.toText(genericLimits.dailyCreditLimit));
         cifLimitRec.setDailyDebitLimit(ValidationUtil.toText(genericLimits.dailyDebitLimit));
         cifLimitRec.setMonthlyCreditLimit(ValidationUtil.toText(genericLimits.monthlyCreditLimit));
         cifLimitRec.setMonthlyDebitLimit(ValidationUtil.toText(genericLimits.monthlyDebitLimit));
-        cifLimitRec.setMaxCifBalance(ValidationUtil.toText(genericLimits.maxCifBalance));
+        cifLimitRec.setMaximumOverallCifAmount(ValidationUtil.toText(genericLimits.maxCifBalance));
 
         boolean written = repository.writeCifLimit(customerId, cifLimitRec);
         LogUtil.info(CLASS_NAME, METHOD_CREATE, "END", "customer=" + customerId + " created=" + written);

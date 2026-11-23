@@ -36,15 +36,15 @@ public class CustomerLimitDTO {
     private String validationMessage;
     /** False once any limit is breached or the limit record is missing. */
     private boolean valid = true;
-    /** True when the customer has no EB.ALBE.CIF.LIMIT record. */
+    /** True when the customer has no EB.ALBE.CIF.LIMITS record. */
     private boolean limitMissing = false;
-    /** True when the EB.ALBE.CIF.LIMIT record has a blank CCY. */
+    /** True when the EB.ALBE.CIF.LIMITS record has a blank CCY. */
     private boolean limitCcyMissing = false;
     /** One entry per breached limit, raised as an override by the routine. */
     private final List<LimitBreach> breaches = new ArrayList<>();
     /** Currency of the transaction (AA.ARRANGEMENT CURRENCY). */
     private String transactionCurrency;
-    /** Currency of the customer's limits (EB.ALBE.CIF.LIMIT CCY); amounts are converted to it. */
+    /** Currency of the customer's limits (EB.ALBE.CIF.LIMITS CCY); amounts are converted to it. */
     private String limitCurrency;
     /** Rate used to convert the amount from transactionCurrency to limitCurrency (1 if same). */
     private BigDecimal exchangeRate = BigDecimal.ONE;
@@ -59,7 +59,7 @@ public class CustomerLimitDTO {
     private boolean rateMissing = false;
     /** Currency that has no rate to the limit currency (transaction or account currency). */
     private String rateMissingCurrency;
-    /** EB.ALBE.CIF.LIMIT fields that are blank; raised once as the "limit not defined" override. */
+    /** EB.ALBE.CIF.LIMITS fields that are blank; raised once as the "limit not defined" override. */
     private final List<String> undefinedLimits = new ArrayList<>();
 
     public String getCustomerId() { return customerId; }
@@ -139,7 +139,7 @@ public class CustomerLimitDTO {
     public boolean isValid() { return valid; }
     public void setValid(boolean valid) { this.valid = valid; }
 
-    /** True when the customer has no EB.ALBE.CIF.LIMIT record ("limit not defined" override). */
+    /** True when the customer has no EB.ALBE.CIF.LIMITS record ("limit not defined" override). */
     public boolean isLimitMissing() { return limitMissing; }
     public void setLimitMissing(boolean limitMissing) {
         this.limitMissing = limitMissing;
@@ -149,7 +149,7 @@ public class CustomerLimitDTO {
         }
     }
 
-    /** True when the customer's EB.ALBE.CIF.LIMIT has a blank CCY (error - blocks the transaction). */
+    /** True when the customer's EB.ALBE.CIF.LIMITS has a blank CCY (error - blocks the transaction). */
     public boolean isLimitCcyMissing() { return limitCcyMissing; }
     public void setLimitCcyMissing(boolean limitCcyMissing) {
         this.limitCcyMissing = limitCcyMissing;

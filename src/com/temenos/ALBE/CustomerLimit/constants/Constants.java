@@ -24,7 +24,7 @@ public final class Constants {
     // Logging
     // -------------------------------------------------------------------------
     /** Logger used by all classes (same as the team's L3 routines). */
-    public static final String LOGGER_NAME = "L3API";
+    public static final String LOGGER_NAME = "API";
 
     /** Tag at the start of every log line, so all Customer Limit lines can be found with one grep. */
     public static final String LOG_APP_TAG = "ALBE.CUSTOMER.LIMIT";
@@ -38,7 +38,7 @@ public final class Constants {
     // -------------------------------------------------------------------------
     // Tables / files
     // -------------------------------------------------------------------------
-    public static final String CIF_LIMIT_TABLE = "EB.ALBE.CIF.LIMIT";
+    public static final String CIF_LIMIT_TABLE = "EB.ALBE.CIF.LIMITS";
     public static final String GEN_PARAM_TABLE = "EB.ALBE.GEN.PARAM";
     public static final String UTILISED_LIMIT_TABLE = "EB.ALBE.UTILISED.LIMIT";
     public static final String TXN_DETAILS_TABLE = "EB.ALBE.TXN.DETAILS.LIMIT";
@@ -53,7 +53,8 @@ public final class Constants {
     public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
 
     // -------------------------------------------------------------------------
-    // Limit field names (EB.ALBE.CIF.LIMIT fields = EB.ALBE.GEN.PARAM CUSTOMER.LIMIT KEY.NAME values)
+    // Limit names: EB.ALBE.GEN.PARAM CUSTOMER.LIMIT KEY.NAME values (EB.ALBE.CIF.LIMITS uses the same names,
+    // except CURRENCY for CCY and MAXIMUM.OVERALL.CIF.AMOUNT for MAX.CIF.BALANCE)
     // -------------------------------------------------------------------------
     public static final String KEY_CCY = "CCY";
     public static final String KEY_DAILY_CREDIT_LIMIT = "DAILY.CREDIT.LIMIT";
@@ -61,10 +62,12 @@ public final class Constants {
     public static final String KEY_MONTHLY_CREDIT_LIMIT = "MONTHLY.CREDIT.LIMIT";
     public static final String KEY_MONTHLY_DEBIT_LIMIT = "MONTHLY.DEBIT.LIMIT";
     public static final String KEY_MAX_CIF_BALANCE = "MAX.CIF.BALANCE";
+    /** EB.ALBE.CIF.LIMITS field holding the maximum CIF balance (shown when it is blank). */
+    public static final String CIF_FIELD_MAX_CIF_AMOUNT = "MAXIMUM.OVERALL.CIF.AMOUNT";
 
     /**
      * Words in a T24 read exception that mean "record not found" (checked upper-case).
-     * Any other read exception is treated as a failure, so an existing EB.ALBE.CIF.LIMIT is
+     * Any other read exception is treated as a failure, so an existing EB.ALBE.CIF.LIMITS is
      * never overwritten because of a read problem. Confirm the exact T24 text in DEV.
      */
     public static final List<String> RECORD_NOT_FOUND_MARKERS = List.of("NOT FOUND", "NOTFOUND", "NO RECORD", "MISSING");
@@ -186,13 +189,13 @@ public final class Constants {
     public static final String OVR_MONTHLY_LIMIT_EXCEED = "EB-ALBE.MONTHLY.LIMIT.EXCEED";
     /** Overall credit/debit exceed for Customer & by & */
     public static final String OVR_MAX_CIF_BAL_EXCEED = "EB-ALBE.MAX.CIF.BAL.EXCEED";
-    /** Customer limit not defined for Customer & (no EB.ALBE.CIF.LIMIT record or a blank limit) */
+    /** Customer limit not defined for Customer & (no EB.ALBE.CIF.LIMITS record or a blank limit) */
     public static final String OVR_LIMIT_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
     /** Exchange rate not available from & to & (transaction currency, limit currency) */
     public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
     /**
      * ERROR (blocks the transaction): Limit currency not defined for Customer & - the customer's
-     * EB.ALBE.CIF.LIMIT has a blank CCY. EB.ERROR record.
+     * EB.ALBE.CIF.LIMITS has a blank CCY. EB.ERROR record.
      */
     public static final String ERR_LIMIT_CCY_MISSING = "EB-ALBE.CIF.LIMIT.CCY.MISSING";
 

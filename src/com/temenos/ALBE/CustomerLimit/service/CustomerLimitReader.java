@@ -6,13 +6,13 @@ import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
+import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
 
 /*-----------------------------------------------------------------------------
  * Description : Builds Limits from the limit records (DB access via CustomerLimitRepository).
- *               getCustomerLimits : EB.ALBE.CIF.LIMIT, record id = customer id
+ *               getCustomerLimits : EB.ALBE.CIF.LIMITS, record id = customer id
  *                                   (used by the validators; no record => "limit not defined" override).
  *               getGenericLimits  : EB.ALBE.GEN.PARAM, record CUSTOMER.LIMIT (used only by
  *                                   CustomerLimitCreationService), KEY.NAME / KEY.VALUE pairs:
@@ -36,31 +36,31 @@ public class CustomerLimitReader {
     }
 
     /**
-     * Customer's limits from EB.ALBE.CIF.LIMIT <customer id>.
+     * Customer's limits from EB.ALBE.CIF.LIMITS <customer id>.
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
         LogUtil.detail(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">"
                 + customerId);
         try {
-            EbAlbeCifLimitRecord cifLimitRec = repository.readCifLimit(customerId);
+            EbAlbeCifLimitsRecord cifLimitRec = repository.readCifLimit(customerId);
             if (cifLimitRec == null) {
-                LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for "
+                LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMITS record for "
                         + customerId);
                 return null;
             }
             Limits limits = new Limits();
-            limits.ccy = cifLimitRec.getCcy().getValue();
+            limits.ccy = cifLimitRec.getCurrency().getValue();
             limits.dailyCreditLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getDailyCreditLimit().getValue());
             limits.dailyDebitLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getDailyDebitLimit().getValue());
             limits.monthlyCreditLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getMonthlyCreditLimit().getValue());
             limits.monthlyDebitLimit = ValidationUtil.toOptionalAmount(cifLimitRec.getMonthlyDebitLimit().getValue());
-            limits.maxCifBalance = ValidationUtil.toOptionalAmount(cifLimitRec.getMaxCifBalance().getValue());
+            limits.maxCifBalance = ValidationUtil.toOptionalAmount(cifLimitRec.getMaximumOverallCifAmount().getValue());
             limits.source = Constants.CIF_LIMIT_TABLE + ">" + customerId;
             logLimits("getCustomerLimits", limits);
             return limits;
         } catch (Exception e) {
-            LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record for " + customerId);
+            LogUtil.info(CLASS_NAME, "getCustomerLimits", "NOT FOUND", "no EB.ALBE.CIF.LIMITS record for " + customerId);
             return null;
         }
     }

@@ -14,7 +14,7 @@ import com.temenos.ALBE.CustomerLimit.validation.CustomerLimitRequestValidator;
 /*-----------------------------------------------------------------------------
  * Description : The one entry point of customer limit management. It works only with
  *               TRANSACTION INFO (CustomerLimitDTO: customer, transaction, date, currency,
- *               credit or debit amount) and CUSTOMER LIMIT INFO (EB.ALBE.CIF.LIMIT), so it does
+ *               credit or debit amount) and CUSTOMER LIMIT INFO (EB.ALBE.CIF.LIMITS), so it does
  *               not depend on where the transaction comes from (FT, TELLER and other transactions on
  *               an AA account all arrive as an activity). The ACTIVITY.API routines build the
  *               transaction info and call this class:

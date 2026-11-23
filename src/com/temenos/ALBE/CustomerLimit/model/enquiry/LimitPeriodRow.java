@@ -7,7 +7,7 @@ import java.math.BigDecimal;
  *               (DAILY, period YYYYMMDD) or one month (MONTHLY, period YYYYMM), with the
  *               credit / debit limit and what was used in that period.
  *               Monthly utilised = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
- *               A null limit means "not defined" (blank in EB.ALBE.CIF.LIMIT, or no record).
+ *               A null limit means "not defined" (blank in EB.ALBE.CIF.LIMITS, or no record).
  *               Filled by CustomerLimitEnquiryService, formatted by CustomerLimitEnquiryView.
  *------------------------------------------------------------------------------
  * Modification History :

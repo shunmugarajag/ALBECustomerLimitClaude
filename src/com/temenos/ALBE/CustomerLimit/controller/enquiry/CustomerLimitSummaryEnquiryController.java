@@ -23,7 +23,7 @@ import com.temenos.t24.api.hook.system.Enquiry;
  * Description : Customer limit summary report: per customer the limits, what is used
  *               today (or on DATE) and in that month, and what is still available.
  *               Selection (both optional):
- *                 CUSTOMER  one customer; blank = every customer with an EB.ALBE.CIF.LIMIT
+ *                 CUSTOMER  one customer; blank = every customer with an EB.ALBE.CIF.LIMITS
  *                 DATE        report date YYYYMMDD; blank = server date
  *                 OVER.LIMIT  Y = only customers with a used amount above its limit
  *               Columns: see CustomerLimitEnquiryView.SUMMARY_COLUMNS.
