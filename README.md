@@ -52,7 +52,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 
 | Layer | Package | Classes | Role |
 |---|---|---|---|
-| Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version); CustomerLimitCreationSingleController = the same routine in one class (alternative, attach only one) |
+| Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version) |
 | | `controller.activity` | DailyMonthlyLimitController, MaximumCifLimitController, ActivityRequestBuilder (ACTIVITY.API) |
 | | `controller.enquiry` | CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE reports) |
 | Service | `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater | Shared: read limits; utilisation record ids / amounts / add / reverse. |
