@@ -9,7 +9,7 @@ Details: [GAPS.md](GAPS.md)
 |---|---|---|---|
 | FQ1 | Which activities / products get the routines? | all account products (current + savings), ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | 🟢 D31 |
 | FQ2 | Other actions (e.g. APPLYPAYMENT) – count? | not counted | 🟡 bank to confirm (23-Nov) |
-| FQ3 | Deposit funding – count deposit side too? | no | 🟡 |
+| FQ3 | Deposit funding – count deposit side too? | depends on the activity: counted only where the routine is attached (D31: account products → deposit side not counted) | 🟢 D32 |
 | FQ4 | Deposit payout to current account – count? | yes | 🟡 |
 | FQ5 | Interest / charges (AA-internal) – count? | yes | 🟡 |
 | FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
@@ -81,6 +81,7 @@ Details: [GAPS.md](GAPS.md)
 | D29 | Existing customers' CIF.LIMIT (and migrated monthly usage) loaded by data migration – no code |
 | D30 | C3 accepted: customer reversal may leave an unused limit record – no code change |
 | D31 | Daily/monthly routines on all account products (FQ1) |
+| D32 | Deposit side counted only if the bank attaches the routine to that activity (FQ3) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
