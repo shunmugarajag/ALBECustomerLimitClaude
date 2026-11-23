@@ -10,7 +10,7 @@ All queries and gaps in one register (raised / solved): [QUERIES_AND_GAPS.md](QU
 | G3 | Partial update when one of the three writes fails | High | behaviour decision | open – team decision |
 | G4 | REMARKS date tag can be removed on re-input | Low (was Medium) | code only | **mitigated** – ORG.SYSTEM.DATE fallback |
 | G5 | REMARKS can exceed its maximum length | Medium | field length (confirm) | open |
-| G6 | Blank CCY on EB.ALBE.CIF.LIMIT skips conversion | Medium | code only | **fixed 22-Nov-2026** – error, transaction blocked |
+| G6 | Blank CCY on EB.ALBE.CIF.LIMITS skips conversion | Medium | code only | **fixed 22-Nov-2026** – error, transaction blocked |
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
@@ -77,7 +77,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 | **Fix** | Check the length; if it does not fit, keep the tag and shorten the user text (or put the tag first). |
 | **Decision** | Confirm the REMARKS maximum length on AA.ARRANGEMENT.ACTIVITY and which text may be shortened. |
 
-## G6 – Blank CCY on EB.ALBE.CIF.LIMIT skips conversion – FIXED
+## G6 – Blank CCY on EB.ALBE.CIF.LIMITS skips conversion – FIXED
 
 | | |
 |---|---|
@@ -184,7 +184,7 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 | Item | Owner |
 |---|---|
 | HLSD update for the agreed deviations (creation as Auth routine, GEN.PARAM `CUSTOMER.LIMIT`, counted date in REMARKS, currency conversion) | BA |
-| One-off creation of EB.ALBE.CIF.LIMIT for existing customers (separate flow) | bank / dev |
+| One-off creation of EB.ALBE.CIF.LIMITS for existing customers (separate flow) | bank / dev |
 | Verify the T24 API calls listed in TECHNICAL_REFERENCE.md §12 in DEV | dev |
 | Set `Constants.LOG_DETAIL_ENABLED = false` before production | dev |
 | Housekeeping of old EB.ALBE.TXN.DETAILS.LIMIT records (keep as long as a reversal is possible) | bank / dev |

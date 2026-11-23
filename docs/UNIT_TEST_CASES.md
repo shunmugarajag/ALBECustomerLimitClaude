@@ -78,7 +78,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
 | UT-L01 | DAILY.CREDIT.LIMIT blank | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED once | Pass |
-| UT-L02 | no EB.ALBE.CIF.LIMIT record | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED once; no limit check | Pass |
+| UT-L02 | no EB.ALBE.CIF.LIMITS record | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED once; no limit check | Pass |
 | UT-L03 | MAX.CIF.BALANCE blank | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED (maximum CIF) | Pass |
 
 ## Utilisation (count at input, reverse)
@@ -110,7 +110,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
-| UT-C01 | EB.ALBE.CIF.LIMIT exists (amended customer) | customer authorised | nothing written | Pass |
+| UT-C01 | EB.ALBE.CIF.LIMITS exists (amended customer) | customer authorised | nothing written | Pass |
 | UT-C02 | no record; GEN.PARAM `CUSTOMER.LIMIT` CCY EGP, daily 5000 … | customer authorised | record created with the generic values | Pass |
 | UT-C03 | read of CIF.LIMIT fails (not "not found") | customer authorised | nothing written, error logged (never overwrite) | Pass |
 
@@ -199,7 +199,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 
 | Id | Given | Expected | Result |
 |---|---|---|---|
-| UT-H01 | EB.ALBE.CIF.LIMIT CCY blank, credit 5000 | daily/monthly and maximum CIF checks flagged limitCcyMissing | Pass |
+| UT-H01 | EB.ALBE.CIF.LIMITS CCY blank, credit 5000 | daily/monthly and maximum CIF checks flagged limitCcyMissing | Pass |
 | UT-H02 | same | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
 | UT-H04 | CCY filled again | normal check | Pass |
 

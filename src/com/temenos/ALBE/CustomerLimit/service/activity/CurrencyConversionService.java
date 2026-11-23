@@ -10,7 +10,7 @@ import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 
 /*-----------------------------------------------------------------------------
- * Description : Converts amounts to the customer's limit currency (EB.ALBE.CIF.LIMIT CCY).
+ * Description : Converts amounts to the customer's limit currency (EB.ALBE.CIF.LIMITS CCY).
  *               Same currency (or a blank currency on either side) => rate 1, no lookup.
  *               Transaction amount with the limit in local currency => the activity's LCY
  *               amount (TXN.AMOUNT.LCY), no rate lookup.

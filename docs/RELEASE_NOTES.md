@@ -14,7 +14,7 @@
 
 | Function | Delivered |
 |---|---|
-| Customer limit creation | EB.ALBE.CIF.LIMIT created from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` when a customer is authorised (CUSTOMER,ALBE.CORP); never overwritten on amendment |
+| Customer limit creation | EB.ALBE.CIF.LIMITS created from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` when a customer is authorised (CUSTOMER,ALBE.CORP); never overwritten on amendment |
 | Daily / monthly limit check | acceptable overrides on credit / debit activities; utilisation counted at input, reversed on rejection and reversal |
 | Maximum CIF balance check | acceptable override on credit activities |
 | Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ALBE.EXCH.RATE.MISSING) |
@@ -30,7 +30,7 @@ Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 | Object | Content |
 |---|---|
 | `ALBECustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 28 classes (6 controllers, 8 services, 1 repository, 6 models, 2 views, 2 validators, 2 utilities, Constants) |
-| Generated table JARs | Java API of EB.ALBE.CIF.LIMIT, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
+| Generated table JARs | Java API of EB.ALBE.CIF.LIMITS, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
 
 Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for production.
 
@@ -44,7 +44,7 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for 
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ENQ.INVALID.DATE, EB-ALBE.ENQ.INVALID.MONTH, EB-ALBE.ENQ.DATE.RANGE, EB-ALBE.ENQ.PERIOD.MANDATORY, EB-ALBE.ENQ.RANGE.TOO.LONG, EB-ALBE.ENQ.CUSTOMER.OR.DATE (EB-NO.REC.SELECT exists) | new | 14.3 |
 | 5 | EB.API | ALBE.CL.LIMIT.CREATE, ALBE.CL.DAILY.MONTHLY (or .DEF/.VAL/.UPD), ALBE.CL.MAX.CIF, ALBE.E.CUSTOMER.LIMIT.SUMMARY, ALBE.E.CUSTOMER.LIMIT.PERIOD, ALBE.E.CUSTOMER.LIMIT.TXN | new | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
-| 7 | VERSION | EB.ALBE.CIF.LIMIT,AMEND · EB.ALBE.CIF.LIMIT,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
+| 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
 | 8 | ACTIVITY.API product condition | per product: ACCOUNTS-CREDIT-ARRANGEMENT (daily/monthly: defaultFieldValues, validateRecord, postCoreTableUpdate; max CIF: validateRecord), ACCOUNTS-DEBIT-ARRANGEMENT (daily/monthly) | **changed** | 8 |
 | 9 | STANDARD.SELECTION | NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY, .PERIOD, .TXN | new | 14.1 |
 | 10 | ENQUIRY | ALBE.CUSTOMER.LIMIT.SUMMARY, ALBE.CUSTOMER.LIMIT.PERIOD, ALBE.CUSTOMER.LIMIT.TXN | new | 14.2 |
@@ -62,7 +62,7 @@ Package the T24 records (items 2–11) in a **DL.DEFINE** (or the team's usual r
 | 3 | EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` with the bank's values | record authorised |
 | 4 | EB.OVERRIDE and EB.ERROR records | records authorised |
 | 5 | EB.API records | records authorised |
-| 6 | Versions EB.ALBE.CIF.LIMIT,AMEND / ,VIEW, EB.ALBE.GEN.PARAM,LIMIT | versions open |
+| 6 | Versions EB.ALBE.CIF.LIMITS,AMEND / ,VIEW, EB.ALBE.GEN.PARAM,LIMIT | versions open |
 | 7 | STANDARD.SELECTION and ENQUIRY records | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY` runs (EB-NO.REC.SELECT is fine at this point) |
 | 8 | ACTIVITY.API conditions on the selected products; proof and publish the products | conditions active on new activities |
 | 9 | VERSION CUSTOMER,ALBE.CORP AUTH.ROUTINE | – |
@@ -76,7 +76,7 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 
 | # | Check | Expected | Log line |
 |---|---|---|---|
-| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMIT created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
+| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
 | 2 | Credit below the limit | no override; daily + monthly used updated; AAA REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
 | 3 | Credit above the daily limit | EB-ALBE.DAILY.LIMIT.EXCEED with customer and difference | `checkLimit \| BREACH` |
 | 4 | Delete the unauthorised transaction of check 3 | used back to the value after check 2 | `ACTION \| REVERSE rejected input` |
@@ -96,7 +96,7 @@ Remove the routines first so nothing new is counted, then the rest. Data written
 | 3 | Remove the menu entries and role access |
 | 4 | Reverse the release package (EB.API, ENQUIRY, STANDARD.SELECTION, versions, EB.OVERRIDE, EB.ERROR) |
 | 5 | Remove `ALBECustomerLimit.jar` from the TAFJ classpath |
-| 6 | *(optional)* keep or clear the local tables – EB.ALBE.UTILISED.LIMIT / TXN.DETAILS hold only bookkeeping; EB.ALBE.CIF.LIMIT holds the customers' limits (keep if a re-install is planned) |
+| 6 | *(optional)* keep or clear the local tables – EB.ALBE.UTILISED.LIMIT / TXN.DETAILS hold only bookkeeping; EB.ALBE.CIF.LIMITS holds the customers' limits (keep if a re-install is planned) |
 
 The `ALBE.LIMIT.DATE=…` text stays in the REMARKS of activities input while the release was active; it is plain text and harmless.
 

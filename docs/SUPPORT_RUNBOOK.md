@@ -8,7 +8,7 @@ For production support and business-user questions after go-live. How the module
 
 | When | Routine | What it does | What you see |
 |---|---|---|---|
-| Customer authorised (CUSTOMER,ALBE.CORP) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMIT `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
+| Customer authorised (CUSTOMER,ALBE.CORP) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
 | Credit / debit activity input | ALBE.CL.DAILY.MONTHLY | writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS, checks daily / monthly, counts the amount | overrides; UTILISED.LIMIT and TXN.DETAILS records |
 | Credit activity input | ALBE.CL.MAX.CIF | checks total balance against MAX.CIF.BALANCE | override |
 | Activity deleted (unauthorised) / reversed | ALBE.CL.DAILY.MONTHLY | subtracts the amount from the original day and month; deletes the TXN.DETAILS record | totals go down |
@@ -31,7 +31,7 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`; add `customer=<id>` t
 
 ### 3.1 "The customer gets 'Customer limit not defined'"
 
-1. Check EB.ALBE.CIF.LIMIT `<customer>` exists → if not, 3.3.
+1. Check EB.ALBE.CIF.LIMITS `<customer>` exists → if not, 3.3.
 2. If it exists, check none of the five limit fields is blank (a blank field = not defined).
 3. The override is acceptable – the user can accept it; the transaction is still counted.
 
@@ -45,11 +45,11 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`; add `customer=<id>` t
 
 ### 3.3 Create a missing limit record
 
-Open **EB.ALBE.CIF.LIMIT,AMEND** with the customer id, enter CCY and the five limits (normally the GEN.PARAM values), authorise. The creation routine never overwrites an existing record.
+Open **EB.ALBE.CIF.LIMITS,AMEND** with the customer id, enter CURRENCY and the five limits (normally the GEN.PARAM values), authorise. The creation routine never overwrites an existing record.
 
 ### 3.4 Change a customer's limits
 
-EB.ALBE.CIF.LIMIT,AMEND → amend → authorise. Effective for the next transaction. Changing GEN.PARAM `CUSTOMER.LIMIT` affects **new** customers only.
+EB.ALBE.CIF.LIMITS,AMEND → amend → authorise. Effective for the next transaction. Changing GEN.PARAM `CUSTOMER.LIMIT` affects **new** customers only.
 
 ### 3.5 Utilisation looks wrong (too high or too low)
 

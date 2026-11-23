@@ -4,8 +4,15 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Merged – laptop edits with GitHub (23-Nov-2026)
+- The laptop's table change (EB.ALBE.CIF.LIMITS, CURRENCY, MAXIMUM.OVERALL.CIF.AMOUNT) is merged with the GEN.PARAM key change below. Compiled with 0 errors against the real R25 libs and the generated table JARs; all unit tests pass. `.classpath` stays local.
+
 ### Changed – GEN.PARAM key names as set up in DEV (23-Nov-2026)
 - The DEV record `CUSTOMER.LIMIT` uses **CURRENCY** and **MAXIMUM.OVERALL.CIF.BALANCE**. The code now reads these (`Constants.PARAM_KEY_*`) and copies them to CIF.LIMIT CCY and MAX.CIF.BALANCE. Before, a new customer would have got a blank CCY and every transaction would have been blocked. Tests UT-K01…K04 added.
+### Changed – customer limit table EB.ALBE.CIF.LIMITS (23-Nov-2026)
+- The customer limit table is now **EB.ALBE.CIF.LIMITS** (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`); code uses the generated `EbAlbeCifLimitsRecord` / `EbAlbeCifLimitsTable`.
+- Field names on that table: **CURRENCY** (was CCY) and **MAXIMUM.OVERALL.CIF.AMOUNT** (was MAX.CIF.BALANCE); the other four limits are unchanged. GEN.PARAM `CUSTOMER.LIMIT` KEY.NAMEs are CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE (see the entry above). The "limit not defined" override now names MAXIMUM.OVERALL.CIF.AMOUNT for a blank maximum CIF limit.
+- `.classpath`: table JARs are now `lib/l3-tables/ALBE_CustomerLimitTable.jar`, `ALBE_GEN_PARAM_TABLE.jar`, `ALBE_COMM_REGOFF_TABLE.jar`.
 
 ### Fixed – SonarQube findings (23-Nov-2026)
 - Constants lists (CREDIT/DEBIT_ACTIONS, COUNTED_INITIATION_TYPES, REFERENCE_CUT_CHARS, RECORD_NOT_FOUND_MARKERS, LIMIT_EXCEED_OVERRIDES) are now read-only `List.of`, not public arrays.
@@ -28,7 +35,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ### Changed – 22-Nov-2026
 - Counted key without `.CR/.DR`: `<customer>-<date>-<reference>`. **Own-account transfers** (same customer on both sides) are not checked and not counted (user decision).
-- Blank CCY on a customer's EB.ALBE.CIF.LIMIT is now an **error** (`EB-ALBE.CIF.LIMIT.CCY.MISSING`) – the transaction is blocked (G6). Before, it was compared without conversion.
+- Blank CCY on a customer's EB.ALBE.CIF.LIMITS is now an **error** (`EB-ALBE.CIF.LIMIT.CCY.MISSING`) – the transaction is blocked (G6). Before, it was compared without conversion.
 - `Constants.AA_SKIP_TXN_SYSTEM_IDS` removed: the common counted key already prevents double counting.
 - TELLER routine parked again (not attached; teller covered by ACCOUNT.PARAMETER or ACTIVITY.API); G10 parked with it.
 

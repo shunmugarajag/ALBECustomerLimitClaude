@@ -20,7 +20,7 @@ import com.temenos.api.TField;
  *                 EB-ALBE.MONTHLY.LIMIT.EXCEED  Monthly credit/debit exceed for Customer & by &
  *                 EB-ALBE.MAX.CIF.BAL.EXCEED    Overall credit/debit exceed for Customer & by &
  *                 EB-ALBE.CIF.LIMIT.NOT.DEFINED Customer limit not defined for Customer &
- *                                               (no EB.ALBE.CIF.LIMIT record, or a limit field is blank)
+ *                                               (no EB.ALBE.CIF.LIMITS record, or a limit field is blank)
  *                 EB-ALBE.EXCH.RATE.MISSING     Exchange rate not available from & to &
  *                                               (transaction currency, limit currency)
  *
@@ -79,7 +79,7 @@ public class CustomerLimitOverride {
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " limit not defined"
-                    + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMIT record)"
+                    + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMITS record)"
                             : " (blank " + request.getUndefinedLimits() + ")"));
             texts.add(build(Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId()));
         }

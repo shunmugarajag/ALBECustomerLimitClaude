@@ -28,7 +28,7 @@ Details: [GAPS.md](GAPS.md)
 
 | # | Check | Status |
 |---|---|---|
-| TQ1 | Generate ALBE table JAR | 🔴 |
+| TQ1 | Generate ALBE table JAR | 🟢 generated (lib/l3-tables); code compiles with 0 errors against it + R25 libs, 23-Nov |
 | TQ2 | Table read locks the record? If not: lock or rebuild job (bank decides) | 🔴 |
 | TQ3 | Activity created at FT input? | 🔴 |
 | TQ4 | Activity overrides shown on FT? | 🔴 |
@@ -107,4 +107,4 @@ Details: [GAPS.md](GAPS.md)
 | C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
-**Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6. Dependency: data migration (D29).
+**Go-live blockers:** FQ1, FQ7, FQ8, TQ2–TQ6. Dependency: data migration (D29).

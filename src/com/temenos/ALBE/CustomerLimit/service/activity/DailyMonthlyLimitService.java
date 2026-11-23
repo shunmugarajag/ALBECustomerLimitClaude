@@ -20,7 +20,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *               Called by DailyMonthlyLimitController; all DB access goes through
  *               CustomerLimitRepository.
  *
- *   All amounts are compared and counted in the limit currency (EB.ALBE.CIF.LIMIT CCY):
+ *   All amounts are compared and counted in the limit currency (EB.ALBE.CIF.LIMITS CCY):
  *   a transaction in another currency is converted first (CurrencyConversionService).
  *
  *   validate      : daily  = UTILISED.CREDIT/DEBIT.LIMIT of <customer>-YYYYMMDD + txn
@@ -61,7 +61,7 @@ public class DailyMonthlyLimitService {
 
     /**
      * Daily then monthly check. Every breach / blank limit is recorded on the request;
-     * a missing EB.ALBE.CIF.LIMIT record sets limitMissing.
+     * a missing EB.ALBE.CIF.LIMITS record sets limitMissing.
      * The request has been checked by CustomerLimitRequestValidator (customer, AAA id, date,
      * one positive credit or debit amount).
      */
@@ -71,14 +71,14 @@ public class DailyMonthlyLimitService {
         Limits limits = limitReader.getCustomerLimits(request.getCustomerId());
         if (limits == null) {
             LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
-                    + " no EB.ALBE.CIF.LIMIT record, checks not possible");
+                    + " no EB.ALBE.CIF.LIMITS record, checks not possible");
             request.setLimitMissing(true);
             return;
         }
         LogUtil.info(CLASS_NAME, "validate", "CALC", "limits=" + limits);
         if (ValidationUtil.isBlank(limits.ccy)) {
             LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + request.getCustomerId()
-                    + " EB.ALBE.CIF.LIMIT CCY is blank - error, transaction blocked");
+                    + " EB.ALBE.CIF.LIMITS CCY is blank - error, transaction blocked");
             request.setLimitCcyMissing(true);
             return;
         }
@@ -255,7 +255,7 @@ public class DailyMonthlyLimitService {
     private void toLimitCurrency(CustomerLimitDTO request) {
         Limits limits = limitReader.getCustomerLimits(request.getCustomerId());
         if (limits == null) {
-            LogUtil.info(CLASS_NAME, "toLimitCurrency", "NOT FOUND", "no EB.ALBE.CIF.LIMIT record, amount counted in "
+            LogUtil.info(CLASS_NAME, "toLimitCurrency", "NOT FOUND", "no EB.ALBE.CIF.LIMITS record, amount counted in "
                     + request.getTransactionCurrency());
             return;
         }

@@ -38,7 +38,7 @@ The controllers hold no business rules and no DB access. Inside the module every
 
 ## Sample data used in the examples (reports 1 and 2)
 
-| Customer | Limits (EB.ALBE.CIF.LIMIT, EGP) | Transactions counted |
+| Customer | Limits (EB.ALBE.CIF.LIMITS, EGP) | Transactions counted |
 |---|---|---|
 | 100234 | daily CR 500,000 / DR 300,000 · monthly CR 5,000,000 / DR 3,000,000 · max CIF 10,000,000 | 30 Oct CR 300,000 · 18 Nov CR 250,000 · 19 Nov CR 520,000 (daily limit override accepted) |
 | 100345 | daily CR 200,000 / DR 200,000 · monthly CR 2,000,000 / DR 2,000,000 · max CIF 5,000,000 · **1,950,000 migrated monthly debit** | 19 Nov DR 75,000 · 20 Nov CR 230,000 (daily limit override accepted) |
@@ -47,7 +47,7 @@ The controllers hold no business rules and no DB access. Inside the module every
 Reading the numbers in every report:
 
 - **Available** = limit − used. **Negative** = over the limit (transactions accepted with the override).
-- **Blank limit** = not defined in EB.ALBE.CIF.LIMIT (available blank too).
+- **Blank limit** = not defined in EB.ALBE.CIF.LIMITS (available blank too).
 - **Monthly used** = migrated (UTILISED.MIGRATED.*) + counted (UTILISED.*).
 - **Rejected and reversed** transactions are in no report and in no used amount.
 
@@ -61,7 +61,7 @@ One line per customer for one day: each limit, used that day / that month, avail
 
 | Field | Required | Meaning |
 |---|---|---|
-| CUSTOMER | no | one customer; blank = every customer with an EB.ALBE.CIF.LIMIT record |
+| CUSTOMER | no | one customer; blank = every customer with an EB.ALBE.CIF.LIMITS record |
 | DATE | no | YYYYMMDD; blank = today (T24 date) |
 | OVER.LIMIT | no | `Y` = only customers with a used amount above its limit |
 
@@ -81,8 +81,8 @@ One line per customer for one day: each limit, used that day / that month, avail
 
 ### How it works
 
-1. Customers: the one given, or one SELECT of all EB.ALBE.CIF.LIMIT ids.
-2. Per customer **3 reads**: EB.ALBE.CIF.LIMIT `<cust>`, EB.ALBE.UTILISED.LIMIT `<cust>-YYYYMMDD` and `<cust>-YYYYMM`.
+1. Customers: the one given, or one SELECT of all EB.ALBE.CIF.LIMITS ids.
+2. Per customer **3 reads**: EB.ALBE.CIF.LIMITS `<cust>`, EB.ALBE.UTILISED.LIMIT `<cust>-YYYYMMDD` and `<cust>-YYYYMM`.
 3. One row per customer; with OVER.LIMIT = Y only rows where `isOverLimit()` is true.
 
 ### Example

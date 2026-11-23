@@ -27,7 +27,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *               Called by CustomerLimitSummaryEnquiryController and
  *               CustomerLimitTxnEnquiryController; all DB access through CustomerLimitRepository.
  *
- *   getLimitSummary : per customer, the limits from EB.ALBE.CIF.LIMIT and the utilised
+ *   getLimitSummary : per customer, the limits from EB.ALBE.CIF.LIMITS and the utilised
  *                     amounts of the report day (<customer>-YYYYMMDD) and its month
  *                     (<customer>-YYYYMM, migrated + utilised) from EB.ALBE.UTILISED.LIMIT.
  *   getDailyRows    : per customer per day with usage in a date range (daily records).
@@ -60,7 +60,7 @@ public class CustomerLimitEnquiryService {
 
     /**
      * Limit summary for one customer (customerId given) or for every customer that has an
-     * EB.ALBE.CIF.LIMIT record (customerId blank). Customers without a record are left out.
+     * EB.ALBE.CIF.LIMITS record (customerId blank). Customers without a record are left out.
      * overLimitOnly: only customers with at least one used amount above its limit.
      */
     public List<LimitSummaryRow> getLimitSummary(String customerId, LocalDate reportDate, boolean overLimitOnly) {
@@ -81,11 +81,11 @@ public class CustomerLimitEnquiryService {
         return rows;
     }
 
-    /** One customer's row; null if the customer has no EB.ALBE.CIF.LIMIT record. */
+    /** One customer's row; null if the customer has no EB.ALBE.CIF.LIMITS record. */
     private LimitSummaryRow buildSummaryRow(String customerId, LocalDate reportDate) {
         Limits limits = limitReader.getCustomerLimits(customerId);
         if (limits == null) {
-            LogUtil.detail(CLASS_NAME, "buildSummaryRow", "SKIP", "customer=" + customerId + " no EB.ALBE.CIF.LIMIT");
+            LogUtil.detail(CLASS_NAME, "buildSummaryRow", "SKIP", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS");
             return null;
         }
         EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(

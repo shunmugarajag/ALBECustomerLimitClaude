@@ -3,7 +3,7 @@ package com.temenos.ALBE.CustomerLimit.model;
 import java.math.BigDecimal;
 
 /*-----------------------------------------------------------------------------
- * Description : Limit values of one customer (from EB.ALBE.CIF.LIMIT) or the generic
+ * Description : Limit values of one customer (from EB.ALBE.CIF.LIMITS) or the generic
  *               limits (from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT). A null amount means the field
  *               is blank (limit not defined).
  *------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ public class Limits {
     public BigDecimal monthlyDebitLimit;
     /** MAX.CIF.BALANCE */
     public BigDecimal maxCifBalance;
-    /** Where the limits were read from, for logging (e.g. EB.ALBE.CIF.LIMIT>100234). */
+    /** Where the limits were read from, for logging (e.g. EB.ALBE.CIF.LIMITS>100234). */
     public String source;
 
     @Override

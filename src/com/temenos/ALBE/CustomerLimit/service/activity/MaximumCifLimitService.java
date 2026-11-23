@@ -19,9 +19,9 @@ import com.temenos.t24.api.records.account.AccountRecord;
  *
  *               total working balance of all the customer's accounts + credit amount
  *               above MAX.CIF.BALANCE => breach by the difference.
- *               No EB.ALBE.CIF.LIMIT record => limitMissing; blank MAX.CIF.BALANCE =>
+ *               No EB.ALBE.CIF.LIMITS record => limitMissing; blank MAX.CIF.BALANCE =>
  *               limit not defined. The credit amount and every account balance are converted
- *               to the limit currency (EB.ALBE.CIF.LIMIT CCY) when their currency differs.
+ *               to the limit currency (EB.ALBE.CIF.LIMITS CCY) when their currency differs.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -53,20 +53,20 @@ public class MaximumCifLimitService {
         // Step 1: customer's maximum balance limit.
         Limits limits = limitReader.getCustomerLimits(customerId);
         if (limits == null) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMIT record");
+            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS record");
             request.setLimitMissing(true);
             return;
         }
         if (ValidationUtil.isBlank(limits.ccy)) {
             LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + customerId
-                    + " EB.ALBE.CIF.LIMIT CCY is blank - error, transaction blocked");
+                    + " EB.ALBE.CIF.LIMITS CCY is blank - error, transaction blocked");
             request.setLimitCcyMissing(true);
             return;
         }
         BigDecimal maximumCifLimit = limits.maxCifBalance;
         if (maximumCifLimit == null) {
             LogUtil.info(CLASS_NAME, "validate", "NOT DEFINED", "MAX.CIF.BALANCE is blank for customer=" + customerId);
-            request.addUndefinedLimit(Constants.KEY_MAX_CIF_BALANCE);
+            request.addUndefinedLimit(Constants.CIF_FIELD_MAX_CIF_AMOUNT);
             return;
         }
 
