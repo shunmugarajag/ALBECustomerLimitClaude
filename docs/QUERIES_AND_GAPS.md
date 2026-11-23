@@ -103,7 +103,7 @@ Details: [GAPS.md](GAPS.md)
 | R6 | Validation place | 🔴 | decide |
 | C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | ⚪ | GEN.PARAM is mandatory config (D27) |
 | C2 | CIF.LIMIT write fails → customer without limits, log only | 🟡 | logged; fix via CIF.LIMIT,AMEND (GEN.PARAM missing: D27) |
-| C3 | Creation function not checked (runs on reversal too) | 🔴 | create on I/A only (offered) |
+| C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | 🔴 | fix (create on input / authorise only) or accept |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
 **Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6. Dependency: data migration (D29).
