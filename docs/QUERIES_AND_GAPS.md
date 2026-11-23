@@ -23,7 +23,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
 | FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | DEV: EGP, all 10000; keys CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE read by code | 🟢 D26 (production values from bank) |
 | FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
-| FQ17 | Count transactions that are authorised straight away (zero-auth / STP FT, COB interest / charges / standing orders)? | not counted if T24 never shows them as UNAUTH (DM1) | 🔴 |
+| FQ17 | Count transactions that are authorised straight away (zero-auth / STP FT, COB postings)? | count at the input stage only (UNAUTH), as today – no AUTH counting | 🟢 D35 |
 | FQ18 | Joint account: whose limit counts – first holder or every holder? | first holder only (DM2) | 🔴 |
 
 ## 2. DEV checks
@@ -46,6 +46,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
 | TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
+| TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 
 ## 3. Decisions
 
@@ -84,6 +85,7 @@ Details: [GAPS.md](GAPS.md)
 | D32 | Deposit side counted only if the bank attaches the routine to that activity (FQ3) |
 | D33 | Rule: every activity that has the routine attached is counted (FQ3/FQ4/FQ5) |
 | D34 | No non-AA accounts – ACTIVITY.API covers every account (FQ7) |
+| D35 | Utilisation counted at the input stage (UNAUTH) only – also for zero-auth / COB (FQ17) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -108,7 +110,7 @@ Details: [GAPS.md](GAPS.md)
 | R4 | Loose date parsing | 🟢 | strict |
 | R5 | Code tidy-up | 🔴 | offered |
 | R6 | Validation place | 🔴 | decide |
-| DM1 | Activity that reaches ACTIVITY.API only as AUTH (zero-auth / STP / COB) is never checked or counted | 🔴 | FQ17 + DEV test; fix: count at AUTH if no TXN.DETAILS |
+| DM1 | Activity that never passes the input stage (UNAUTH) is not counted | 🟡 | accepted (D35); DEV check TQ17 |
 | DM2 | Only the first CUSTOMER of a joint account is checked / counted | 🔴 | FQ18 |
 | C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | ⚪ | GEN.PARAM is mandatory config (D27) |
 | C2 | CIF.LIMIT write fails → customer without limits, log only | 🟡 | logged; fix via CIF.LIMIT,AMEND (GEN.PARAM missing: D27) |
