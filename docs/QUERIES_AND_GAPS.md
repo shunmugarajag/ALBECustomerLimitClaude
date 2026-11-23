@@ -43,7 +43,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ13 | "Record not found" text | 🔴 |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
-| TQ16 | VERSION AUTH.ROUTINE calls `postUpdateRequest` (also zero-auth); direct write allowed there | 🔴 |
+| TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🔴 |
 
 ## 3. Decisions
 
