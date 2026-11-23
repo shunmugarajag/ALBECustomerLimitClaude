@@ -10,8 +10,8 @@ Details: [GAPS.md](GAPS.md)
 | FQ1 | Which activities / products get the routines? | all account products (current + savings), ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | 🟢 D31 |
 | FQ2 | Other actions (e.g. APPLYPAYMENT) – count? | not counted | 🟡 bank to confirm (23-Nov) |
 | FQ3 | Deposit funding – count deposit side too? | depends on the activity: counted only where the routine is attached (D31: account products → deposit side not counted) | 🟢 D32 |
-| FQ4 | Deposit payout to current account – count? | yes | 🟡 |
-| FQ5 | Interest / charges (AA-internal) – count? | yes | 🟡 |
+| FQ4 | Deposit payout to current account – count? | yes – account credit activity has the routine (D33) | 🟢 D33 |
+| FQ5 | Interest / charges (AA-internal) – count? | yes, when posted by an activity that has the routine (D33) | 🟢 D33 |
 | FQ6 | Own transfer: first side may show an override – OK? | override possible | 🔴 |
 | FQ7 | Any non-AA accounts? | not covered | 🔴 |
 | FQ8 | Exchange-rate source (table, field, rate type) | LCY only | 🔴 |
@@ -82,6 +82,7 @@ Details: [GAPS.md](GAPS.md)
 | D30 | C3 accepted: customer reversal may leave an unused limit record – no code change |
 | D31 | Daily/monthly routines on all account products (FQ1) |
 | D32 | Deposit side counted only if the bank attaches the routine to that activity (FQ3) |
+| D33 | Rule: every activity that has the routine attached is counted (FQ3/FQ4/FQ5) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
