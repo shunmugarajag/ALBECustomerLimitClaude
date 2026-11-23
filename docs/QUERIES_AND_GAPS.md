@@ -7,7 +7,7 @@ Details: [GAPS.md](GAPS.md)
 
 | # | Query | Code today | Status |
 |---|---|---|---|
-| FQ1 | Which activities / products get the routines? | bank attaches | 🔴 |
+| FQ1 | Which activities / products get the routines? | all account products (current + savings), ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | 🟢 D31 |
 | FQ2 | Other actions (e.g. APPLYPAYMENT) – count? | not counted | 🟡 |
 | FQ3 | Deposit funding – count deposit side too? | no | 🟡 |
 | FQ4 | Deposit payout to current account – count? | yes | 🟡 |
@@ -78,6 +78,7 @@ Details: [GAPS.md](GAPS.md)
 | D27 | GEN.PARAM `CUSTOMER.LIMIT` is mandatory config, complete and valid – no code checks |
 | D29 | Existing customers' CIF.LIMIT (and migrated monthly usage) loaded by data migration – no code |
 | D30 | C3 accepted: customer reversal may leave an unused limit record – no code change |
+| D31 | Daily/monthly routines on all account products (FQ1) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -107,4 +108,4 @@ Details: [GAPS.md](GAPS.md)
 | C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
-**Go-live blockers:** FQ1, FQ7, FQ8, TQ2–TQ6. Dependency: data migration (D29).
+**Go-live blockers:** FQ7, FQ8, TQ2–TQ6. Dependency: data migration (D29).
