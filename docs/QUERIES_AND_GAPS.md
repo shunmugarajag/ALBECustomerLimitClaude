@@ -1,6 +1,6 @@
 # Query and Gap Register
 
-🔴 open · 🟡 assumed in code · 🟢 solved · ⚪ closed — updated 22-Nov-2026
+🔴 open · 🟡 assumed in code · 🟢 solved · ⚪ closed — updated 23-Nov-2026
 Details: [GAPS.md](GAPS.md)
 
 ## 1. Bank / BA queries
@@ -20,14 +20,14 @@ Details: [GAPS.md](GAPS.md)
 | FQ11 | Limits for existing customers + migrated usage | not built | 🔴 |
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
 | FQ13 | HLSD update for agreed deviations | – | 🔴 |
-| FQ14 | Parallel updates – lock or rebuild job? | no lock | 🔴 |
+| FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
 
 ## 2. DEV checks
 
 | # | Check | Status |
 |---|---|---|
 | TQ1 | Generate ALBE table JAR | 🔴 |
-| TQ2 | Table read locks the record? | 🔴 |
+| TQ2 | Table read locks the record? If not: lock or rebuild job (bank decides) | 🔴 |
 | TQ3 | Activity created at FT input? | 🔴 |
 | TQ4 | Activity overrides shown on FT? | 🔴 |
 | TQ5 | FT delete / reversal reach the activity? | 🔴 |
@@ -75,7 +75,7 @@ Details: [GAPS.md](GAPS.md)
 | # | Gap | Status | Fix |
 |---|---|---|---|
 | G1 | Server clock used | 🟢 | T24 date |
-| G2 | Parallel updates lose a count | 🔴 | TQ2 / FQ14 |
+| G2 | Parallel updates lose a count | 🔴 | TQ2 |
 | G3 | Partial write | 🔴 | FQ9 |
 | G4 | REMARKS tag lost | 🟡 | ORG.SYSTEM.DATE fallback |
 | G5 | REMARKS too long | 🔴 | TQ8 |
