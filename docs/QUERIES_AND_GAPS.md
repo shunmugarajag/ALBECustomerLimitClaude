@@ -43,6 +43,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ13 | "Record not found" text | 🔴 |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | 🔴 |
+| TQ16 | VERSION AUTH.ROUTINE calls `postUpdateRequest` (also zero-auth); direct write allowed there | 🔴 |
 
 ## 3. Decisions
 
@@ -97,5 +98,9 @@ Details: [GAPS.md](GAPS.md)
 | R4 | Loose date parsing | 🟢 | strict |
 | R5 | Code tidy-up | 🔴 | offered |
 | R6 | Validation place | 🔴 | decide |
+| C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | 🔴 | skip creation + ERROR (offered) |
+| C2 | GEN.PARAM missing / write fails → customer without limits, log only | 🔴 | runbook daily check (offered) |
+| C3 | Creation function not checked (runs on reversal too) | 🔴 | create on I/A only (offered) |
+| C4 | GEN.PARAM value not a number → limit blank | 🔴 | ERROR log (offered) |
 
-**Go-live blockers:** FQ1, FQ7, FQ8, FQ11, TQ1–TQ6.
+**Go-live blockers:** FQ1, FQ7, FQ8, FQ11, TQ1–TQ6, TQ16.
