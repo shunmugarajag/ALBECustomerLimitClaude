@@ -376,7 +376,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 
 | Change | Where |
 |---|---|
-| New limit type | add the field to EB.ALBE.CIF.LIMIT and GEN.PARAM key -> `Constants.KEY_*`, `Limits`, `CustomerLimitReader`, `CustomerLimitCreationService`, check in the service, override in `Constants.OVR_*` |
+| New limit type | add the field to EB.ALBE.CIF.LIMIT and GEN.PARAM key -> `Constants.KEY_*` + `PARAM_KEY_*`, `Limits`, `CustomerLimitReader`, `CustomerLimitCreationService`, check in the service, override in `Constants.OVR_*` |
 | New override | EB.OVERRIDE record + `Constants.OVR_*` / `MSG_*` + `LimitBreach` via `request.addBreach(...)` |
 | Exchange rate table | `Constants.EXCH_RATE_TABLE`, `EXCH_RATE_FIELD`, `CustomerLimitRepository.readExchangeRate` |
 | Any new DB access | a method in `CustomerLimitRepository` only, logged like the others |
@@ -416,6 +416,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 20-Nov-2026 | Period report (daily / monthly over a range), OVER.LIMIT filter, transactions for all customers |
 | 20-Nov-2026 | Transaction report OVERRIDDEN filter (overrides read from AA.ARRANGEMENT.ACTIVITY at report time; no table change); separate REPORTS.md |
 | 21-Nov-2026 | Credit / debit by AAA ACTIVITY.CLASS instead of activity name (G9); maximum CIF credit class only; REMARKS tag only on credit/debit classes |
+| 23-Nov-2026 | GEN.PARAM keys follow the DEV record: CURRENCY, MAXIMUM.OVERALL.CIF.BALANCE (`Constants.PARAM_KEY_*`, read in `CustomerLimitReader`) |
 | 23-Nov-2026 | SonarQube findings: Constants lists `List.of` (read-only), repeated log literals as class constants, unused imports removed; no logic change |
 | 22-Nov-2026 | Service sub-packages `service.activity` (engine, daily/monthly, max CIF, TXN.DETAILS recorder, conversion) and `service.customer` (creation); shared Reader / UtilizationUpdater stay in `service`; no logic change |
 | 22-Nov-2026 | Report sub-packages `model.enquiry` (report rows) and `service.enquiry` (CustomerLimitEnquiryService); no logic change |

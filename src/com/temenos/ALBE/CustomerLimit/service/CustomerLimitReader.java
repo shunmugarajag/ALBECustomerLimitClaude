@@ -23,6 +23,7 @@ import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 23-Nov-2026   Development      GEN.PARAM keys as set up in DEV: CURRENCY, MAXIMUM.OVERALL.CIF.BALANCE
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitReader {
@@ -91,22 +92,22 @@ public class CustomerLimitReader {
                 LogUtil.info(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
                 found = true;
                 switch (key.trim()) {
-                case Constants.KEY_CCY:
+                case Constants.PARAM_KEY_CCY:
                     limits.ccy = value;
                     break;
-                case Constants.KEY_DAILY_CREDIT_LIMIT:
+                case Constants.PARAM_KEY_DAILY_CREDIT_LIMIT:
                     limits.dailyCreditLimit = ValidationUtil.toOptionalAmount(value);
                     break;
-                case Constants.KEY_DAILY_DEBIT_LIMIT:
+                case Constants.PARAM_KEY_DAILY_DEBIT_LIMIT:
                     limits.dailyDebitLimit = ValidationUtil.toOptionalAmount(value);
                     break;
-                case Constants.KEY_MONTHLY_CREDIT_LIMIT:
+                case Constants.PARAM_KEY_MONTHLY_CREDIT_LIMIT:
                     limits.monthlyCreditLimit = ValidationUtil.toOptionalAmount(value);
                     break;
-                case Constants.KEY_MONTHLY_DEBIT_LIMIT:
+                case Constants.PARAM_KEY_MONTHLY_DEBIT_LIMIT:
                     limits.monthlyDebitLimit = ValidationUtil.toOptionalAmount(value);
                     break;
-                case Constants.KEY_MAX_CIF_BALANCE:
+                case Constants.PARAM_KEY_MAX_CIF_BALANCE:
                     limits.maxCifBalance = ValidationUtil.toOptionalAmount(value);
                     break;
                 default:

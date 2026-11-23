@@ -123,16 +123,16 @@ Core API JARs also needed (from the TAFJ installation): `com.temenos.api` (TFiel
 
 Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to each new customer. The id is set in `Constants.GEN_PARAM_ID`.
 
-| KEY.NAME | KEY.VALUE (example) |
-|---|---|
-| CCY | EGP *(local currency)* |
-| DAILY.CREDIT.LIMIT | 500000 |
-| DAILY.DEBIT.LIMIT | 500000 |
-| MONTHLY.CREDIT.LIMIT | 5000000 |
-| MONTHLY.DEBIT.LIMIT | 5000000 |
-| MAX.CIF.BALANCE | 10000000 |
+| KEY.NAME | KEY.VALUE (DEV, 23-Nov-2026) | Copied to CIF.LIMIT field |
+|---|---|---|
+| CURRENCY | EGP | CCY |
+| DAILY.CREDIT.LIMIT | 10000 | DAILY.CREDIT.LIMIT |
+| DAILY.DEBIT.LIMIT | 10000 | DAILY.DEBIT.LIMIT |
+| MONTHLY.CREDIT.LIMIT | 10000 | MONTHLY.CREDIT.LIMIT |
+| MONTHLY.DEBIT.LIMIT | 10000 | MONTHLY.DEBIT.LIMIT |
+| MAXIMUM.OVERALL.CIF.BALANCE | 10000 | MAX.CIF.BALANCE |
 
-The KEY.NAME values must be spelled exactly as above (`Constants.KEY_*`). Values are examples – the bank provides the real ones.
+The KEY.NAME values must be spelled exactly as above (`Constants.PARAM_KEY_*`). A misspelt CURRENCY gives new customers a blank CCY, and every transaction is then blocked (EB-ALBE.CIF.LIMIT.CCY.MISSING). Values are the DEV set-up – the bank provides the production ones.
 Changing this record later does **not** change existing customers' EB.ALBE.CIF.LIMIT records.
 
 ---

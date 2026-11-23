@@ -34,7 +34,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 
 | Table | Id | Fields used |
 |---|---|---|
-| EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE: CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE |
+| EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE (DEV record 23-Nov): **CURRENCY**, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, **MAXIMUM.OVERALL.CIF.BALANCE** (`Constants.PARAM_KEY_*`; CURRENCY → CIF.LIMIT CCY, MAXIMUM.OVERALL… → MAX.CIF.BALANCE) |
 | EB.ALBE.CIF.LIMIT | customer id | CCY + the 5 limits (same names) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
 | EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>`** (root ref = FT/TT behind the AAA, else AAA id, or entry TRANS.REFERENCE; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
@@ -136,7 +136,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
 | `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ16 (bank/BA), technical queries TQ1–TQ15 (DEV), decisions D1–D25, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 112 cases (103 pass outside T24, 9 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 116 cases (107 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

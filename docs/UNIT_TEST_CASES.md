@@ -28,8 +28,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Reports | UT-E01 … E17 | 17 | 17 | – |
 | Engine, key, own transfer | UT-G01 … G22 | 12 | 12 | – |
 | Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
+| GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **112** | **103** | **9** |
+| **Total** | | **116** | **107** | **9** |
 
 ---
 
@@ -112,6 +113,17 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-C01 | EB.ALBE.CIF.LIMIT exists (amended customer) | customer authorised | nothing written | Pass |
 | UT-C02 | no record; GEN.PARAM `CUSTOMER.LIMIT` CCY EGP, daily 5000 … | customer authorised | record created with the generic values | Pass |
 | UT-C03 | read of CIF.LIMIT fails (not "not found") | customer authorised | nothing written, error logged (never overwrite) | Pass |
+
+## GEN.PARAM keys (DEV record, 23-Nov-2026)
+
+Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four daily / monthly limits 10000, MAXIMUM.OVERALL.CIF.BALANCE 10000. When: `CustomerLimitReader.getGenericLimits`.
+
+| Id | Expected | Result |
+|---|---|---|
+| UT-K01 | key CURRENCY → limit CCY EGP | Pass |
+| UT-K02 | DAILY.CREDIT.LIMIT → 10000 | Pass |
+| UT-K03 | MONTHLY.DEBIT.LIMIT → 10000 | Pass |
+| UT-K04 | key MAXIMUM.OVERALL.CIF.BALANCE → max CIF balance 10000 | Pass |
 
 ## Counted date in REMARKS
 

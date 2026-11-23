@@ -106,12 +106,12 @@ Create the tables with these field names so the generated getters match.
 
 | KEY.NAME | KEY.VALUE |
 |---|---|
-| CCY | LCY |
+| CURRENCY | LCY (→ CIF.LIMIT CCY) |
 | DAILY.CREDIT.LIMIT | daily credit limit |
 | DAILY.DEBIT.LIMIT | daily debit limit |
 | MONTHLY.CREDIT.LIMIT | monthly credit limit |
 | MONTHLY.DEBIT.LIMIT | monthly debit limit |
-| MAX.CIF.BALANCE | maximum CIF balance |
+| MAXIMUM.OVERALL.CIF.BALANCE | maximum CIF balance (→ CIF.LIMIT MAX.CIF.BALANCE) |
 
 **EB.ALBE.CIF.LIMIT** (id: customer id) – create EB.TABLE.DEFINITION `ALBE.CIF.LIMIT` with these field names
 

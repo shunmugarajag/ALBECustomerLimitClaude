@@ -53,7 +53,7 @@ public final class Constants {
     public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
 
     // -------------------------------------------------------------------------
-    // Limit field names (EB.ALBE.CIF.LIMIT fields = EB.ALBE.GEN.PARAM CUSTOMER.LIMIT KEY.NAME values)
+    // Limit field names of EB.ALBE.CIF.LIMIT (also used as limit names in logs / overrides)
     // -------------------------------------------------------------------------
     public static final String KEY_CCY = "CCY";
     public static final String KEY_DAILY_CREDIT_LIMIT = "DAILY.CREDIT.LIMIT";
@@ -61,6 +61,18 @@ public final class Constants {
     public static final String KEY_MONTHLY_CREDIT_LIMIT = "MONTHLY.CREDIT.LIMIT";
     public static final String KEY_MONTHLY_DEBIT_LIMIT = "MONTHLY.DEBIT.LIMIT";
     public static final String KEY_MAX_CIF_BALANCE = "MAX.CIF.BALANCE";
+
+    // -------------------------------------------------------------------------
+    // EB.ALBE.GEN.PARAM CUSTOMER.LIMIT KEY.NAME values (as set up in DEV, 23-Nov-2026).
+    // Two differ from the EB.ALBE.CIF.LIMIT field names: CURRENCY (-> CCY) and
+    // MAXIMUM.OVERALL.CIF.BALANCE (-> MAX.CIF.BALANCE).
+    // -------------------------------------------------------------------------
+    public static final String PARAM_KEY_CCY = "CURRENCY";
+    public static final String PARAM_KEY_DAILY_CREDIT_LIMIT = KEY_DAILY_CREDIT_LIMIT;
+    public static final String PARAM_KEY_DAILY_DEBIT_LIMIT = KEY_DAILY_DEBIT_LIMIT;
+    public static final String PARAM_KEY_MONTHLY_CREDIT_LIMIT = KEY_MONTHLY_CREDIT_LIMIT;
+    public static final String PARAM_KEY_MONTHLY_DEBIT_LIMIT = KEY_MONTHLY_DEBIT_LIMIT;
+    public static final String PARAM_KEY_MAX_CIF_BALANCE = "MAXIMUM.OVERALL.CIF.BALANCE";
 
     /**
      * Words in a T24 read exception that mean "record not found" (checked upper-case).

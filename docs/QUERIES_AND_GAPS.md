@@ -21,7 +21,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
 | FQ13 | HLSD update for agreed deviations | – | 🔴 |
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
-| FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | record to set up | 🔴 user sharing the record |
+| FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | DEV: EGP, all 10000; keys CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE read by code | 🟢 D26 (production values from bank) |
 | FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
 
 ## 2. DEV checks
@@ -73,6 +73,7 @@ Details: [GAPS.md](GAPS.md)
 | D23 | Migrated usage: monthly check only |
 | D24 | CIF.LIMIT created by direct write (no OFS) |
 | D25 | Limit creation only on VERSION CUSTOMER,ALBE.CORP |
+| D26 | Code follows the GEN.PARAM key names as set up in DEV |
 
 ## 4. Gaps
 
