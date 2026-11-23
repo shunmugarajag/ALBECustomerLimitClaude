@@ -3,6 +3,7 @@ package com.temenos.ALBE.CustomerLimit.constants;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
+import java.util.List;
 
 /*-----------------------------------------------------------------------------
  * Description : All constants of the customer limit routines in one place.
@@ -66,7 +67,7 @@ public final class Constants {
      * Any other read exception is treated as a failure, so an existing EB.ALBE.CIF.LIMIT is
      * never overwritten because of a read problem. Confirm the exact T24 text in DEV.
      */
-    public static final String[] RECORD_NOT_FOUND_MARKERS = { "NOT FOUND", "NOTFOUND", "NO RECORD", "MISSING" };
+    public static final List<String> RECORD_NOT_FOUND_MARKERS = List.of("NOT FOUND", "NOTFOUND", "NO RECORD", "MISSING");
 
     // -------------------------------------------------------------------------
     // Counted date kept in the activity REMARKS (no extra table field)
@@ -98,15 +99,15 @@ public final class Constants {
     /** Position of the ACTION in the activity class id (0 = product line). */
     public static final int ACTIVITY_CLASS_ACTION_POS = 1;
     /** Class actions that move money INTO the account (counted as credit), any product line. */
-    public static final String[] CREDIT_ACTIONS = { "CREDIT" };
+    public static final List<String> CREDIT_ACTIONS = List.of("CREDIT");
     /** Class actions that move money OUT of the account (counted as debit), any product line. */
-    public static final String[] DEBIT_ACTIONS = { "DEBIT" };
+    public static final List<String> DEBIT_ACTIONS = List.of("DEBIT");
     /**
      * AAA INITIATION.TYPE values that are counted (agreed: all types). Remove a value here to stop
      * counting it, e.g. SECONDARY (charges) or SCHEDULED*EOD. A blank type is always counted.
      */
-    public static final String[] COUNTED_INITIATION_TYPES = { "USER", "TRANSACTION", "SECONDARY", "SCHEDULED*SOD",
-            "SCHEDULED*EOD", "PAY*SOD", "PAY*EOD", "NOLOG" };
+    public static final List<String> COUNTED_INITIATION_TYPES = List.of("USER", "TRANSACTION", "SECONDARY", "SCHEDULED*SOD",
+            "SCHEDULED*EOD", "PAY*SOD", "PAY*EOD", "NOLOG");
 
     // -------------------------------------------------------------------------
     // Counted transaction key - the same for every place a routine is attached
@@ -116,7 +117,7 @@ public final class Constants {
      * "FT26091ABCDE;1" (history) both become "FT26091ABCDE". An activity is counted under the
      * root of its TXN.CONTRACT.ID (the FT / TT behind it), else its own id.
      */
-    public static final String[] REFERENCE_CUT_CHARS = { "\\", ";" };
+    public static final List<String> REFERENCE_CUT_CHARS = List.of("\\", ";");
 
     // -------------------------------------------------------------------------
     // Transactions behind an activity (transaction report reads their overrides)
@@ -202,8 +203,8 @@ public final class Constants {
     /** Separator of the override ids in the transaction report OVERRIDES column. */
     public static final String OVERRIDE_LIST_SEPARATOR = " ";
     /** Overrides that mean "accepted above a limit" (transaction report OVERRIDDEN = Y). */
-    public static final String[] LIMIT_EXCEED_OVERRIDES = { OVR_DAILY_LIMIT_EXCEED, OVR_MONTHLY_LIMIT_EXCEED,
-            OVR_MAX_CIF_BAL_EXCEED };
+    public static final List<String> LIMIT_EXCEED_OVERRIDES = List.of(OVR_DAILY_LIMIT_EXCEED, OVR_MONTHLY_LIMIT_EXCEED,
+            OVR_MAX_CIF_BAL_EXCEED);
 
     // -------------------------------------------------------------------------
     // Messages (HLSD text, used for logging; %s = customer id, difference)

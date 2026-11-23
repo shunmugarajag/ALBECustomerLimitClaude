@@ -4,6 +4,10 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Fixed – SonarQube findings (23-Nov-2026)
+- Constants lists (CREDIT/DEBIT_ACTIONS, COUNTED_INITIATION_TYPES, REFERENCE_CUT_CHARS, RECORD_NOT_FOUND_MARKERS, LIMIT_EXCEED_OVERRIDES) are now read-only `List.of`, not public arrays.
+- Repeated log literals moved to class constants; unused imports removed; a header line read as commented-out code reworded. No logic change.
+
 ### Changed – service sub-packages (22-Nov-2026)
 - `service.activity`: CustomerLimitEngine, DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder, CurrencyConversionService. `service.customer`: CustomerLimitCreationService. Shared CustomerLimitReader and CustomerLimitUtilizationUpdater stay in `service`. No logic change; EB.API entries unchanged.
 

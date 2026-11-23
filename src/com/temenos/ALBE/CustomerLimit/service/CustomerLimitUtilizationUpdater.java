@@ -2,7 +2,6 @@ package com.temenos.ALBE.CustomerLimit.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
@@ -32,6 +31,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  */
 public class CustomerLimitUtilizationUpdater {
     private static final String CLASS_NAME = "CustomerLimitUtilizationUpdater";
+    private static final String LABEL_RECORD = "record=";
 
     private final CustomerLimitRepository repository;
 
@@ -116,10 +116,10 @@ public class CustomerLimitUtilizationUpdater {
             utilRec.setUtilisedDebitLimit(newDebit);
             repository.writeUtilisedLimit(recordId, utilRec);
 
-            LogUtil.info(CLASS_NAME, "addToRecord", "UPDATED", "record=" + recordId
+            LogUtil.info(CLASS_NAME, "addToRecord", "UPDATED", LABEL_RECORD + recordId
                     + " credit " + oldCredit + " -> " + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", "record=" + recordId, e);
+            LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", LABEL_RECORD + recordId, e);
         }
     }
 
@@ -127,10 +127,10 @@ public class CustomerLimitUtilizationUpdater {
     private EbAlbeUtilisedLimitRecord readOrCreate(String recordId) {
         EbAlbeUtilisedLimitRecord utilRec = repository.readUtilisedLimit(recordId);
         if (utilRec != null) {
-            LogUtil.detail(CLASS_NAME, "readOrCreate", "FOUND", "record=" + recordId);
+            LogUtil.detail(CLASS_NAME, "readOrCreate", "FOUND", LABEL_RECORD + recordId);
             return utilRec;
         }
-        LogUtil.info(CLASS_NAME, "readOrCreate", "NEW", "record=" + recordId);
+        LogUtil.info(CLASS_NAME, "readOrCreate", "NEW", LABEL_RECORD + recordId);
         return repository.newUtilisedLimitRecord();
     }
 

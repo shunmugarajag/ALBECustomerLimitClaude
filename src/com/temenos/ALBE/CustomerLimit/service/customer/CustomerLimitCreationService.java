@@ -25,6 +25,7 @@ import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
  */
 public class CustomerLimitCreationService {
     private static final String CLASS_NAME = "CustomerLimitCreationService";
+    private static final String METHOD_CREATE = "create";
 
     private final CustomerLimitRepository repository;
     private final CustomerLimitReader limitReader;
@@ -40,30 +41,30 @@ public class CustomerLimitCreationService {
      * @return true if a record was created; false if it already existed or could not be created
      */
     public boolean create(String customerId) {
-        LogUtil.info(CLASS_NAME, "create", "START", "customer=" + customerId);
+        LogUtil.info(CLASS_NAME, METHOD_CREATE, "START", "customer=" + customerId);
 
         // Never overwrite: the customer is authorised again after every amendment, and the
         // limits may have been changed for this customer. Create only when T24 says "no record".
         Boolean exists = repository.cifLimitExists(customerId);
         if (exists == null) {
-            LogUtil.error(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT read failed for " + customerId
+            LogUtil.error(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMIT read failed for " + customerId
                     + ", not created so an existing record is not overwritten");
             return false;
         }
         if (exists) {
-            LogUtil.info(CLASS_NAME, "create", "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId
+            LogUtil.info(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMIT already exists for " + customerId
                     + " (customer amendment, limits kept)");
             return false;
         }
 
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
-            LogUtil.error(CLASS_NAME, "create", "NOT FOUND",
+            LogUtil.error(CLASS_NAME, METHOD_CREATE, "NOT FOUND",
                     Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " not found, limit not created for "
                     + customerId);
             return false;
         }
-        LogUtil.info(CLASS_NAME, "create", "CALC", "generic " + genericLimits);
+        LogUtil.info(CLASS_NAME, METHOD_CREATE, "CALC", "generic " + genericLimits);
 
         // Copy the generic limits one-to-one into the customer's record.
         EbAlbeCifLimitRecord cifLimitRec = repository.newCifLimitRecord();
@@ -75,7 +76,7 @@ public class CustomerLimitCreationService {
         cifLimitRec.setMaxCifBalance(ValidationUtil.toText(genericLimits.maxCifBalance));
 
         boolean written = repository.writeCifLimit(customerId, cifLimitRec);
-        LogUtil.info(CLASS_NAME, "create", "END", "customer=" + customerId + " created=" + written);
+        LogUtil.info(CLASS_NAME, METHOD_CREATE, "END", "customer=" + customerId + " created=" + written);
         return written;
     }
 }

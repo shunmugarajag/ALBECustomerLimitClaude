@@ -23,6 +23,8 @@ Tick every line before a change is merged to `main`. These are the project's sta
 - [ ] **No inner classes, no interfaces**, no nested types.
 - [ ] **No `final` classes except `Constants`**; utility classes have a private constructor.
 - [ ] **All literals in `Constants`** (table names, ids, field / key names, override and error ids, messages, selection field names, limits, formats).
+- [ ] Shared lists in `Constants` are `List.of(...)` (read-only), never public arrays. A log method / event / label used more than twice is a `private static final` in the class (like `CLASS_NAME`).
+- [ ] **SonarQube for IDE** (Design Studio: right-click project → SonarQube → Analyze) shows no issues; no unused imports, no commented-out code.
 - [ ] No static mutable state (no cached session / records between calls).
 - [ ] Amounts as `BigDecimal` (never `double`), 2 decimals HALF_UP for converted amounts.
 - [ ] Dates parsed with `ValidationUtil.toDate` / `toMonth` (strict).

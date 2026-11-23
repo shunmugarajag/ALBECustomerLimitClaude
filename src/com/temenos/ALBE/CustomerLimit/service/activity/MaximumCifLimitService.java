@@ -10,7 +10,6 @@ import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.ALBE.CustomerLimit.view.CustomerLimitOverride;
 import com.temenos.t24.api.records.account.AccountRecord;
 
 /*-----------------------------------------------------------------------------

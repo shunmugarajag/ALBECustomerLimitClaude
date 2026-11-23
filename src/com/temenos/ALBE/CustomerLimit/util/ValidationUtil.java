@@ -3,6 +3,7 @@ package com.temenos.ALBE.CustomerLimit.util;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 
@@ -142,15 +143,7 @@ public class ValidationUtil {
     }
 
     /** True when value (not blank) is one of the values (exact, case sensitive like T24 ids). */
-    public static boolean contains(String[] values, String value) {
-        if (isBlank(value)) {
-            return false;
-        }
-        for (String candidate : values) {
-            if (candidate.equals(value)) {
-                return true;
-            }
-        }
-        return false;
+    public static boolean contains(List<String> values, String value) {
+        return !isBlank(value) && values.contains(value);
     }
 }

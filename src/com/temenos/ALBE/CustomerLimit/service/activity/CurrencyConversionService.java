@@ -14,8 +14,8 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
  *               Same currency (or a blank currency on either side) => rate 1, no lookup.
  *               Transaction amount with the limit in local currency => the activity's LCY
  *               amount (TXN.AMOUNT.LCY), no rate lookup.
- *               Otherwise different currency => rate from CustomerLimitRepository.readExchangeRate;
- *               no rate => the caller is told (null / rateMissing).
+ *               Otherwise different currency => rate from CustomerLimitRepository.readExchangeRate.
+ *               No rate => the caller is told (null / rateMissing).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -25,6 +25,9 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
  */
 public class CurrencyConversionService {
     private static final String CLASS_NAME = "CurrencyConversionService";
+    private static final String METHOD_GET_RATE = "getRate";
+    private static final String METHOD_CONVERT_REQUEST = "convertRequest";
+    private static final String LABEL_FROM = "from=";
 
     private final CustomerLimitRepository repository;
 
@@ -39,15 +42,15 @@ public class CurrencyConversionService {
     public BigDecimal getRate(String fromCcy, String toCcy) {
         if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy,
                 toCcy)) {
-            LogUtil.info(CLASS_NAME, "getRate", "CALC", "from=" + fromCcy + " to=" + toCcy + " same currency, rate=1");
+            LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " same currency, rate=1");
             return Constants.SAME_CURRENCY_RATE;
         }
         BigDecimal rate = repository.readExchangeRate(fromCcy.trim(), toCcy.trim());
         if (rate == null || rate.signum() <= 0) {
-            LogUtil.error(CLASS_NAME, "getRate", "NO RATE", "from=" + fromCcy + " to=" + toCcy + " NO RATE");
+            LogUtil.error(CLASS_NAME, METHOD_GET_RATE, "NO RATE", LABEL_FROM + fromCcy + " to=" + toCcy + " NO RATE");
             return null;
         }
-        LogUtil.info(CLASS_NAME, "getRate", "CALC", "from=" + fromCcy + " to=" + toCcy + " rate=" + rate);
+        LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " rate=" + rate);
         return rate;
     }
 
@@ -96,7 +99,7 @@ public class CurrencyConversionService {
             } else {
                 request.setDebitAmount(converted);
             }
-            LogUtil.info(CLASS_NAME, "convertRequest", "CALC", "customer=" + request.getCustomerId() + " " + amount
+            LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount
                     + " " + request.getTransactionCurrency() + " = " + converted + " " + limitCcy
                     + " (LCY amount from the activity)");
             return true;
@@ -104,7 +107,7 @@ public class CurrencyConversionService {
 
         BigDecimal rate = getRate(request.getTransactionCurrency(), limitCcy);
         if (rate == null) {
-            LogUtil.error(CLASS_NAME, "convertRequest", "NO RATE", request.logKey() + " no rate from "
+            LogUtil.error(CLASS_NAME, METHOD_CONVERT_REQUEST, "NO RATE", request.logKey() + " no rate from "
                     + request.getTransactionCurrency() + " to " + limitCcy);
             request.setRateMissing(request.getTransactionCurrency());
             return false;
@@ -117,7 +120,7 @@ public class CurrencyConversionService {
         } else {
             request.setDebitAmount(converted);
         }
-        LogUtil.info(CLASS_NAME, "convertRequest", "CALC", "customer=" + request.getCustomerId() + " " + amount + " "
+        LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount + " "
                 + request.getTransactionCurrency() + " x " + rate + " = " + converted + " " + limitCcy);
         return true;
     }
