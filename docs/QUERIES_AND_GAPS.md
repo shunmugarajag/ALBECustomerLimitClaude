@@ -23,6 +23,8 @@ Details: [GAPS.md](GAPS.md)
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
 | FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | DEV: EGP, all 10000; keys CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE read by code | 🟢 D26 (production values from bank) |
 | FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
+| FQ17 | Count transactions that are authorised straight away (zero-auth / STP FT, COB interest / charges / standing orders)? | not counted if T24 never shows them as UNAUTH (DM1) | 🔴 |
+| FQ18 | Joint account: whose limit counts – first holder or every holder? | first holder only (DM2) | 🔴 |
 
 ## 2. DEV checks
 
@@ -103,6 +105,8 @@ Details: [GAPS.md](GAPS.md)
 | R4 | Loose date parsing | 🟢 | strict |
 | R5 | Code tidy-up | 🔴 | offered |
 | R6 | Validation place | 🔴 | decide |
+| DM1 | Activity that reaches ACTIVITY.API only as AUTH (zero-auth / STP / COB) is never checked or counted | 🔴 | FQ17 + DEV test; fix: count at AUTH if no TXN.DETAILS |
+| DM2 | Only the first CUSTOMER of a joint account is checked / counted | 🔴 | FQ18 |
 | C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | ⚪ | GEN.PARAM is mandatory config (D27) |
 | C2 | CIF.LIMIT write fails → customer without limits, log only | 🟡 | logged; fix via CIF.LIMIT,AMEND (GEN.PARAM missing: D27) |
 | C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
