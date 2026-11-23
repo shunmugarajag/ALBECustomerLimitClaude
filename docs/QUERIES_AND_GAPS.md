@@ -17,7 +17,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ8 | Exchange-rate source (table, field, rate type) | LCY only | 🔴 |
 | FQ9 | Limit write fails – block or let through? | let through | 🔴 |
 | FQ10 | CIF.LIMIT creation – direct write or OFS (audit)? | direct write | 🟢 D24 |
-| FQ11 | Limits for existing customers + migrated usage | not built | 🔴 |
+| FQ11 | Limits for existing customers + migrated usage | data migration loads them (DATA_MIGRATION.md) | 🟢 D29 |
 | FQ12 | Keep TXN.DETAILS records how long? | forever | 🔴 |
 | FQ13 | HLSD update for agreed deviations | – | 🔴 |
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
@@ -76,6 +76,7 @@ Details: [GAPS.md](GAPS.md)
 | D25 | Limit creation only on VERSION CUSTOMER,ALBE.CORP |
 | D26 | Code follows the GEN.PARAM key names as set up in DEV |
 | D27 | GEN.PARAM `CUSTOMER.LIMIT` is mandatory config, complete and valid – no code checks |
+| D29 | Existing customers' CIF.LIMIT (and migrated monthly usage) loaded by data migration – no code |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -105,4 +106,4 @@ Details: [GAPS.md](GAPS.md)
 | C3 | Creation function not checked (runs on reversal too) | 🔴 | create on I/A only (offered) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
-**Go-live blockers:** FQ1, FQ7, FQ8, FQ11, TQ1–TQ6, TQ16.
+**Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6, TQ16. Dependency: data migration (D29).
