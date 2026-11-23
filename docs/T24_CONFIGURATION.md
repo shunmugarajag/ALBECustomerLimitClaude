@@ -84,7 +84,7 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 
 ### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – no change)*
 
-ID (HLSD): **`<customer>-<YYYYMMDD>-<AAA id>`**, e.g. `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
+ID: **`<customer>-<YYYYMMDD>-<root ref>`** – root ref = the FT / TT behind the activity (TXN.CONTRACT.ID), else the AAA id – e.g. `100234-20261120-FT26324ABCDE` or `100234-20261120-AAACT2632400001` (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
 
 | Field | Type | Value |
 |---|---|---|
