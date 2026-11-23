@@ -24,7 +24,7 @@ Details: [GAPS.md](GAPS.md)
 | FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | DEV: EGP, all 10000; keys CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE read by code | 🟢 D26 (production values from bank) |
 | FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
 | FQ17 | Count transactions that are authorised straight away (zero-auth / STP FT, COB postings)? | count at the input stage only (UNAUTH), as today – no AUTH counting | 🟢 D35 |
-| FQ18 | Joint account: whose limit counts – first holder or every holder? | first holder only (DM2) | 🔴 |
+| FQ18 | Joint account: whose limit counts? | no joint accounts at the bank (23-Nov) | ⚪ D38 |
 
 ## 2. DEV checks
 
@@ -89,6 +89,7 @@ Details: [GAPS.md](GAPS.md)
 | D35 | Utilisation counted at the input stage (UNAUTH) only – also for zero-auth / COB (FQ17) |
 | D36 | Daily/monthly: amount in EGP (LCY) taken from the activity (TXN.AMOUNT.LCY) – no rate table (FQ8) |
 | D37 | Utilisation / TXN.DETAILS write fails → block the transaction (FQ9, G3) |
+| D38 | No joint accounts – first CUSTOMER of the arrangement is the only holder (FQ18) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -114,7 +115,7 @@ Details: [GAPS.md](GAPS.md)
 | R5 | Code tidy-up | 🔴 | offered |
 | R6 | Validation place | 🔴 | decide |
 | DM1 | Activity that never passes the input stage (UNAUTH) is not counted | 🟡 | accepted (D35); DEV check TQ17 |
-| DM2 | Only the first CUSTOMER of a joint account is checked / counted | 🔴 | FQ18 |
+| DM2 | Only the first CUSTOMER of a joint account is checked / counted | ⚪ | no joint accounts (D38) |
 | C1 | GEN.PARAM CURRENCY blank → CIF.LIMIT with blank CCY → every txn blocked | ⚪ | GEN.PARAM is mandatory config (D27) |
 | C2 | CIF.LIMIT write fails → customer without limits, log only | 🟡 | logged; fix via CIF.LIMIT,AMEND (GEN.PARAM missing: D27) |
 | C3 | Customer reversal also runs the Auth routine: it only creates a limit record if none exists (normally one already does) – at worst a harmless record for a reversed customer | ⚪ | accepted, no code change (D30) |
