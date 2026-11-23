@@ -8,7 +8,7 @@ Details: [GAPS.md](GAPS.md)
 | # | Query | Code today | Status |
 |---|---|---|---|
 | FQ1 | Which activities / products get the routines? | all account products (current + savings), ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | 🟢 D31 |
-| FQ2 | Other actions (e.g. APPLYPAYMENT) – count? | not counted | 🟡 |
+| FQ2 | Other actions (e.g. APPLYPAYMENT) – count? | not counted | 🟡 bank to confirm (23-Nov) |
 | FQ3 | Deposit funding – count deposit side too? | no | 🟡 |
 | FQ4 | Deposit payout to current account – count? | yes | 🟡 |
 | FQ5 | Interest / charges (AA-internal) – count? | yes | 🟡 |
