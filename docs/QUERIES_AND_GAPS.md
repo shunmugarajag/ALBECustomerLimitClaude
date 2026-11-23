@@ -43,7 +43,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ13 | "Record not found" text | 🔴 |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
-| TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🔴 |
+| TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
 
 ## 3. Decisions
 
@@ -106,4 +106,4 @@ Details: [GAPS.md](GAPS.md)
 | C3 | Creation function not checked (runs on reversal too) | 🔴 | create on I/A only (offered) |
 | C4 | GEN.PARAM value not a number → limit blank | ⚪ | GEN.PARAM is mandatory config (D27) |
 
-**Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6, TQ16. Dependency: data migration (D29).
+**Go-live blockers:** FQ1, FQ7, FQ8, TQ1–TQ6. Dependency: data migration (D29).
