@@ -195,7 +195,7 @@ total + credit > MAX.CIF.BALANCE -> breach (difference)
 |---|---|
 | same currency, or either currency blank | 1 |
 | different currencies | `CustomerLimitRepository.readExchangeRate(from, to)` |
-| no rate found | override EB-ALBE.EXCH.RATE.MISSING, check skipped |
+| no rate found | override EB-ABLE.EXCH.RATE.MISSING, check skipped |
 
 Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
 **Pending:** the rate table and field are not configured yet (`Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD` are empty), so today only same-currency transactions are checked; other currencies raise the rate-missing override.
@@ -222,11 +222,11 @@ Full description, columns, examples and T24 set-up: **[REPORTS.md](REPORTS.md)**
 
 | Id | Message (EB.OVERRIDE) | Parameters | Raised when |
 |---|---|---|---|
-| EB-ALBE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer, difference | daily breach |
-| EB-ALBE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer, difference | monthly breach |
-| EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer, difference | maximum CIF breach |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
-| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from CCY, to CCY | no rate |
+| EB-ABLE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer, difference | daily breach |
+| EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer, difference | monthly breach |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer, difference | maximum CIF breach |
+| EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from CCY, to CCY | no rate |
 
 Raised by `CustomerLimitOverride.raiseFor` as `TField.setOverride(id FM param1 VM param2)` on TXN.AMOUNT.
 

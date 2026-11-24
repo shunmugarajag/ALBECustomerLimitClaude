@@ -31,7 +31,7 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R17 | 7.2.1 Daily | Debit: same with daily debit | same, debit side | UT-D04, #10, use case 8.5 | Done |
 | R18 | 7.2.1 Monthly | Credit: utilised monthly credit (`custid-YYYYMM`) + amount > limit → override "Monthly credit/debit exceed …" | `validateMonthlyLimit` | UT-M01, use case 8.3 | Done |
 | R19 | 7.2.1 Monthly | Debit: same with monthly debit | same, debit side | UT-M02, #11, use case 8.6 | Done |
-| R20 | 7.2.1 | EB.OVERRIDE record for each message | EB-ALBE.DAILY.LIMIT.EXCEED, EB-ALBE.MONTHLY.LIMIT.EXCEED, EB-ALBE.MAX.CIF.BAL.EXCEED (+ 2 module overrides) | #4 | Done (config) |
+| R20 | 7.2.1 | EB.OVERRIDE record for each message | EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED (+ 2 module overrides) | #4 | Done (config) |
 | R21 | 7.2.1 | If not exceeded, update the utilised limit | counted at input in `postCoreTableUpdate` (UNAUTH) – **also when the override is accepted** | UT-U01, UT-U03 | Deviation D5 |
 | R22 | 1 / 7.2.1 | Input and deletion logic to be handled | re-input replaces the earlier amount; DELETE and AUTH-REV reverse from the original day / month | UT-U03…U06, #6 #7 #9 | Done |
 | R23 | 7.2.1 Maximum | Credit: total working balance of all customer accounts + amount > MAX.CIF.BALANCE → override "Overall credit/debit exceed …" | `MaximumCifLimitController` → `MaximumCifLimitService` | UT-X01, #12, use case 8.4 | Done |

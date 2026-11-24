@@ -53,7 +53,7 @@ public class CustomerLimitEnquiryView {
     /**
      * Transaction columns:
      *  1 CUSTOMER  2 TXN.ID (counted key <reference>.<CR|DR>)  3 ACCOUNT.NO  4 CR.DR  5 TXN.AMOUNT  6 EFF.DATE  7 COUNTED.DATE  8 RECORD.ID
-     *  9 OVERRIDES (accepted EB-ALBE.* overrides, space separated)  10 TXN.REF (FT / TT reference)
+     *  9 OVERRIDES (accepted EB-ABLE.* overrides, space separated)  10 TXN.REF (FT / TT reference)
      */
     public static final String TXN_COLUMNS =
             "CUSTOMER*TXN.ID*ACCOUNT.NO*CR.DR*TXN.AMOUNT*EFF.DATE*COUNTED.DATE*RECORD.ID*OVERRIDES*TXN.REF";

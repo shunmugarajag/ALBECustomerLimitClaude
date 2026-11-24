@@ -195,16 +195,17 @@ public final class Constants {
     // -------------------------------------------------------------------------
     // EB.OVERRIDE ids
     // -------------------------------------------------------------------------
+    // EB.OVERRIDE ids spelled EB-ABLE.* exactly as created in DEV (23/24-Nov-2026); the EB.ERROR ids stay EB-ALBE.*.
     /** Daily credit/debit exceed for Customer & by & */
-    public static final String OVR_DAILY_LIMIT_EXCEED = "EB-ALBE.DAILY.LIMIT.EXCEED";
+    public static final String OVR_DAILY_LIMIT_EXCEED = "EB-ABLE.DAILY.LIMIT.EXCEED";
     /** Monthly credit/debit exceed for Customer & by & */
-    public static final String OVR_MONTHLY_LIMIT_EXCEED = "EB-ALBE.MONTHLY.LIMIT.EXCEED";
+    public static final String OVR_MONTHLY_LIMIT_EXCEED = "EB-ABLE.MONTHLY.LIMIT.EXCEED";
     /** Overall credit/debit exceed for Customer & by & */
-    public static final String OVR_MAX_CIF_BAL_EXCEED = "EB-ALBE.MAX.CIF.BAL.EXCEED";
+    public static final String OVR_MAX_CIF_BAL_EXCEED = "EB-ABLE.MAX.CIF.BAL.EXCEED";
     /** Customer limit not defined for Customer & (no EB.ALBE.CIF.LIMITS record or a blank limit) */
-    public static final String OVR_LIMIT_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
+    public static final String OVR_LIMIT_NOT_DEFINED = "EB-ABLE.CIF.LIMIT.NOT.DEFINED";
     /** Exchange rate not available from & to & (transaction currency, limit currency) */
-    public static final String OVR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
+    public static final String OVR_EXCH_RATE_MISSING = "EB-ABLE.EXCH.RATE.MISSING";
     /**
      * ERROR (blocks the transaction): Limit currency not defined for Customer & - the customer's
      * EB.ALBE.CIF.LIMITS has a blank CCY. EB.ERROR record.
@@ -218,7 +219,7 @@ public final class Constants {
     public static final String ERR_LIMIT_UPDATE_FAILED = "EB-ALBE.LIMIT.UPDATE.FAILED";
 
     /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
-    public static final String OVERRIDE_ID_PREFIX = "EB-ALBE.";
+    public static final String OVERRIDE_ID_PREFIX = "EB-ABLE.";
     /** End of the override id inside an AAA OVERRIDE value ("<id>}<message>..."). Confirm in DEV. */
     public static final String OVERRIDE_ID_END = "}";
     /** Separator of the override ids in the transaction report OVERRIDES column. */

@@ -52,7 +52,7 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
 
-Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ALBE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked – **except a failed utilisation save → ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (blocks, D37)**.
+Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ABLE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked – **except a failed utilisation save → ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (blocks, D37)**.
 
 ## 5. Code map
 
@@ -104,7 +104,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 
 ## 7. Open items (see `docs/GAPS.md`)
 
-- **E1 exchange rate**: `CustomerLimitRepository.readExchangeRate` returns null until the bank answers (table – suggested core CURRENCY –, field, mid/buy/sell, market, quote direction). Until then other currencies → `EB-ALBE.EXCH.RATE.MISSING`, check skipped.
+- **E1 exchange rate**: `CustomerLimitRepository.readExchangeRate` returns null until the bank answers (table – suggested core CURRENCY –, field, mid/buy/sell, market, quote direction). Until then other currencies → `EB-ABLE.EXCH.RATE.MISSING`, check skipped.
 - **G1 fixed** (T24 date); **G4 mitigated** (ORG.SYSTEM.DATE fallback)
 - **G2** lost update on parallel inputs (needs lock API) – team decision
 - **G3 fixed** (23-Nov, D37): utilisation / TXN.DETAILS save failure → `CustomerLimitRepository.isSaveFailed` → `DailyMonthlyLimitController.postCoreTableUpdate` throws EB.ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (transaction cancelled). DEV: TQ18
@@ -135,7 +135,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **reports**, **menu & access**) |
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D39, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D40, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
 | `docs/UNIT_TEST_CASES.md` | 122 cases (113 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |

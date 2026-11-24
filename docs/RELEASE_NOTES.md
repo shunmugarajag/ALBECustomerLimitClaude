@@ -17,7 +17,7 @@
 | Customer limit creation | EB.ALBE.CIF.LIMITS created from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` when a customer is authorised (CUSTOMER,ALBE.CORP); never overwritten on amendment |
 | Daily / monthly limit check | acceptable overrides on credit / debit activities; utilisation counted at input, reversed on rejection and reversal |
 | Maximum CIF balance check | acceptable override on credit activities |
-| Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ALBE.EXCH.RATE.MISSING) |
+| Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ABLE.EXCH.RATE.MISSING) |
 | Reports | limit summary, period report (daily / monthly), transaction report incl. overridden transactions |
 | Logging | standard `ALBE.CUSTOMER.LIMIT | …` lines through logger L3API |
 
@@ -40,7 +40,7 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for 
 |---|---|---|---|---|
 | 1 | EB.TABLE.DEFINITION | ALBE.CIF.LIMIT (new), ALBE.GEN.PARAM, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT (approved, unchanged) | new / existing | 1 |
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
-| 3 | EB.OVERRIDE | EB-ALBE.DAILY.LIMIT.EXCEED, EB-ALBE.MONTHLY.LIMIT.EXCEED, EB-ALBE.MAX.CIF.BAL.EXCEED, EB-ALBE.CIF.LIMIT.NOT.DEFINED, EB-ALBE.EXCH.RATE.MISSING | new | 4 |
+| 3 | EB.OVERRIDE | EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks), EB-ALBE.ENQ.INVALID.DATE, EB-ALBE.ENQ.INVALID.MONTH, EB-ALBE.ENQ.DATE.RANGE, EB-ALBE.ENQ.PERIOD.MANDATORY, EB-ALBE.ENQ.RANGE.TOO.LONG, EB-ALBE.ENQ.CUSTOMER.OR.DATE (EB-NO.REC.SELECT exists) | new | 14.3 |
 | 5 | EB.API | ALBE.CL.LIMIT.CREATE, ALBE.CL.DAILY.MONTHLY (or .DEF/.VAL/.UPD), ALBE.CL.MAX.CIF, ALBE.E.CUSTOMER.LIMIT.SUMMARY, ALBE.E.CUSTOMER.LIMIT.PERIOD, ALBE.E.CUSTOMER.LIMIT.TXN | new | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
@@ -78,7 +78,7 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 |---|---|---|---|
 | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
 | 2 | Credit below the limit | no override; daily + monthly used updated; AAA REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
-| 3 | Credit above the daily limit | EB-ALBE.DAILY.LIMIT.EXCEED with customer and difference | `checkLimit \| BREACH` |
+| 3 | Credit above the daily limit | EB-ABLE.DAILY.LIMIT.EXCEED with customer and difference | `checkLimit \| BREACH` |
 | 4 | Delete the unauthorised transaction of check 3 | used back to the value after check 2 | `ACTION \| REVERSE rejected input` |
 | 5 | Limit summary for the test customer | numbers match checks 2–4 | – |
 | 6 | Search the log for errors | none | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED) \|"` |

@@ -16,12 +16,12 @@ import com.temenos.api.TField;
  *               Raises the HLSD customer limit overrides (and errors) on a field.
  *
  *               EB.OVERRIDE records to create (message text from HLSD):
- *                 EB-ALBE.DAILY.LIMIT.EXCEED    Daily credit/debit exceed for Customer & by &
- *                 EB-ALBE.MONTHLY.LIMIT.EXCEED  Monthly credit/debit exceed for Customer & by &
- *                 EB-ALBE.MAX.CIF.BAL.EXCEED    Overall credit/debit exceed for Customer & by &
- *                 EB-ALBE.CIF.LIMIT.NOT.DEFINED Customer limit not defined for Customer &
+ *                 EB-ABLE.DAILY.LIMIT.EXCEED    Daily credit/debit exceed for Customer & by &
+ *                 EB-ABLE.MONTHLY.LIMIT.EXCEED  Monthly credit/debit exceed for Customer & by &
+ *                 EB-ABLE.MAX.CIF.BAL.EXCEED    Overall credit/debit exceed for Customer & by &
+ *                 EB-ABLE.CIF.LIMIT.NOT.DEFINED Customer limit not defined for Customer &
  *                                               (no EB.ALBE.CIF.LIMITS record, or a limit field is blank)
- *                 EB-ALBE.EXCH.RATE.MISSING     Exchange rate not available from & to &
+ *                 EB-ABLE.EXCH.RATE.MISSING     Exchange rate not available from & to &
  *                                               (transaction currency, limit currency)
  *
  *               Parameters are passed in the standard T24 format

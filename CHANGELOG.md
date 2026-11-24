@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – override ids follow the DEV records (24-Nov-2026)
+- The 5 EB.OVERRIDE records were created in DEV as **EB-ABLE.*** (DAILY.LIMIT.EXCEED, MONTHLY.LIMIT.EXCEED, MAX.CIF.BAL.EXCEED, CIF.LIMIT.NOT.DEFINED, EXCH.RATE.MISSING). The code now uses these ids (`Constants.OVR_*`, `OVERRIDE_ID_PREFIX`); the EB.ERROR ids stay **EB-ALBE.***.
+
 ### Changed – own-account transfers counted on both sides (23-Nov-2026, FQ6 / D39)
 - EB.ALBE.TXN.DETAILS.LIMIT id is now `<customer>-<YYYYMMDD>-<FT/AAA>-<arrangement id>`. The two sides of an own-account transfer are on different arrangements, so they are two records: the debit and the credit are **both checked and counted** (max CIF included). The old take-back / 0-amount marker logic is removed. Records written before this change (3-part id) are still read by the reports.
 

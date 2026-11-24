@@ -158,7 +158,7 @@ All open questions (bank and DEV) are in [QUERIES_AND_GAPS.md](QUERIES_AND_GAPS.
 | Transaction currency = limit currency | rate 1, checks run normally |
 | Limit currency blank | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING, transaction blocked (G6) |
 | Different currencies, limit CCY = local currency | the activity's **TXN.AMOUNT.LCY** (or ORIG.TXN.AMT.LCY) is used – no rate needed (21-Nov-2026) |
-| Different currencies, limit CCY ≠ local currency | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ALBE.EXCH.RATE.MISSING**, limit check **skipped** |
+| Different currencies, limit CCY ≠ local currency | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ABLE.EXCH.RATE.MISSING**, limit check **skipped** |
 | Maximum CIF, account in another currency | same – rate-missing override, check skipped |
 
 Ready: conversion of the transaction and of account balances, 2-decimal rounding, converted amounts stored in UTILISED.LIMIT / TXN.DETAILS (reversals do not convert again). Missing: only the **rate lookup**.

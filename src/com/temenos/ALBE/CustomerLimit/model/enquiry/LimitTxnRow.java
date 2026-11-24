@@ -28,7 +28,7 @@ public class LimitTxnRow {
     public String countedDate;
     /** Amount counted, in the limit currency. */
     public String amount;
-    /** EB-ALBE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
+    /** EB-ABLE.* overrides accepted on the transaction (from its AAA OVERRIDE field), space separated. */
     public String overrides = "";
     /** FT / TT reference: AAA TXN.CONTRACT.ID, or the FT / TT id for the FT / TT version routines. */
     public String txnReference = "";

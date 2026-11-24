@@ -39,11 +39,11 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 
 | Id | Given | When | Expected | Actual | Result |
 |---|---|---|---|---|---|
-| UC-8.2 | daily credit limit 5000, utilised daily credit 3000 | credit 4000 | EB-ALBE.DAILY.LIMIT.EXCEED, customer, **2000** | `EB-ALBE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
-| UC-8.3 | monthly credit limit 15000, utilised monthly 13000 | credit 7000 | EB-ALBE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ALBE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
-| UC-8.4 | MAX.CIF.BALANCE 100000, working balance 70000 | credit 50000 | EB-ALBE.MAX.CIF.BAL.EXCEED, **20000** | `EB-ALBE.MAX.CIF.BAL.EXCEED^100234]20000.00` | Pass |
-| UC-8.5 | daily debit limit 5000, utilised daily debit 3000 | debit 4000 | EB-ALBE.DAILY.LIMIT.EXCEED, **2000** | `EB-ALBE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
-| UC-8.6 | monthly debit limit 15000, utilised monthly 13000 | debit 7000 | EB-ALBE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ALBE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
+| UC-8.2 | daily credit limit 5000, utilised daily credit 3000 | credit 4000 | EB-ABLE.DAILY.LIMIT.EXCEED, customer, **2000** | `EB-ABLE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
+| UC-8.3 | monthly credit limit 15000, utilised monthly 13000 | credit 7000 | EB-ABLE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ABLE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
+| UC-8.4 | MAX.CIF.BALANCE 100000, working balance 70000 | credit 50000 | EB-ABLE.MAX.CIF.BAL.EXCEED, **20000** | `EB-ABLE.MAX.CIF.BAL.EXCEED^100234]20000.00` | Pass |
+| UC-8.5 | daily debit limit 5000, utilised daily debit 3000 | debit 4000 | EB-ABLE.DAILY.LIMIT.EXCEED, **2000** | `EB-ABLE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
+| UC-8.6 | monthly debit limit 15000, utilised monthly 13000 | debit 7000 | EB-ABLE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ABLE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
 
 (`^` = field mark, `]` = value mark in the override text.)
 
@@ -71,16 +71,16 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 |---|---|---|---|---|
 | UT-X01 | max 100000, balance 70000 | credit 50000 | override 20000 | Pass |
 | UT-X02 | max 10000; accounts 6000 EGP + 50 USD (rate 48.50 = 2425) | credit 2000 EGP | total 10425 → override **425** | Pass |
-| UT-X03 | account in EUR, no EUR rate | credit | EB-ALBE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
+| UT-X03 | account in EUR, no EUR rate | credit | EB-ABLE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
 | UT-X04 | debit activity | validate | maximum CIF check skipped (credit only) | Pass |
 
 ## Limit not defined
 
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
-| UT-L01 | DAILY.CREDIT.LIMIT blank | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED once | Pass |
-| UT-L02 | no EB.ALBE.CIF.LIMITS record | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED once; no limit check | Pass |
-| UT-L03 | MAX.CIF.BALANCE blank | credit | EB-ALBE.CIF.LIMIT.NOT.DEFINED (maximum CIF) | Pass |
+| UT-L01 | DAILY.CREDIT.LIMIT blank | credit | EB-ABLE.CIF.LIMIT.NOT.DEFINED once | Pass |
+| UT-L02 | no EB.ALBE.CIF.LIMITS record | credit | EB-ABLE.CIF.LIMIT.NOT.DEFINED once; no limit check | Pass |
+| UT-L03 | MAX.CIF.BALANCE blank | credit | EB-ABLE.CIF.LIMIT.NOT.DEFINED (maximum CIF) | Pass |
 
 ## Utilisation (count at input, reverse)
 
@@ -101,7 +101,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-F01 | limits EGP | credit 3000 EGP | rate 1, no conversion | Pass |
 | UT-F02 | limits EGP, USD rate 48.50 | credit 100 USD | compared as 4850 EGP → daily override 2850; stored 4850.00 | Pass |
 | UT-F03 | USD input counted | rejected | 4850 EGP reversed (stored amount, no re-conversion) | Pass |
-| UT-F04 | no EUR rate | credit 100 EUR | EB-ALBE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
+| UT-F04 | no EUR rate | credit 100 EUR | EB-ABLE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
 | UT-F05 | limit EGP = LCY, TXN.AMOUNT.LCY 4850 | credit 100 USD | 4850.00 EGP, rate 48.5, **no rate lookup** | Pass |
 | UT-F06 | limit USD (not LCY) | credit 100 EGP | rate lookup → missing | Pass |
 | UT-F07 | no LCY amount on the activity | credit 100 USD | rate lookup | Pass |

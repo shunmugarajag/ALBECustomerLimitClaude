@@ -219,7 +219,7 @@ public class CustomerLimitEnquiryService {
     }
 
     /**
-     * EB-ALBE.* override ids in the activity's OVERRIDE values, each once.
+     * EB-ABLE.* override ids in the activity's OVERRIDE values, each once.
      * A value is "<override id>}<message>..." (Constants.OVERRIDE_ID_END); only the id is kept.
      */
     private List<String> albeOverrideIds(List<String> overrideValues) {

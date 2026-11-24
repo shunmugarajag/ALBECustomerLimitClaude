@@ -69,7 +69,7 @@ ID: **customer id** (validate as CUSTOMER).
 | 5 | MONTHLY.DEBIT.LIMIT | Monthly debit limit | Amount |
 | 6 | MAXIMUM.OVERALL.CIF.AMOUNT | Maximum overall CIF balance | Amount |
 
-A blank limit field means "not defined": the transaction gets the EB-ALBE.CIF.LIMIT.NOT.DEFINED override.
+A blank limit field means "not defined": the transaction gets the EB-ABLE.CIF.LIMIT.NOT.DEFINED override.
 
 ### 1.3 EB.ALBE.UTILISED.LIMIT – daily and monthly totals  *(exists)*
 
@@ -144,11 +144,11 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 
 | ID | MESSAGE | & parameters |
 |---|---|---|
-| EB-ALBE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer id, amount over |
-| EB-ALBE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer id, amount over |
-| EB-ALBE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
-| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
+| EB-ABLE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer id, amount over |
+| EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer id, amount over |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
+| EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
 
 **EB.ERROR** (blocks the transaction):
 
@@ -282,7 +282,7 @@ Needed only when the transaction (or an account) currency differs from the custo
 
 1. Bank to confirm the exchange-rate table, record id and rate field (rate for 1 unit of *from* currency in *to* currency).
 2. Developer sets `Constants.EXCH_RATE_TABLE`, `Constants.EXCH_RATE_FIELD` and completes `CustomerLimitRepository.readExchangeRate(fromCcy, toCcy)`.
-3. Until then: same-currency transactions are checked normally; other currencies get the **EB-ALBE.EXCH.RATE.MISSING** override and the limit check is skipped.
+3. Until then: same-currency transactions are checked normally; other currencies get the **EB-ABLE.EXCH.RATE.MISSING** override and the limit check is skipped.
 
 ---
 
@@ -295,18 +295,18 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 | 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
 | 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<FT/AAA>-<arrangement>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
-| 4 | Credit 4000 (input) | override EB-ALBE.DAILY.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
+| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `postCoreTableUpdate \| ACTION \| COUNT` |
 | 6 | **Reject / delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| REVERSE rejected input` |
 | 7 | Amend an unauthorised transaction's amount (re-input) | counted once with the new amount, not twice | `validate \| CALC \| earlierInputs=1` |
 | 8 | Authorise test 3 | no change to utilisation | `postCoreTableUpdate \| SKIP \| status=AUTH` |
 | 9 | **Reverse** the authorised transaction of test 3 (next day if possible) | 3000 subtracted from the **original** day's and month's records | `ACTION \| REVERSE reversal` |
-| 10 | Debit over the daily debit limit | EB-ALBE.DAILY.LIMIT.EXCEED | `checkLimit \| BREACH \| DAILY.DEBIT.LIMIT` |
-| 11 | Monthly breach (with a migrated amount loaded) | EB-ALBE.MONTHLY.LIMIT.EXCEED; MIGRATED field unchanged | `validateMonthlyLimit \| CALC \| ... migrated=` |
-| 12 | Credit that takes total balance over MAX.CIF.BALANCE | EB-ALBE.MAX.CIF.BAL.EXCEED "... by <difference>" | `MaximumCifLimitService.validate \| BREACH` |
-| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ALBE.CIF.LIMIT.NOT.DEFINED | `getCustomerLimits \| NOT FOUND` |
-| 14 | Blank DAILY.CREDIT.LIMIT | EB-ALBE.CIF.LIMIT.NOT.DEFINED (once) | `checkLimit \| NOT DEFINED` |
-| 15 | Transaction in another currency (before step 12) | EB-ALBE.EXCH.RATE.MISSING "from USD to EGP" | `convertRequest \| NO RATE` |
+| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.LIMIT.EXCEED | `checkLimit \| BREACH \| DAILY.DEBIT.LIMIT` |
+| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.LIMIT.EXCEED; MIGRATED field unchanged | `validateMonthlyLimit \| CALC \| ... migrated=` |
+| 12 | Credit that takes total balance over MAX.CIF.BALANCE | EB-ABLE.MAX.CIF.BAL.EXCEED "... by <difference>" | `MaximumCifLimitService.validate \| BREACH` |
+| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ABLE.CIF.LIMIT.NOT.DEFINED | `getCustomerLimits \| NOT FOUND` |
+| 14 | Blank DAILY.CREDIT.LIMIT | EB-ABLE.CIF.LIMIT.NOT.DEFINED (once) | `checkLimit \| NOT DEFINED` |
+| 15 | Transaction in another currency (before step 12) | EB-ABLE.EXCH.RATE.MISSING "from USD to EGP" | `convertRequest \| NO RATE` |
 | 16 | Any test | no `ERROR` / `FAILED` lines | `grep "\| ERROR \|\|\| FAILED \|"` |
 
 Also note in the DEV log (once):
