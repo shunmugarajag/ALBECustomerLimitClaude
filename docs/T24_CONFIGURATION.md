@@ -256,7 +256,12 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 
 ## 10. Logging
 
-- The code logs through logger **`L3API`** (same as the team's other L3 routines). Make sure the TAFJ logging configuration writes `L3API` at **INFO** in DEV / SIT.
+- The code logs through logger **`API`** (`Constants.LOGGER_NAME`). TAFJ maps it onto **`ALERT.API`** (errors) and **`DIAGNOSTIC.API`** (info / detail); both write to **`TAFJ/log/api.log`** on the **T24 server**.
+- By default both are at **ERROR**, so only our ERROR / FAILED lines appear (seen in DEV 24-Nov-2026). To see the INFO lines (START, CALC, OK, BREACH, UPDATED …) in DEV / SIT, set on the server, in `TAFJ/conf/TAFJTrace.properties`:
+  ```
+  logger.DIAGNOSTIC_API.level = INFO
+  ```
+  and restart T24 / TAFJ. Put it back to `ERROR` in production.
 - Every line starts with **`ALBE.CUSTOMER.LIMIT |`**. Monitor in SIT and production:
   ```
   grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR|FAILED) \|" <tafj log>

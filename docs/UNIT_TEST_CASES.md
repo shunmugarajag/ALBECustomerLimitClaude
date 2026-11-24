@@ -30,8 +30,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
 | GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
 | Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
+| Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **122** | **113** | **9** |
+| **Total** | | **124** | **115** | **9** |
 
 ---
 
@@ -204,6 +205,13 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-H01 | EB.ALBE.CIF.LIMITS CCY blank, credit 5000 | daily/monthly and maximum CIF checks flagged limitCcyMissing | Pass |
 | UT-H02 | same | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING on the field (not an override) | Pass |
 | UT-H04 | CCY filled again | normal check | Pass |
+
+## Record-not-found text (TQ13) – 24-Nov-2026
+
+| Id | Given | Expected | Result |
+|---|---|---|---|
+| UT-N01 | CIF.LIMITS read throws the R25 DEV text `EB-INTERNAL.ERROR … Record does not exist` | not found → limit record created | Pass |
+| UT-N02 | read throws another error (`File does not exist …`) | existence unknown → nothing created (never overwrite) | Pass |
 
 ## Block on save failure (D37) – 23-Nov-2026
 

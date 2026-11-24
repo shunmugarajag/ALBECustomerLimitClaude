@@ -80,9 +80,11 @@ public final class Constants {
     /**
      * Words in a T24 read exception that mean "record not found" (checked upper-case).
      * Any other read exception is treated as a failure, so an existing EB.ALBE.CIF.LIMITS is
-     * never overwritten because of a read problem. Confirm the exact T24 text in DEV.
+     * never overwritten because of a read problem. R25 DEV (24-Nov-2026, TQ13): DataAccess.getRecord
+     * throws T24CoreException EB-INTERNAL.ERROR "... Record does not exist" for a missing record.
      */
-    public static final List<String> RECORD_NOT_FOUND_MARKERS = List.of("NOT FOUND", "NOTFOUND", "NO RECORD", "MISSING");
+    public static final List<String> RECORD_NOT_FOUND_MARKERS = List.of("RECORD DOES NOT EXIST", "NOT FOUND",
+            "NOTFOUND", "NO RECORD", "MISSING");
 
     // -------------------------------------------------------------------------
     // Counted date kept in the activity REMARKS (no extra table field)

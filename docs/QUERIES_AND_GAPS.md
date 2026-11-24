@@ -42,7 +42,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ10 | COB UNAUTH.PROCESS setting | 🔴 |
 | TQ11 | Reverse and replay – new AAA ids? | 🔴 |
 | TQ12 | Override text fills both `&` | 🔴 |
-| TQ13 | "Record not found" text | 🔴 |
+| TQ13 | "Record not found" text | 🟢 R25: T24CoreException EB-INTERNAL.ERROR "…Record does not exist" – added to RECORD_NOT_FOUND_MARKERS (24-Nov) |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
 | TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |

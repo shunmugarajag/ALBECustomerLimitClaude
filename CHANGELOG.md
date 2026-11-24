@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Fixed – customer limit not created in DEV (24-Nov-2026, TQ13)
+- R25 reports a missing record as `T24CoreException EB-INTERNAL.ERROR … Record does not exist`. That text was not in `Constants.RECORD_NOT_FOUND_MARKERS`, so a new customer's limit read was treated as a failure and the record was not created. "RECORD DOES NOT EXIST" added; other read errors still create nothing. Tests UT-N01/N02. Logging note: our lines go to `api.log` via ALERT.API / DIAGNOSTIC.API – set `logger.DIAGNOSTIC_API.level = INFO` to see INFO lines.
+
 ### Changed – override ids follow the DEV records (24-Nov-2026)
 - The 5 EB.OVERRIDE records were created in DEV as **EB-ABLE.*** (DAILY.LIMIT.EXCEED, MONTHLY.LIMIT.EXCEED, MAX.CIF.BAL.EXCEED, CIF.LIMIT.NOT.DEFINED, EXCH.RATE.MISSING). The code now uses these ids (`Constants.OVR_*`, `OVERRIDE_ID_PREFIX`); the EB.ERROR ids stay **EB-ALBE.***.
 
