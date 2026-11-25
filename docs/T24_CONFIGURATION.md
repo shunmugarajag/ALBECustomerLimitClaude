@@ -192,7 +192,7 @@ The project is a **Maven** project (`pom.xml`, 25-Nov-2026). Sources stay in `sr
 | `mvn clean package` | `target/ALBECustomerLimit.jar` (only our classes; T24 / table JARs are compile-only) |
 | `mvn clean deploy` | build, then on the T24 server: list + remove `deploy.old.jars` in `deploy.dir` (`/srv/Temenos/T24/bnk/ALBElib`), copy the new JAR, list it (SSH / SCP, port `deploy.port`) |
 
-Eclipse: Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded. Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
+Eclipse: Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded – or let Maven do it: set `deploy.restart.skip=false` and `deploy.restart.command` (the server's restart command, run over SSH as `deploy.user`; `sudo` must not ask for a password; timeout `deploy.restart.timeout`, 15 min). Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
 
 ---
 
