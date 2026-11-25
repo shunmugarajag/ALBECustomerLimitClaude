@@ -59,7 +59,8 @@
         <deploy.old.jars>ALBECustomerLimit*.jar</deploy.old.jars>
         <deploy.skip>false</deploy.skip>
         <!--
-          Restart T24 (JBoss) after the copy - deploy/restart_t24.sh, same steps as by hand:
+          Restart T24 (JBoss) - deploy/restart_t24.sh is sent over SSH and run in memory (no file is written
+          on the server; only JBoss writes its own start-up log, as in the manual restart). Same steps as by hand:
           kill -15 the JBoss java process, wait until stopped, nohup ./standalone.sh -c Transact.xml,
           wait for "started" in the start-up log.
           Separate command (not part of clean deploy):  mvn antrun:run@restart-t24
@@ -185,13 +186,11 @@
                             <target>
                                 <property file="${project.basedir}/deploy.local.properties"/>
                                 <echo message="T24 restart on ${deploy.host} (${deploy.jboss.bin} -c ${deploy.jboss.config})"/>
-                                <scp file="${project.basedir}/deploy/restart_t24.sh"
-                                     remoteTofile="${deploy.user}@${deploy.host}:/tmp/albe_restart_t24.sh"
-                                     port="${deploy.port}" password="${deploy.password}" trust="true"/>
+<!-- the script is sent over SSH and run with "bash -s": no file is written on the server -->
                                 <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
                                          password="${deploy.password}" trust="true" failonerror="true"
-                                         timeout="1500000"
-                                         command="sed -i 's/\r$//' /tmp/albe_restart_t24.sh &amp;&amp; bash /tmp/albe_restart_t24.sh '${deploy.jboss.bin}' '${deploy.jboss.config}' '${deploy.startup.log}' ${deploy.stop.wait} ${deploy.start.wait}"/>
+                                         timeout="1500000" input="${project.basedir}/deploy/restart_t24.sh"
+                                         command="bash -s -- '${deploy.jboss.bin}' '${deploy.jboss.config}' '${deploy.startup.log}' ${deploy.stop.wait} ${deploy.start.wait}"/>
                                 <echo message="T24 restarted - new JAR loaded"/>
                             </target>
                         </configuration>

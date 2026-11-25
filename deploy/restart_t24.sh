@@ -1,6 +1,8 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# Restart T24 / TAFJ (JBoss EAP) on the server - run by "mvn clean deploy".
+# Restart T24 / TAFJ (JBoss EAP) on the server - run by "mvn antrun:run@restart-t24" (.\\restart).
+# Sent over SSH and run with "bash -s": this script is never saved on the server.
+# It changes no file on the server; only JBoss writes its start-up log (same as the manual restart).
 # Same steps as done by hand:
 #   find the JBoss java process -> kill -15 -> wait until it is gone
 #   cd <jboss>/bin ; nohup ./standalone.sh -c Transact.xml > /tmp/tafj-startup.log 2>&1 &
