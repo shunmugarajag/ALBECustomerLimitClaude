@@ -12,9 +12,15 @@ import com.temenos.logging.facade.LoggerFactory;
  *               e.g. ALBE.CUSTOMER.LIMIT | DailyMonthlyLimitService.validate | BREACH | customer=100234 ...
  *
  *               Levels
- *                 info   - normal flow: START, END, SKIP, OK, FOUND, NOT FOUND, WRITTEN, BREACH, STEP
+ *                 result - one plain-language line per step that tells what happened and why
+ *                          (event RESULT, info level), e.g.
+ *                          RESULT | CHECK FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT
+ *                          11,000.00 EGP on 2026-04-03 | daily credit: used 10,000.00 + this 11,000.00 =
+ *                          21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | overrides: EB-ABLE...
+ *                 info   - real events: UPDATED, NEW, WRITTEN, DELETED, OVERRIDE, NOT FOUND, ADJUSTED
  *                 error  - something failed or data is wrong: FAILED, ERROR, INVALID
- *                 detail - low-level DB trace (READ / WRITE / DELETE before the call); written at
+ *                 detail - technical trace (START / CALC / END / OK / BREACH / SKIP / FOUND and the DB
+ *                          READ / WRITE / DELETE before the call); written at
  *                          info level only when Constants.LOG_DETAIL_ENABLED is true
  *
  *               Exceptions are written as ExceptionClass: message @ first stack frame.
@@ -23,6 +29,7 @@ import com.temenos.logging.facade.LoggerFactory;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 25-Nov-2026   Development      result(): plain-language RESULT line per step; technical lines moved to detail
  *-----------------------------------------------------------------------------
  */
 public class LogUtil {
@@ -51,6 +58,18 @@ public class LogUtil {
     /** Failure with the exception that caused it. */
     public static void error(String className, String method, String event, Object details, Exception e) {
         write(true, className, method, event, details, e);
+    }
+
+    /** Plain-language summary of one step (what happened and why), event RESULT, info level. */
+    public static void result(String className, String method, String text) {
+        write(false, className, method, Constants.LOG_EVENT_RESULT, text, null);
+    }
+
+    /** Technical trace with an exception; switched off with Constants.LOG_DETAIL_ENABLED. */
+    public static void detail(String className, String method, String event, Object details, Exception e) {
+        if (Constants.LOG_DETAIL_ENABLED) {
+            write(false, className, method, event, details, e);
+        }
     }
 
     /** Low-level DB trace; switched off in production with Constants.LOG_DETAIL_ENABLED. */

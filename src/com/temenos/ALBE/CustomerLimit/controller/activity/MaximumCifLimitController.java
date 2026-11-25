@@ -32,6 +32,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 21-Nov-2026   Development      Common activity mapping (ActivityRequestBuilder): ORIG.TXN.AMT, LCY amount
  * 22-Nov-2026   Development      Check through CustomerLimitEngine
  * 25-Nov-2026   Development      Activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY -> error EB-ALBE.ACTIVITY.NOT.MAPPED (D41)
+ * 25-Nov-2026   Development      ACTIVITY line and RESULT line (max CIF numbers, overrides / errors)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -50,14 +51,16 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             activityStatus = arrangementContext.getActivityStatus();
             String activity = arrangementActivityRecord.getActivity().getValue();
             String activityClass = arrangementActivityRecord.getActivityClass().getValue();
-            LogUtil.info(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus + " activity=" + activity
+            ActivityRequestBuilder.logActivity(CLASS_NAME, "validateRecord", arrangementActivityRecord,
+                    arrangementContext, arrangementRecord);
+            LogUtil.detail(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus + " activity=" + activity
                     + " class=" + activityClass
                     + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
                     + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
                     + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
 
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
+                LogUtil.detail(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
             // Common activity mapping; HLSD: maximum balance check is for credit activities only.
@@ -76,18 +79,25 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord, aaaId,
                     repository);
             if (request == null || !request.isCredit()) {
-                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "activity=" + activity + " class=" + activityClass
+                LogUtil.detail(CLASS_NAME, "validateRecord", "SKIP", "activity=" + activity + " class=" + activityClass
                         + " (not a counted credit)");
+                LogUtil.result(CLASS_NAME, "validateRecord", "CHECK max CIF " + activity + " arrangement "
+                        + arrangementActivityRecord.getArrangement().getValue()
+                        + ": not a counted credit -> no max CIF check");
                 return arrangementActivityRecord.getValidationResponse();
             }
-            LogUtil.info(CLASS_NAME, "validateRecord", "CALC", "request=" + request);
+            LogUtil.detail(CLASS_NAME, "validateRecord", "CALC", "request=" + request);
 
             // Engine (transaction info + customer limit info) + view
             CustomerLimitDTO result = new CustomerLimitEngine(repository).checkMaxCif(request);
             int raised = result == null ? 0
                     : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
+            LogUtil.result(CLASS_NAME, "validateRecord", "CHECK max CIF " + (result == null
+                    ? request.describe() + " | transaction info not valid -> no check"
+                    : result.describe() + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))
+                            + " | raised: " + CustomerLimitOverride.ids(result)));
 
-            LogUtil.info(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId()
+            LogUtil.detail(CLASS_NAME, "validateRecord", "END", "customer=" + request.getCustomerId()
                     + " overridesRaised="
                     + raised + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 

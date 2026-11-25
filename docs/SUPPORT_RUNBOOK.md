@@ -25,7 +25,7 @@ Records: daily `EB.ALBE.UTILISED.LIMIT <cust>-YYYYMMDD`, monthly `<cust>-YYYYMM`
 | Overridden transactions | `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ <yesterday> OVERRIDDEN EQ Y` | compliance review |
 | Customers without limits | log lines `getCustomerLimits \| NOT FOUND` | create the limit record (3.3) |
 
-Every module log line starts with `ALBE.CUSTOMER.LIMIT |`; add `customer=<id>` to the grep for one customer.
+Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in plain words:** `grep "ALBE.CUSTOMER.LIMIT" api.log | grep <FT or AAA id> | grep -E "\| (ACTIVITY|RESULT|OVERRIDE) \|"` – the RESULT lines show used + this = total vs limit, the overrides / errors raised and what was counted (needs DIAGNOSTIC.API at INFO).
 
 ## 3. Common cases
 

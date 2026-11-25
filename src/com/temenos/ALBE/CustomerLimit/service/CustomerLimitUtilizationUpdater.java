@@ -27,6 +27,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 25-Nov-2026   Development      notes (used before -> after) for the RESULT log line
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitUtilizationUpdater {
@@ -93,18 +94,19 @@ public class CustomerLimitUtilizationUpdater {
     private void apply(CustomerLimitDTO request, String action, BigDecimal credit, BigDecimal debit) {
         String dailyId = dailyRecordId(request);
         String monthlyId = monthlyRecordId(request);
-        LogUtil.info(CLASS_NAME, action, "START", request.logKey() + " date=" + request.getTransactionDate()
+        LogUtil.detail(CLASS_NAME, action, "START", request.logKey() + " date=" + request.getTransactionDate()
                 + " credit=" + credit + " debit=" + debit);
-        addToRecord(dailyId, credit, debit);
-        addToRecord(monthlyId, credit, debit);
-        LogUtil.info(CLASS_NAME, action, "END", request.logKey() + " daily=" + dailyId + " monthly=" + monthlyId);
+        addToRecord(request, "daily", dailyId, credit, debit);
+        addToRecord(request, "monthly", monthlyId, credit, debit);
+        LogUtil.detail(CLASS_NAME, action, "END", request.logKey() + " daily=" + dailyId + " monthly=" + monthlyId);
     }
 
     /**
      * Adds credit / debit to UTILISED.CREDIT/DEBIT.LIMIT of one daily or monthly record.
      * UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT hold migration data and are never changed here.
      */
-    private void addToRecord(String recordId, BigDecimal credit, BigDecimal debit) {
+    private void addToRecord(CustomerLimitDTO request, String period, String recordId, BigDecimal credit,
+            BigDecimal debit) {
         try {
             EbAlbeUtilisedLimitRecord utilRec = readOrCreate(recordId);
             String oldCredit = utilRec.getUtilisedCreditLimit().getValue();
@@ -116,10 +118,15 @@ public class CustomerLimitUtilizationUpdater {
             utilRec.setUtilisedDebitLimit(newDebit);
             repository.writeUtilisedLimit(recordId, utilRec);
 
+            boolean isCredit = credit.signum() != 0;
+            request.addNote(period + " " + recordId + " used " + (isCredit ? "credit " : "debit ")
+                    + ValidationUtil.formatAmount(ValidationUtil.toAmount(isCredit ? oldCredit : oldDebit)) + " -> "
+                    + ValidationUtil.formatAmount(ValidationUtil.toAmount(isCredit ? newCredit : newDebit)));
             LogUtil.info(CLASS_NAME, "addToRecord", "UPDATED", LABEL_RECORD + recordId
                     + " credit " + oldCredit + " -> " + newCredit + ", debit " + oldDebit + " -> " + newDebit);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", LABEL_RECORD + recordId, e);
+            request.addNote(period + " " + recordId + " SAVE FAILED");
             repository.markSaveFailed(CLASS_NAME, "addToRecord " + recordId);
         }
     }

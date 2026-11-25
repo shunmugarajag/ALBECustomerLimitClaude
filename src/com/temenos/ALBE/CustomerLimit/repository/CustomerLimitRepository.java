@@ -289,7 +289,7 @@ public class CustomerLimitRepository {
         } catch (Exception e) {
             if (isRecordNotFound(e)) {
                 // normal: first input of the activity (no earlier input to take back)
-                LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
+                LogUtil.detail(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
             } else {
                 LogUtil.error(CLASS_NAME, "readTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
             }

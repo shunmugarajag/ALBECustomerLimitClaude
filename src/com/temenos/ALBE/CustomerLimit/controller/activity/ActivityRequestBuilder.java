@@ -12,6 +12,7 @@ import com.temenos.ALBE.CustomerLimit.service.activity.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.api.TField;
+import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
 import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 
@@ -40,6 +41,8 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 22-Nov-2026   Development      AA_SKIP_TXN_SYSTEM_IDS removed - the common key prevents double counting
  * 23-Nov-2026   Development      Arrangement id on the request (part of the TXN.DETAILS id, FQ6)
  * 25-Nov-2026   Development      Direction from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY instead of ACTIVITY.CLASS (D41)
+ * 25-Nov-2026   Development      activity name on the request (RESULT log line)
+ * 25-Nov-2026   Development      logActivity: one ACTIVITY line with the key activity fields (all hooks)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -67,7 +70,7 @@ public class ActivityRequestBuilder {
         boolean useOriginal = ValidationUtil.isPositive(ValidationUtil.toAmount(aaaRec.getOrigTxnAmt().getValue()));
         BigDecimal amount = getAmount(aaaRec, useOriginal);
         if (!ValidationUtil.isPositive(amount)) {
-            LogUtil.info(CLASS_NAME, "build", "SKIP", "activity=" + activity + " class=" + activityClass
+            LogUtil.detail(CLASS_NAME, "build", "SKIP", "activity=" + activity + " class=" + activityClass
                     + " has no TXN.AMOUNT / ORIG.TXN.AMT");
             return null;
         }
@@ -81,6 +84,7 @@ public class ActivityRequestBuilder {
         request.setCustomerId(arrangementRecord.getCustomer().get(0).getCustomer().getValue());
         request.setTransactionId(CustomerLimitEngine.transactionKey(reference));
         request.setArrangementId(ValidationUtil.nvl(aaaRec.getArrangement().getValue()).trim());
+        request.setActivity(ValidationUtil.nvl(activity).trim());
         request.setTransactionDate(getCountedDate(aaaRec, repository));
         request.setTransactionCurrency(getCurrency(aaaRec, arrangementRecord));
         request.setAmountLcy(getAmountLcy(aaaRec, useOriginal));
@@ -89,7 +93,7 @@ public class ActivityRequestBuilder {
         } else {
             request.setDebitAmount(amount);
         }
-        LogUtil.info(CLASS_NAME, "build", "CALC", "activity=" + activity + " class=" + activityClass
+        LogUtil.detail(CLASS_NAME, "build", "CALC", "activity=" + activity + " class=" + activityClass
                 + " direction=" + direction + " initiation=" + initiationType + " amountFrom=" + (useOriginal ? "ORIG.TXN.AMT" : "TXN.AMOUNT")
                 + " request=" + request);
         return request;
@@ -109,12 +113,12 @@ public class ActivityRequestBuilder {
      */
     public static boolean isCountedActivity(String direction, String initiationType, String activity) {
         if (direction == null) {
-            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity
+            LogUtil.detail(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity
                     + " not mapped in " + Constants.GEN_PARAM_ACTIVITY_ID);
             return false;
         }
         if (!ValidationUtil.isCountedInitiationType(initiationType)) {
-            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity + " initiation="
+            LogUtil.detail(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity + " initiation="
                     + initiationType + " not counted");
             return false;
         }
@@ -148,12 +152,12 @@ public class ActivityRequestBuilder {
     public static LocalDate getT24Date(AaArrangementActivityRecord aaaRec, CustomerLimitRepository repository) {
         LocalDate orgSystemDate = ValidationUtil.toDate(aaaRec.getOrgSystemDate().getValue());
         if (orgSystemDate != null) {
-            LogUtil.info(CLASS_NAME, "getT24Date", "FOUND", "ORG.SYSTEM.DATE=" + orgSystemDate);
+            LogUtil.detail(CLASS_NAME, "getT24Date", "FOUND", "ORG.SYSTEM.DATE=" + orgSystemDate);
             return orgSystemDate;
         }
         LocalDate today = repository.getT24Today();
         if (today != null) {
-            LogUtil.info(CLASS_NAME, "getT24Date", "FOUND", "T24 TODAY=" + today);
+            LogUtil.detail(CLASS_NAME, "getT24Date", "FOUND", "T24 TODAY=" + today);
             return today;
         }
         LocalDate clock = LocalDate.now();
@@ -167,7 +171,7 @@ public class ActivityRequestBuilder {
         String text = ValidationUtil.nvl(remarks);
         int pos = text.indexOf(Constants.REMARKS_DATE_TAG);
         if (pos < 0) {
-            LogUtil.info(CLASS_NAME, "dateFromRemarks", "NOT FOUND", "no " + Constants.REMARKS_DATE_TAG + " in REMARKS");
+            LogUtil.detail(CLASS_NAME, "dateFromRemarks", "NOT FOUND", "no " + Constants.REMARKS_DATE_TAG + " in REMARKS");
             return null;
         }
         int start = pos + Constants.REMARKS_DATE_TAG.length();
@@ -193,5 +197,36 @@ public class ActivityRequestBuilder {
     private static String getCurrency(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord) {
         String ccy = aaaRec.getCurrency().getValue();
         return ValidationUtil.isBlank(ccy) ? arrangementRecord.getCurrency().getValue() : ccy.trim();
+    }
+
+    /**
+     * One INFO line with the activity as T24 sent it to the hook (event ACTIVITY), e.g.
+     * ACTIVITY | hook=validateRecord status=UNAUTH aaa=AAACT.. activity=ACCOUNTS-CREDIT-ARRANGEMENT
+     * class=.. arrangement=AA.. customer=100199 contract=FT26093BGWJR txnAmount=11000 ...
+     * Never throws.
+     */
+    public static void logActivity(String className, String hook, AaArrangementActivityRecord aaaRec,
+            ArrangementContext context, AaArrangementRecord arrangementRecord) {
+        StringBuilder line = new StringBuilder(300).append("hook=").append(hook);
+        try {
+            line.append(" status=").append(context.getActivityStatus())
+                    .append(" aaa=").append(context.getArrangementActivityId())
+                    .append(" activity=").append(aaaRec.getActivity().getValue())
+                    .append(" class=").append(aaaRec.getActivityClass().getValue())
+                    .append(" arrangement=").append(aaaRec.getArrangement().getValue())
+                    .append(" customer=").append(arrangementRecord.getCustomer().get(0).getCustomer().getValue())
+                    .append(" contract=").append(aaaRec.getTxnContractId().getValue())
+                    .append(" txnAmount=").append(aaaRec.getTxnAmount().getValue())
+                    .append(" origTxnAmt=").append(aaaRec.getOrigTxnAmt().getValue())
+                    .append(" txnAmountLcy=").append(aaaRec.getTxnAmountLcy().getValue())
+                    .append(" currency=").append(aaaRec.getCurrency().getValue())
+                    .append(" effectiveDate=").append(aaaRec.getEffectiveDate().getValue())
+                    .append(" orgSystemDate=").append(aaaRec.getOrgSystemDate().getValue())
+                    .append(" initiation=").append(getInitiationType(aaaRec))
+                    .append(" remarks='").append(ValidationUtil.nvl(aaaRec.getRemarks().getValue())).append("'");
+        } catch (Exception e) {
+            line.append(" (some fields not readable: ").append(e.getClass().getSimpleName()).append(')');
+        }
+        LogUtil.info(className, hook, Constants.LOG_EVENT_ACTIVITY, line);
     }
 }

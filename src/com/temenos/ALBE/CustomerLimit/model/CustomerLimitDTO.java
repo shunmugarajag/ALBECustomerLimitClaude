@@ -19,6 +19,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      limitCcyMissing (blank CIF.LIMIT CCY = error); copyTransaction
+ * 25-Nov-2026   Development      activity, notes and describe() for the RESULT log line
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitDTO {
@@ -61,6 +62,10 @@ public class CustomerLimitDTO {
     private boolean rateMissing = false;
     /** Currency that has no rate to the limit currency (transaction or account currency). */
     private String rateMissingCurrency;
+    /** AAA ACTIVITY name, for the RESULT log line only. */
+    private String activity;
+    /** Plain-language notes of the checks / updates done for this request (RESULT log line). */
+    private final List<String> notes = new ArrayList<>();
     /** EB.ALBE.CIF.LIMITS fields that are blank; raised once as the "limit not defined" override. */
     private final List<String> undefinedLimits = new ArrayList<>();
 
@@ -94,6 +99,22 @@ public class CustomerLimitDTO {
     /** "customer=<id> aaa=<id>" - the key that starts most log lines about this request. */
     public String logKey() { return "customer=" + customerId + " txn=" + transactionId + " arrangement=" + arrangementId; }
 
+    public String getActivity() { return activity; }
+    public void setActivity(String activity) { this.activity = activity; }
+
+    /** Adds one plain-language note for the RESULT log line. */
+    public void addNote(String note) { notes.add(note); }
+    public List<String> getNotes() { return Collections.unmodifiableList(notes); }
+
+    /** Plain-language transaction description: FT26093BGWJR (activity) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03. */
+    public String describe() {
+        String ccy = limitCurrency != null && !limitCurrency.isEmpty() ? limitCurrency : transactionCurrency;
+        return transactionId + (activity == null ? "" : " (" + activity + ")") + " customer " + customerId
+                + (isCredit() ? " CREDIT " : " DEBIT ")
+                + String.format(java.util.Locale.ENGLISH, "%,.2f", getAmount()) + " " + (ccy == null ? "" : ccy)
+                + " on " + transactionDate + " arrangement " + arrangementId;
+    }
+
     public String getTransactionCurrency() { return transactionCurrency; }
     public void setTransactionCurrency(String transactionCurrency) { this.transactionCurrency = transactionCurrency; }
 
@@ -120,6 +141,7 @@ public class CustomerLimitDTO {
         copy.setCreditAmount(creditAmount);
         copy.setDebitAmount(debitAmount);
         copy.setAmountLcy(amountLcy);
+        copy.setActivity(activity);
         return copy;
     }
 

@@ -36,6 +36,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
+ * 25-Nov-2026   Development      plain-language notes for the RESULT log line (used + this = total vs limit)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitService {
@@ -66,40 +67,48 @@ public class DailyMonthlyLimitService {
      * one positive credit or debit amount).
      */
     public void validate(CustomerLimitDTO request) {
-        LogUtil.info(CLASS_NAME, "validate", "START", request);
+        LogUtil.detail(CLASS_NAME, "validate", "START", request);
 
         Limits limits = limitReader.getCustomerLimits(request.getCustomerId());
         if (limits == null) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
                     + " no EB.ALBE.CIF.LIMITS record, checks not possible");
+            request.addNote("no EB.ALBE.CIF.LIMITS record for customer " + request.getCustomerId()
+                    + " -> daily / monthly not checked");
             request.setLimitMissing(true);
             return;
         }
-        LogUtil.info(CLASS_NAME, "validate", "CALC", "limits=" + limits);
+        LogUtil.detail(CLASS_NAME, "validate", "CALC", "limits=" + limits);
         if (ValidationUtil.isBlank(limits.ccy)) {
             LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + request.getCustomerId()
                     + " EB.ALBE.CIF.LIMITS CCY is blank - error, transaction blocked");
+            request.addNote("EB.ALBE.CIF.LIMITS CURRENCY is blank for customer " + request.getCustomerId());
             request.setLimitCcyMissing(true);
             return;
         }
 
         // Compare in the limit currency: convert the transaction amount if its currency differs.
         if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
                     + " no exchange rate, checks not possible");
+            request.addNote("no exchange rate " + request.getTransactionCurrency() + " -> " + limits.ccy
+                    + " -> daily / monthly not checked");
             return;
         }
 
         // On re-input of an amended transaction its earlier input is already in utilisation;
         // leave it out so the transaction is not checked against itself.
         List<CustomerLimitDTO> earlierInputs = recorder.findOriginal(request);
-        LogUtil.info(CLASS_NAME, "validate", "CALC", "earlierInputs=" + earlierInputs.size()
+        LogUtil.detail(CLASS_NAME, "validate", "CALC", "earlierInputs=" + earlierInputs.size()
                 + (earlierInputs.isEmpty() ? " (first input)" : " (re-input of an amended transaction)"));
 
+        if (!earlierInputs.isEmpty()) {
+            request.addNote("re-input: the earlier input of this transaction is left out of 'used'");
+        }
         validateDailyLimit(request, limits, earlierInputs);
         validateMonthlyLimit(request, limits, earlierInputs);
 
-        LogUtil.info(CLASS_NAME, "validate", "END", request + " blankLimits=" + request.getUndefinedLimits());
+        LogUtil.detail(CLASS_NAME, "validate", "END", request + " blankLimits=" + request.getUndefinedLimits());
     }
 
     /** Daily: today's utilised credit (or debit) + txn amount against the daily limit. */
@@ -115,9 +124,10 @@ public class DailyMonthlyLimitService {
         String limitField = credit ? Constants.KEY_DAILY_CREDIT_LIMIT : Constants.KEY_DAILY_DEBIT_LIMIT;
         BigDecimal limit = credit ? limits.dailyCreditLimit : limits.dailyDebitLimit;
 
-        LogUtil.info(CLASS_NAME, "validateDailyLimit", "CALC", limitField + " record=" + dailyId
+        LogUtil.detail(CLASS_NAME, "validateDailyLimit", "CALC", limitField + " record=" + dailyId
                 + " utilised=" + utilised + " txn=" + request.getAmount() + " limit=" + limit);
-        checkLimit(request, limitField, limit, utilised, Constants.OVR_DAILY_LIMIT_EXCEED,
+        checkLimit(request, "daily " + (credit ? "credit" : "debit") + " (" + dailyId + ")", limitField, limit,
+                utilised, Constants.OVR_DAILY_LIMIT_EXCEED,
                 Constants.MSG_DAILY_EXCEEDED);
     }
 
@@ -135,10 +145,12 @@ public class DailyMonthlyLimitService {
         String limitField = credit ? Constants.KEY_MONTHLY_CREDIT_LIMIT : Constants.KEY_MONTHLY_DEBIT_LIMIT;
         BigDecimal limit = credit ? limits.monthlyCreditLimit : limits.monthlyDebitLimit;
 
-        LogUtil.info(CLASS_NAME, "validateMonthlyLimit", "CALC", limitField + " record=" + monthlyId
+        LogUtil.detail(CLASS_NAME, "validateMonthlyLimit", "CALC", limitField + " record=" + monthlyId
                 + " migrated=" + migrated + " utilised=" + utilised + " txn=" + request.getAmount() + " limit="
                         + limit);
-        checkLimit(request, limitField, limit, migrated.add(utilised), Constants.OVR_MONTHLY_LIMIT_EXCEED,
+        checkLimit(request, "monthly " + (credit ? "credit" : "debit") + " (" + monthlyId
+                + (migrated.signum() > 0 ? ", migrated " + ValidationUtil.formatAmount(migrated) : "") + ")",
+                limitField, limit, migrated.add(utilised), Constants.OVR_MONTHLY_LIMIT_EXCEED,
                 Constants.MSG_MONTHLY_EXCEEDED);
     }
 
@@ -146,10 +158,11 @@ public class DailyMonthlyLimitService {
      * Breach when utilised + txn amount is above the limit; the difference is the excess.
      * A blank (null) limit is recorded as "limit not defined".
      */
-    private void checkLimit(CustomerLimitDTO request, String limitField, BigDecimal limit, BigDecimal utilised,
-            String overrideId, String messageFormat) {
+    private void checkLimit(CustomerLimitDTO request, String label, String limitField, BigDecimal limit,
+            BigDecimal utilised, String overrideId, String messageFormat) {
         if (limit == null) {
-            LogUtil.info(CLASS_NAME, "checkLimit", "NOT DEFINED", limitField + " is blank for customer="
+            request.addNote(label + ": " + limitField + " is blank -> not checked");
+            LogUtil.detail(CLASS_NAME, "checkLimit", "NOT DEFINED", limitField + " is blank for customer="
                     + request.getCustomerId());
             request.addUndefinedLimit(limitField);
             return;
@@ -157,12 +170,19 @@ public class DailyMonthlyLimitService {
         BigDecimal projected = utilised.add(request.getAmount());
         if (projected.compareTo(limit) > 0) {
             BigDecimal difference = projected.subtract(limit);
-            LogUtil.info(CLASS_NAME, "checkLimit", "BREACH", limitField + " projected=" + projected
+            request.addNote(label + ": used " + ValidationUtil.formatAmount(utilised) + " + this "
+                    + ValidationUtil.formatAmount(request.getAmount()) + " = " + ValidationUtil.formatAmount(projected)
+                    + " > limit " + ValidationUtil.formatAmount(limit) + " -> EXCEEDED by "
+                    + ValidationUtil.formatAmount(difference));
+            LogUtil.detail(CLASS_NAME, "checkLimit", "BREACH", limitField + " projected=" + projected
                     + " limit=" + limit + " difference=" + difference);
             request.addBreach(overrideId,
                     String.format(messageFormat, request.getCustomerId(), difference.toPlainString()), difference);
         } else {
-            LogUtil.info(CLASS_NAME, "checkLimit", "OK", limitField + " projected=" + projected + " limit=" + limit
+            request.addNote(label + ": used " + ValidationUtil.formatAmount(utilised) + " + this "
+                    + ValidationUtil.formatAmount(request.getAmount()) + " = " + ValidationUtil.formatAmount(projected)
+                    + " <= limit " + ValidationUtil.formatAmount(limit) + " -> OK");
+            LogUtil.detail(CLASS_NAME, "checkLimit", "OK", limitField + " projected=" + projected + " limit=" + limit
                     + " headroom=" + limit.subtract(projected));
         }
     }
@@ -180,7 +200,7 @@ public class DailyMonthlyLimitService {
             }
         }
         if (total.signum() > 0) {
-            LogUtil.info(CLASS_NAME, "earlierAmount", "CALC", "aaa=" + request.getTransactionId() + " "
+            LogUtil.detail(CLASS_NAME, "earlierAmount", "CALC", "aaa=" + request.getTransactionId() + " "
                     + (credit ? "credit" : "debit") + " " + (sameMonth ? "month" : "day") + " excluded=" + total);
         }
         return total;
@@ -195,13 +215,13 @@ public class DailyMonthlyLimitService {
      * amount to the daily and monthly utilisation, and records it for a later reversal.
      */
     public void countAtInput(CustomerLimitDTO request, String accountNo, String effectiveDate) {
-        LogUtil.info(CLASS_NAME, "countAtInput", "START", request + " account=" + accountNo
+        LogUtil.detail(CLASS_NAME, "countAtInput", "START", request + " account=" + accountNo
                 + " effectiveDate=" + effectiveDate);
         int earlier = reverseCounted(request);
         toLimitCurrency(request);
         updater.update(request);
         recorder.record(request, accountNo, effectiveDate);
-        LogUtil.info(CLASS_NAME, "countAtInput", "END", request.logKey() + " earlierInputReversed=" + earlier);
+        LogUtil.detail(CLASS_NAME, "countAtInput", "END", request.logKey() + " earlierInputReversed=" + earlier);
     }
 
     /**
@@ -214,19 +234,22 @@ public class DailyMonthlyLimitService {
      * @return number of amounts reversed
      */
     public int reverse(CustomerLimitDTO request, boolean fallbackToToday) {
-        LogUtil.info(CLASS_NAME, "reverse", "START", request + " fallbackToToday=" + fallbackToToday);
+        LogUtil.detail(CLASS_NAME, "reverse", "START", request + " fallbackToToday=" + fallbackToToday);
         int reversed = reverseCounted(request);
         if (reversed == 0 && fallbackToToday) {
             LogUtil.info(CLASS_NAME, "reverse", "NOT FOUND", "no EB.ALBE.TXN.DETAILS.LIMIT for aaa="
                     + request.getTransactionId()
                     + ", reversing on server date");
+            request.addNote("nothing was recorded for this transaction (counted before go-live?) -> taken back on "
+                    + request.getTransactionDate());
             toLimitCurrency(request);
             updater.reverse(request);
             reversed = 1;
         } else if (reversed == 0) {
-            LogUtil.info(CLASS_NAME, "reverse", "SKIP", "nothing was counted for aaa=" + request.getTransactionId());
+            LogUtil.detail(CLASS_NAME, "reverse", "SKIP", "nothing was counted for aaa=" + request.getTransactionId());
+            request.addNote("nothing was counted for this transaction -> nothing to take back");
         }
-        LogUtil.info(CLASS_NAME, "reverse", "END", request.logKey() + " reversed=" + reversed);
+        LogUtil.detail(CLASS_NAME, "reverse", "END", request.logKey() + " reversed=" + reversed);
         return reversed;
     }
 
@@ -236,13 +259,18 @@ public class DailyMonthlyLimitService {
      */
     private int reverseCounted(CustomerLimitDTO request) {
         List<CustomerLimitDTO> originals = recorder.findOriginal(request);
-        LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", request.logKey() + " found=" + originals.size());
+        LogUtil.detail(CLASS_NAME, "reverseCounted", "CALC", request.logKey() + " found=" + originals.size());
         for (CustomerLimitDTO original : originals) {
-            LogUtil.info(CLASS_NAME, "reverseCounted", "CALC", "originalDate=" + original.getTransactionDate()
+            LogUtil.detail(CLASS_NAME, "reverseCounted", "CALC", "originalDate=" + original.getTransactionDate()
                     + " credit="
                     + original.getCreditAmount() + " debit=" + original.getDebitAmount());
             updater.reverse(original);
             recorder.delete(original);
+            request.addNote("taken back " + ValidationUtil.formatAmount(original.getAmount()) + " counted on "
+                    + original.getTransactionDate());
+            for (String note : original.getNotes()) {
+                request.addNote(note);
+            }
         }
         return originals.size();
     }

@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – clear logs (25-Nov-2026)
+- New **RESULT** line per step in plain words: the transaction (FT, activity, customer, CREDIT/DEBIT, amount, date, arrangement), each check with its numbers (`used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00`), the overrides / errors raised, and what was counted or taken back (used before -> after, TXN.DETAILS saved).
+- New **ACTIVITY** line at the start of each hook with the activity fields T24 sent (status, AAA, activity, class, arrangement, customer, contract, amounts, currency, dates, initiation, REMARKS).
+- Technical START / CALC / END / OK / BREACH / SKIP / FOUND lines moved to `detail`; `LOG_DETAIL_ENABLED` now **false** by default. Errors are unchanged and always written.
+
 ### Changed – fewer false alarms in ALERT.API (25-Nov-2026)
 - EB.ALBE.TXN.DETAILS.LIMIT "record does not exist" at first input is normal (no earlier input to take back) – now logged as INFO, not ERROR. Real read failures stay ERROR (event FAILED).
 

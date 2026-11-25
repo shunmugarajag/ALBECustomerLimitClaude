@@ -33,7 +33,11 @@ public final class Constants {
     public static final String LOG_SEPARATOR = " | ";
 
     /** true = also log every DB READ / WRITE / DELETE before the call (DEV/SIT); false in production. */
-    public static final boolean LOG_DETAIL_ENABLED = true;
+    public static final boolean LOG_DETAIL_ENABLED = false;
+    /** Event of the plain-language summary lines (LogUtil.result). */
+    public static final String LOG_EVENT_RESULT = "RESULT";
+    /** Event of the activity field dump at the start of each hook (ActivityRequestBuilder.logActivity). */
+    public static final String LOG_EVENT_ACTIVITY = "ACTIVITY";
 
     // -------------------------------------------------------------------------
     // Tables / files

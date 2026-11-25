@@ -273,7 +273,7 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 ## 10. Logging
 
 - The code logs through logger **`API`** (`Constants.LOGGER_NAME`). TAFJ maps it onto **`ALERT.API`** (errors) and **`DIAGNOSTIC.API`** (info / detail); both write to **`TAFJ/log/api.log`** on the **T24 server**.
-- By default both are at **ERROR**, so only our ERROR / FAILED lines appear (seen in DEV 24-Nov-2026). To see the INFO lines (START, CALC, OK, BREACH, UPDATED …) in DEV / SIT, set on the server, in `TAFJ/conf/TAFJTrace.properties`:
+- By default both are at **ERROR**, so only our ERROR / FAILED lines appear (seen in DEV 24-Nov-2026). To see the INFO lines (ACTIVITY, RESULT, OVERRIDE, UPDATED …) in DEV / SIT, set on the server, in `TAFJ/conf/TAFJTrace.properties`:
   ```
   logger.DIAGNOSTIC_API.level = INFO
   ```
@@ -283,7 +283,15 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
   grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR|FAILED) \|" <tafj log>
   ```
   A technical failure does **not** block the transaction, so these lines are the only signal that a check was skipped.
-- Production: `LOG_DETAIL_ENABLED = false` (step 5).
+- **What you see per transaction (INFO, 25-Nov-2026):** one `ACTIVITY` line per hook (the activity as T24 sent it), one `RESULT` line per step in plain words (the check with its numbers, the overrides / errors raised, what was counted or taken back), plus `OVERRIDE` (exact text sent) and `UPDATED` / `WRITTEN` (records changed). Errors (NOT MAPPED, NO CCY, FAILED, BLOCK) are always written.
+  ```
+  ACTIVITY | hook=validateRecord status=UNAUTH aaa=AAACT26093... activity=ACCOUNTS-CREDIT-ARRANGEMENT class=... arrangement=AA26093XZ06K customer=100199 contract=FT26093BGWJR txnAmount=11000 ... remarks='ALBE.LIMIT.DATE=20260403'
+  RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED
+  OVERRIDE | customer=100199 sent=EB-ABLE.DAILY.LIMIT.EXCEED^100199]11000.00
+  RESULT   | COUNTED FT26093BGWJR ... | daily 100199-20260403 used credit 10,000.00 -> 21,000.00 | monthly 100199-202604 used credit 10,000.00 -> 21,000.00 | saved EB.ALBE.TXN.DETAILS.LIMIT 100199-20260403-FT26093BGWJR-AA26093XZ06K
+  ```
+  Find one transaction: `grep "ALBE.CUSTOMER.LIMIT" api.log | grep FT26093BGWJR`; only the outcomes: `grep "| RESULT |"`.
+- `Constants.LOG_DETAIL_ENABLED` (default **false**) adds the technical trace (START / CALC / END / OK / BREACH / SKIP / FOUND and every DB read / write). Turn it on only when asked by development.
 
 ---
 

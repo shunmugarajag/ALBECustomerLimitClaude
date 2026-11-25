@@ -21,6 +21,7 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 25-Nov-2026   Development      OK lines moved to detail (RESULT lines tell the outcome)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRequestValidator {
@@ -66,7 +67,7 @@ public class CustomerLimitRequestValidator {
             LogUtil.info(CLASS_NAME, "isValidCustomerId", "INVALID", "customer id missing");
             return false;
         }
-        LogUtil.info(CLASS_NAME, "isValidCustomerId", "OK", "customer=" + customerId);
+        LogUtil.detail(CLASS_NAME, "isValidCustomerId", "OK", "customer=" + customerId);
         return true;
     }
 
@@ -86,7 +87,7 @@ public class CustomerLimitRequestValidator {
             LogUtil.info(CLASS_NAME, check, "INVALID", "reason=" + reason + " request=" + request);
             return false;
         }
-        LogUtil.info(CLASS_NAME, check, "OK", "customer=" + request.getCustomerId() + " txn="
+        LogUtil.detail(CLASS_NAME, check, "OK", "customer=" + request.getCustomerId() + " txn="
                 + request.getTransactionId());
         return true;
     }

@@ -42,7 +42,7 @@ public class CurrencyConversionService {
     public BigDecimal getRate(String fromCcy, String toCcy) {
         if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy,
                 toCcy)) {
-            LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " same currency, rate=1");
+            LogUtil.detail(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " same currency, rate=1");
             return Constants.SAME_CURRENCY_RATE;
         }
         BigDecimal rate = repository.readExchangeRate(fromCcy.trim(), toCcy.trim());
@@ -50,7 +50,7 @@ public class CurrencyConversionService {
             LogUtil.error(CLASS_NAME, METHOD_GET_RATE, "NO RATE", LABEL_FROM + fromCcy + " to=" + toCcy + " NO RATE");
             return null;
         }
-        LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " rate=" + rate);
+        LogUtil.detail(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " rate=" + rate);
         return rate;
     }
 
@@ -74,7 +74,7 @@ public class CurrencyConversionService {
             return null;
         }
         BigDecimal converted = amount.multiply(rate).setScale(Constants.AMOUNT_SCALE, RoundingMode.HALF_UP);
-        LogUtil.info(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " "
+        LogUtil.detail(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " "
                 + toCcy);
         return converted;
     }
@@ -99,7 +99,7 @@ public class CurrencyConversionService {
             } else {
                 request.setDebitAmount(converted);
             }
-            LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount
+            LogUtil.detail(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount
                     + " " + request.getTransactionCurrency() + " = " + converted + " " + limitCcy
                     + " (LCY amount from the activity)");
             return true;
@@ -120,7 +120,7 @@ public class CurrencyConversionService {
         } else {
             request.setDebitAmount(converted);
         }
-        LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount + " "
+        LogUtil.detail(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount + " "
                 + request.getTransactionCurrency() + " x " + rate + " = " + converted + " " + limitCcy);
         return true;
     }

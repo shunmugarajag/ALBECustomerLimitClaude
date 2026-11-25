@@ -93,7 +93,7 @@ constants/    Constants (the only final class)
 | Currency conversion to the limit CCY; txn CCY = AAA CURRENCY (else AA.ARRANGEMENT); limit CCY = LCY → AAA TXN.AMOUNT.LCY | user; rate source still pending for foreign-CCY limits and max CIF accounts (E1) |
 | Overridden-transactions report reads **AA.ARRANGEMENT.ACTIVITY OVERRIDE** at report time (live, then `$NAU`) | no table field allowed; "overridden" = limit-exceed overrides only (`Constants.LIMIT_EXCEED_OVERRIDES`) |
 | Enquiry range caps 92 days / 24 months; TXN report needs customer or date | protect online system |
-| Per-record trace logs at `detail` level | performance; `LOG_DETAIL_ENABLED=false` in production |
+| Per-record trace logs at `detail` level; **RESULT** (plain-language outcome per step) + **ACTIVITY** (fields per hook) at INFO (25-Nov) | performance + readable DEV logs; `LOG_DETAIL_ENABLED=false` by default |
 | Strict date/month parsing | Java's default turned 20261131 into 30-Nov |
 | Routines common for **any activity**: credit/debit by the **ACTIVITY.CLASS action** (`Constants.CREDIT_ACTIONS/DEBIT_ACTIONS`, any product line), INITIATION.TYPE list (all), ORIG.TXN.AMT, LCY amount | user (21-Nov): "common for all activities"; chose "any activity with TXN.AMOUNT, balance sign" – sign not available at validateRecord (no accounting yet; R25 TransactionData has no amount) → class action used; all initiation types; ORIG.TXN.AMT; TXN.AMOUNT.LCY |
 | **ACTIVITY.API only** – FT / TELLER / ACCOUNT.PARAMETER routines built then **removed** (22-Nov); one engine; key = root ref | user 22-Nov: "FT will trigger activity" → remove the others (Git history has them) |

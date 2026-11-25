@@ -15,6 +15,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 25-Nov-2026   Development      formatAmount for the RESULT log lines
  *-----------------------------------------------------------------------------
  */
 public class ValidationUtil {
@@ -22,6 +23,11 @@ public class ValidationUtil {
 
     private ValidationUtil() {
         // Static helpers only.
+    }
+
+    /** Amount for log lines: 11,000.00 ("blank" for null). */
+    public static String formatAmount(BigDecimal amount) {
+        return amount == null ? "blank" : String.format(java.util.Locale.ENGLISH, "%,.2f", amount);
     }
 
     /** True for null, "" or only spaces. */

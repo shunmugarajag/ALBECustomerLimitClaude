@@ -58,7 +58,7 @@ public class CustomerLimitEngine {
         }
         CustomerLimitDTO result = transaction.copyTransaction();
         dailyMonthlyService.validate(result);
-        LogUtil.info(CLASS_NAME, "checkDailyMonthly", "END", result.logKey() + " breaches="
+        LogUtil.detail(CLASS_NAME, "checkDailyMonthly", "END", result.logKey() + " breaches="
                 + result.getBreaches().size());
         return result;
     }
@@ -70,7 +70,7 @@ public class CustomerLimitEngine {
         }
         CustomerLimitDTO result = transaction.copyTransaction();
         new MaximumCifLimitService(repository).validate(result);
-        LogUtil.info(CLASS_NAME, "checkMaxCif", "END", result.logKey() + " breaches=" + result.getBreaches().size());
+        LogUtil.detail(CLASS_NAME, "checkMaxCif", "END", result.logKey() + " breaches=" + result.getBreaches().size());
         return result;
     }
 
@@ -83,7 +83,7 @@ public class CustomerLimitEngine {
         if (!CustomerLimitRequestValidator.isValidForDailyMonthly(transaction)) {
             return;
         }
-        LogUtil.info(CLASS_NAME, "count", "ACTION", "COUNT " + transaction.logKey());
+        LogUtil.detail(CLASS_NAME, "count", "ACTION", "COUNT " + transaction.logKey());
         dailyMonthlyService.countAtInput(transaction, accountNo, effectiveDate);
     }
 
@@ -106,7 +106,7 @@ public class CustomerLimitEngine {
                 recorded = new TxnDetailsLimitRecorder(repository).findOriginal(transaction);
             }
         }
-        LogUtil.info(CLASS_NAME, "reverse", "ACTION", "REVERSE " + transaction.logKey());
+        LogUtil.detail(CLASS_NAME, "reverse", "ACTION", "REVERSE " + transaction.logKey());
         return dailyMonthlyService.reverse(transaction, fallbackToToday);
     }
 
@@ -126,7 +126,7 @@ public class CustomerLimitEngine {
             String[] parts = recordId.split(Constants.TXN_ID_SEPARATOR, 4);
             LocalDate date = parts.length >= 3 ? ValidationUtil.toDate(parts[1]) : null;
             if (date != null) {
-                LogUtil.info(CLASS_NAME, "findCountedDate", "FOUND", "id=" + recordId);
+                LogUtil.detail(CLASS_NAME, "findCountedDate", "FOUND", "id=" + recordId);
                 return date;
             }
         }

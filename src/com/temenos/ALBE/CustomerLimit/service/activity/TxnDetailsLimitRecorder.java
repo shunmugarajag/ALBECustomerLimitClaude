@@ -30,6 +30,7 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  * 20-Nov-2026   Development      Initial Version
  * 21-Nov-2026   Development      HLSD id <customer>-<date>-<AAA>; date from AAA REMARKS
  * 23-Nov-2026   Development      Id <customer>-<date>-<FT/AAA>-<arrangement> (FQ6)
+ * 25-Nov-2026   Development      note for the RESULT log line
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {
@@ -58,7 +59,7 @@ public class TxnDetailsLimitRecorder {
      */
     public void record(CustomerLimitDTO request, String accountNo, String effectiveDate) {
         String recordId = recordId(request);
-        LogUtil.info(CLASS_NAME, "record", "START", "id=" + recordId);
+        LogUtil.detail(CLASS_NAME, "record", "START", "id=" + recordId);
         try {
             boolean credit = request.isCredit();
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
@@ -67,11 +68,13 @@ public class TxnDetailsLimitRecorder {
             txnRec.setEffDate(ValidationUtil.nvl(effectiveDate));
             txnRec.setTxnAmount(request.getAmount().toPlainString());
             repository.writeTxnDetails(recordId, txnRec);
+            request.addNote("saved EB.ALBE.TXN.DETAILS.LIMIT " + recordId);
             LogUtil.info(CLASS_NAME, "record", "WRITTEN", "id=" + recordId + " account=" + accountNo + " flag="
                     + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate
                     + " amount=" + request.getAmount());
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
+            request.addNote("EB.ALBE.TXN.DETAILS.LIMIT " + recordId + " SAVE FAILED");
             repository.markSaveFailed(CLASS_NAME, "record " + recordId);
         }
     }
@@ -85,12 +88,12 @@ public class TxnDetailsLimitRecorder {
     public List<CustomerLimitDTO> findOriginal(CustomerLimitDTO request) {
         List<CustomerLimitDTO> originals = new ArrayList<>();
         String recordId = recordId(request);
-        LogUtil.info(CLASS_NAME, "findOriginal", "START", "direct read id=" + recordId);
+        LogUtil.detail(CLASS_NAME, "findOriginal", "START", "direct read id=" + recordId);
         CustomerLimitDTO original = toRequest(recordId, request);
         if (original != null) {
             originals.add(original);
         }
-        LogUtil.info(CLASS_NAME, "findOriginal", "END", "id=" + recordId + " found=" + originals.size());
+        LogUtil.detail(CLASS_NAME, "findOriginal", "END", "id=" + recordId + " found=" + originals.size());
         return originals;
     }
 
@@ -124,7 +127,7 @@ public class TxnDetailsLimitRecorder {
             } else {
                 original.setDebitAmount(amount);
             }
-            LogUtil.info(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " countedOn="
+            LogUtil.detail(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " countedOn="
                     + original.getTransactionDate() + " flag=" + txnRec.getCreditDebitFlag().getValue()
                     + " amount=" + amount);
             return original;

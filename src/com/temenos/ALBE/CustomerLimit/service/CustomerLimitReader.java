@@ -75,7 +75,7 @@ public class CustomerLimitReader {
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {
-        LogUtil.info(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">"
+        LogUtil.detail(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">"
                 + Constants.GEN_PARAM_ID);
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
@@ -92,7 +92,7 @@ public class CustomerLimitReader {
                 if (key == null) {
                     continue;
                 }
-                LogUtil.info(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
+                LogUtil.detail(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
                 found = true;
                 switch (key.trim()) {
                 case Constants.PARAM_KEY_CCY:
@@ -150,7 +150,7 @@ public class CustomerLimitReader {
                 if (wanted.equals(ValidationUtil.nvl(keyName.getKeyName().getValue()).trim())) {
                     String value = ValidationUtil.nvl(keyName.getKeyValue().getValue()).trim().toUpperCase();
                     if (Constants.DIRECTION_CREDIT.equals(value) || Constants.DIRECTION_DEBIT.equals(value)) {
-                        LogUtil.info(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
+                        LogUtil.detail(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
                         return value;
                     }
                     LogUtil.error(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
@@ -173,7 +173,7 @@ public class CustomerLimitReader {
                 + " monthlyCredit=" + limits.monthlyCreditLimit + " monthlyDebit=" + limits.monthlyDebitLimit
                 + " maxCifBalance=" + limits.maxCifBalance;
         if ("getGenericLimits".equals(method)) {
-            LogUtil.info(CLASS_NAME, method, "CALC", details);
+            LogUtil.detail(CLASS_NAME, method, "CALC", details);
         } else {
             LogUtil.detail(CLASS_NAME, method, "CALC", details);
         }

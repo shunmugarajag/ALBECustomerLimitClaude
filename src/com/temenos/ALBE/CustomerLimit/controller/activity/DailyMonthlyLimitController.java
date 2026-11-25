@@ -52,6 +52,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine
  * 23-Nov-2026   Development      Block (EB-ALBE.LIMIT.UPDATE.FAILED) when a utilisation save fails (D37)
  * 25-Nov-2026   Development      Credit / debit from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY; not mapped -> error (D41)
+ * 25-Nov-2026   Development      ACTIVITY line per hook; RESULT lines (check numbers, overrides / errors, counted / taken back)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -70,9 +71,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         String activityStatus = "";
         try {
             activityStatus = arrangementContext.getActivityStatus();
-            LogUtil.info(CLASS_NAME, "defaultFieldValues", "START", "status=" + activityStatus);
+            LogUtil.detail(CLASS_NAME, "defaultFieldValues", "START", "status=" + activityStatus);
+            ActivityRequestBuilder.logActivity(CLASS_NAME, "defaultFieldValues", arrangementActivityRecord,
+                    arrangementContext, arrangementRecord);
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
+                LogUtil.detail(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return;
             }
             // Only counted activities (mapped to CREDIT / DEBIT, counted initiation type) get the date tag.
@@ -87,7 +90,8 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             String remarks = ValidationUtil.nvl(arrangementActivityRecord.getRemarks().getValue()).trim();
             LocalDate existing = ActivityRequestBuilder.dateFromRemarks(remarks);
             if (existing != null) {
-                LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "re-input, counted date kept " + existing);
+                LogUtil.result(CLASS_NAME, "defaultFieldValues", "REMARKS: re-input, limit date " + existing
+                        + " kept (the transaction stays counted on that day)");
                 return;
             }
 
@@ -98,6 +102,8 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             arrangementActivityRecord.setRemarks(newRemarks);
             LogUtil.info(CLASS_NAME, "defaultFieldValues", "UPDATED", "REMARKS '" + remarks + "' -> '" + newRemarks
                     + "'");
+            LogUtil.result(CLASS_NAME, "defaultFieldValues", "REMARKS: limit date " + countedDate
+                    + " added (the transaction is counted on this T24 date)");
 
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "defaultFieldValues", "ERROR", "status=" + activityStatus, e);
@@ -115,11 +121,12 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         long startTime = System.currentTimeMillis();
         try {
             activityStatus = arrangementContext.getActivityStatus();
-            LogUtil.info(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus);
-            logActivity("validateRecord", arrangementActivityRecord, arrangementContext, arrangementRecord);
+            LogUtil.detail(CLASS_NAME, "validateRecord", "START", "status=" + activityStatus);
+            ActivityRequestBuilder.logActivity(CLASS_NAME, "validateRecord", arrangementActivityRecord, arrangementContext,
+                    arrangementRecord);
 
             if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                LogUtil.info(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
+                LogUtil.detail(CLASS_NAME, "validateRecord", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return arrangementActivityRecord.getValidationResponse();
             }
 
@@ -132,6 +139,9 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null) {
+                LogUtil.result(CLASS_NAME, "validateRecord", "CHECK " + arrangementActivityRecord.getActivity().getValue()
+                        + " arrangement " + arrangementActivityRecord.getArrangement().getValue()
+                        + ": not counted (no amount, or initiation type not counted) -> no check");
                 return arrangementActivityRecord.getValidationResponse();
             }
 
@@ -139,8 +149,9 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitDTO result = new CustomerLimitEngine(repository).checkDailyMonthly(request);
             int raised = result == null ? 0
                     : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
+            logCheckResult("validateRecord", "CHECK daily/monthly ", request, result);
 
-            LogUtil.info(CLASS_NAME, "validateRecord", "END", request.logKey() + " overridesRaised=" + raised
+            LogUtil.detail(CLASS_NAME, "validateRecord", "END", request.logKey() + " overridesRaised=" + raised
                     + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
@@ -163,13 +174,18 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
         CustomerLimitRepository repository = null;
         try {
             activityStatus = arrangementContext.getActivityStatus();
-            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "START", "status=" + activityStatus);
-            logActivity("postCoreTableUpdate", arrangementActivityRecord, arrangementContext, arrangementRecord);
+            LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "START", "status=" + activityStatus);
+            ActivityRequestBuilder.logActivity(CLASS_NAME, "postCoreTableUpdate", arrangementActivityRecord,
+                    arrangementContext, arrangementRecord);
 
             String status = activityStatus == null ? "" : activityStatus.trim().toUpperCase();
             if (!isUtilisationStatus(status)) {
-                LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=" + status
+                LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "SKIP", "status=" + status
                         + " (only UNAUTH / DELETE / AUTH-REV change utilisation; AUTH was counted at input)");
+                LogUtil.result(CLASS_NAME, "postCoreTableUpdate", "status " + status + " "
+                        + arrangementActivityRecord.getActivity().getValue() + " arrangement "
+                        + arrangementActivityRecord.getArrangement().getValue()
+                        + ": nothing to change (the transaction was counted at input)");
                 return;
             }
 
@@ -182,6 +198,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                     LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "NOT MAPPED", "status=" + status + " activity="
                             + arrangementActivityRecord.getActivity().getValue() + " not in "
                             + Constants.GEN_PARAM_ACTIVITY_ID + " - nothing taken back, check the utilisation");
+                } else {
+                    LogUtil.result(CLASS_NAME, "postCoreTableUpdate", "status " + status + " "
+                            + arrangementActivityRecord.getActivity().getValue() + " arrangement "
+                            + arrangementActivityRecord.getArrangement().getValue()
+                            + ": not counted (no amount, or initiation type not counted) -> nothing to change");
                 }
                 return;
             }
@@ -189,22 +210,29 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitEngine engine = new CustomerLimitEngine(repository);
             switch (status) {
                 case Constants.STATUS_UNAUTH:   // transaction initiated: count it
-                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
+                    LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "ACTION", "COUNT " + request.logKey());
                     engine.count(request, getAccountNo(arrangementRecord),
                             arrangementActivityRecord.getEffectiveDate().getValue());
                     break;
                 case Constants.STATUS_DELETE:   // unauthorised input rejected: take it back
-                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE rejected input "
+                    LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE rejected input "
                             + request.logKey());
                     engine.reverse(request, false);
                     break;
                 default:                        // AUTH-REV, committed transaction reversed: take it back
-                    LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE reversal " + request.logKey());
+                    LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "ACTION", "REVERSE reversal " + request.logKey());
                     engine.reverse(request, true);
                     break;
             }
 
-            LogUtil.info(CLASS_NAME, "postCoreTableUpdate", "END", "status=" + status + " " + request.logKey()
+            String action = Constants.STATUS_UNAUTH.equals(status) ? "COUNTED "
+                    : Constants.STATUS_DELETE.equals(status) ? "TAKEN BACK (input rejected) "
+                    : "TAKEN BACK (reversal) ";
+            LogUtil.result(CLASS_NAME, "postCoreTableUpdate", action + request.describe()
+                    + (request.getNotes().isEmpty() ? "" : " | " + String.join(" | ", request.getNotes()))
+                    + (repository.isSaveFailed() ? " | SAVE FAILED -> ERROR " + Constants.ERR_LIMIT_UPDATE_FAILED
+                            + " (transaction cancelled)" : ""));
+            LogUtil.detail(CLASS_NAME, "postCoreTableUpdate", "END", "status=" + status + " " + request.logKey()
                     + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
@@ -218,6 +246,17 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                     + " save failed, raising " + Constants.ERR_LIMIT_UPDATE_FAILED);
             throw new T24CoreException("", Constants.ERR_LIMIT_UPDATE_FAILED);
         }
+    }
+
+    /** RESULT line of a check: transaction, every check with its numbers, overrides / errors raised. */
+    private void logCheckResult(String hook, String prefix, CustomerLimitDTO request, CustomerLimitDTO result) {
+        if (result == null) {
+            LogUtil.result(CLASS_NAME, hook, prefix + request.describe() + " | transaction info not valid -> no check");
+            return;
+        }
+        LogUtil.result(CLASS_NAME, hook, prefix + result.describe()
+                + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))
+                + " | raised: " + CustomerLimitOverride.ids(result));
     }
 
     /** D41: activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY - error on TXN.AMOUNT (blocks the input). */
@@ -251,27 +290,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
     private String getAccountNo(AaArrangementRecord arrangementRecord) {
         try {
             String accountNo = arrangementRecord.getLinkedAppl().get(0).getLinkedApplId().getValue();
-            LogUtil.info(CLASS_NAME, "getAccountNo", "FOUND", "account=" + accountNo);
+            LogUtil.detail(CLASS_NAME, "getAccountNo", "FOUND", "account=" + accountNo);
             return accountNo;
         } catch (Exception e) {
             LogUtil.info(CLASS_NAME, "getAccountNo", "NOT FOUND", "linked account not found ", e);
             return "";
-        }
-    }
-
-    /** Logs the raw activity fields received from T24, for tracing. */
-    private void logActivity(String hook, AaArrangementActivityRecord arrangementActivityRecord,
-            ArrangementContext arrangementContext, AaArrangementRecord arrangementRecord) {
-        try {
-            LogUtil.info(CLASS_NAME, hook, "CALC", "activity=" + arrangementActivityRecord.getActivity().getValue()
-                    + " class=" + arrangementActivityRecord.getActivityClass().getValue()
-                    + " arrangement=" + arrangementActivityRecord.getArrangement().getValue()
-                    + " aaa=" + arrangementContext.getArrangementActivityId()
-                    + " customer=" + arrangementRecord.getCustomer().get(0).getCustomer().getValue()
-                    + " txnAmount=" + arrangementActivityRecord.getTxnAmount().getValue()
-                    + " effectiveDate=" + arrangementActivityRecord.getEffectiveDate().getValue());
-        } catch (Exception e) {
-            LogUtil.info(CLASS_NAME, hook, "SKIP", "unable to log activity fields ", e);
         }
     }
 }

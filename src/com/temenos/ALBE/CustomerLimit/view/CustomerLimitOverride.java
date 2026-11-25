@@ -32,6 +32,7 @@ import com.temenos.api.TField;
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      texts(): overrides as a list
  * 22-Nov-2026   Development      Blank limit CCY: error EB-ALBE.CIF.LIMIT.CCY.MISSING (blocks)
+ * 25-Nov-2026   Development      ids() for the RESULT log line
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -58,7 +59,7 @@ public class CustomerLimitOverride {
                     + readable(text));
             field.setOverride(text);
         }
-        LogUtil.info(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
+        LogUtil.detail(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
                 + texts.size());
         return texts.size();
     }
@@ -97,6 +98,24 @@ public class CustomerLimitOverride {
                     breach.getDifference().toPlainString()));
         }
         return texts;
+    }
+
+    /** Ids that raiseFor sends for this request, for the RESULT log line ("none" when nothing). */
+    public static String ids(CustomerLimitDTO request) {
+        if (request.isLimitCcyMissing()) {
+            return "ERROR " + Constants.ERR_LIMIT_CCY_MISSING + " (input blocked)";
+        }
+        List<String> ids = new ArrayList<>();
+        if (request.isLimitMissing() || request.isLimitNotDefined()) {
+            ids.add(Constants.OVR_LIMIT_NOT_DEFINED);
+        }
+        if (request.isRateMissing()) {
+            ids.add(Constants.OVR_EXCH_RATE_MISSING);
+        }
+        for (LimitBreach breach : request.getBreaches()) {
+            ids.add(breach.getOverrideId());
+        }
+        return ids.isEmpty() ? "none" : String.join(", ", ids);
     }
 
     /** Raises an override on the given field; the user can accept it and continue. */

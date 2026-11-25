@@ -27,6 +27,7 @@ import com.temenos.t24.api.records.account.AccountRecord;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
+ * 25-Nov-2026   Development      plain-language notes for the RESULT log line
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitService {
@@ -48,31 +49,36 @@ public class MaximumCifLimitService {
      */
     public void validate(CustomerLimitDTO request) {
         String customerId = request.getCustomerId();
-        LogUtil.info(CLASS_NAME, "validate", "START", request);
+        LogUtil.detail(CLASS_NAME, "validate", "START", request);
 
         // Step 1: customer's maximum balance limit.
         Limits limits = limitReader.getCustomerLimits(customerId);
         if (limits == null) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS record");
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS record");
+            request.addNote("no EB.ALBE.CIF.LIMITS record for customer " + customerId + " -> max CIF not checked");
             request.setLimitMissing(true);
             return;
         }
         if (ValidationUtil.isBlank(limits.ccy)) {
             LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + customerId
                     + " EB.ALBE.CIF.LIMITS CCY is blank - error, transaction blocked");
+            request.addNote("EB.ALBE.CIF.LIMITS CURRENCY is blank for customer " + customerId);
             request.setLimitCcyMissing(true);
             return;
         }
         BigDecimal maximumCifLimit = limits.maxCifBalance;
         if (maximumCifLimit == null) {
-            LogUtil.info(CLASS_NAME, "validate", "NOT DEFINED", "MAX.CIF.BALANCE is blank for customer=" + customerId);
+            LogUtil.detail(CLASS_NAME, "validate", "NOT DEFINED", "MAX.CIF.BALANCE is blank for customer=" + customerId);
+            request.addNote("max CIF: " + Constants.CIF_FIELD_MAX_CIF_AMOUNT + " is blank -> not checked");
             request.addUndefinedLimit(Constants.CIF_FIELD_MAX_CIF_AMOUNT);
             return;
         }
 
         // Credit amount in the limit currency.
         if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId + " no exchange rate for the credit");
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no exchange rate for the credit");
+            request.addNote("no exchange rate " + request.getTransactionCurrency() + " -> " + limits.ccy
+                    + " -> max CIF not checked");
             return;
         }
         BigDecimal transactionAmount = request.getCreditAmount();
@@ -81,28 +87,37 @@ public class MaximumCifLimitService {
         String finMnemonic = repository.getFinancialMnemonic();
         BigDecimal totalBalance = getTotalCifBalance(request, finMnemonic, limits.ccy);
         if (totalBalance == null) {
-            LogUtil.info(CLASS_NAME, "validate", "END", "customer=" + customerId
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId
                     + " no exchange rate for account currency "
                     + request.getRateMissingCurrency());
+            request.addNote("no exchange rate for account currency " + request.getRateMissingCurrency() + " -> "
+                    + limits.ccy + " -> max CIF not checked");
             return;
         }
 
         // Step 3: compare total + credit amount with the limit (equal to the limit is allowed).
         BigDecimal projectedBalance = totalBalance.add(transactionAmount);
-        LogUtil.info(CLASS_NAME, "validate", "CALC", "customer=" + customerId + " totalBalance=" + totalBalance
+        LogUtil.detail(CLASS_NAME, "validate", "CALC", "customer=" + customerId + " totalBalance=" + totalBalance
                 + " txnAmount=" + transactionAmount + " projected=" + projectedBalance + " maxLimit="
                         + maximumCifLimit);
 
         if (projectedBalance.compareTo(maximumCifLimit) > 0) {
             BigDecimal difference = projectedBalance.subtract(maximumCifLimit);
-            LogUtil.info(CLASS_NAME, "validate", "BREACH", "customer=" + customerId + " difference=" + difference);
+            request.addNote("max CIF: balance of all accounts " + ValidationUtil.formatAmount(totalBalance) + " + this "
+                    + ValidationUtil.formatAmount(transactionAmount) + " = " + ValidationUtil.formatAmount(projectedBalance)
+                    + " > maximum " + ValidationUtil.formatAmount(maximumCifLimit) + " -> EXCEEDED by "
+                    + ValidationUtil.formatAmount(difference));
+            LogUtil.detail(CLASS_NAME, "validate", "BREACH", "customer=" + customerId + " difference=" + difference);
             request.addBreach(Constants.OVR_MAX_CIF_BAL_EXCEED,
                     String.format(Constants.MSG_MAX_CIF_EXCEEDED, customerId, difference.toPlainString()), difference);
         } else {
-            LogUtil.info(CLASS_NAME, "validate", "OK", "customer=" + customerId + " headroom="
+            request.addNote("max CIF: balance of all accounts " + ValidationUtil.formatAmount(totalBalance) + " + this "
+                    + ValidationUtil.formatAmount(transactionAmount) + " = " + ValidationUtil.formatAmount(projectedBalance)
+                    + " <= maximum " + ValidationUtil.formatAmount(maximumCifLimit) + " -> OK");
+            LogUtil.detail(CLASS_NAME, "validate", "OK", "customer=" + customerId + " headroom="
                     + maximumCifLimit.subtract(projectedBalance));
         }
-        LogUtil.info(CLASS_NAME, "validate", "END", request);
+        LogUtil.detail(CLASS_NAME, "validate", "END", request);
     }
 
     /**
@@ -124,10 +139,10 @@ public class MaximumCifLimitService {
                 return null;
             }
             total = total.add(balance);
-            LogUtil.info(CLASS_NAME, "getTotalCifBalance", "CALC", "[" + index + "/" + accountIds.size() + "] account="
+            LogUtil.detail(CLASS_NAME, "getTotalCifBalance", "CALC", "[" + index + "/" + accountIds.size() + "] account="
                     + accountId + " balance=" + balance + " runningTotal=" + total);
         }
-        LogUtil.info(CLASS_NAME, "getTotalCifBalance", "CALC", "customer=" + customerId + " accounts="
+        LogUtil.detail(CLASS_NAME, "getTotalCifBalance", "CALC", "customer=" + customerId + " accounts="
                 + accountIds.size()
                 + " total=" + total);
         return total;
@@ -152,7 +167,7 @@ public class MaximumCifLimitService {
             request.setRateMissing(accountCcy);
             return null;
         }
-        LogUtil.info(CLASS_NAME, "getAccountBalance", "CALC", "account=" + accountId + " balance=" + balance + " "
+        LogUtil.detail(CLASS_NAME, "getAccountBalance", "CALC", "account=" + accountId + " balance=" + balance + " "
                 + accountCcy
                 + " inLimitCcy=" + converted + " " + limitCcy);
         return converted;

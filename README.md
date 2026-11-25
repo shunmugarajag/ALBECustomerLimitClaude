@@ -179,21 +179,23 @@ All logging goes through `util/LogUtil`. No class creates its own logger.
 
 ```
 ALBE.CUSTOMER.LIMIT | <Class>.<method> | <EVENT> | key=value key=value [| Exception: message @ frame]
-INFO  ALBE.CUSTOMER.LIMIT | DailyMonthlyLimitService.checkLimit | OK | DAILY.CREDIT.LIMIT projected=3000.00 limit=5000 headroom=2000.00
+INFO  ALBE.CUSTOMER.LIMIT | DailyMonthlyLimitController.validateRecord | RESULT | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 ... | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | ... | raised: EB-ABLE.DAILY.LIMIT.EXCEED
 ```
 
 Each class has `private static final String CLASS_NAME = "<ClassName>";` and calls:
 
 | Call | Use for |
 |---|---|
-| `LogUtil.info(CLASS_NAME, "method", "EVENT", details)` | normal flow |
+| `LogUtil.result(CLASS_NAME, "method", text)` | **one plain-language line per step** (event `RESULT`): transaction, checks with numbers, overrides / errors raised, records changed |
+| `LogUtil.info(CLASS_NAME, "method", "EVENT", details)` | real events: `ACTIVITY` (activity fields per hook), `OVERRIDE`, `UPDATED`, `WRITTEN`, `NEW`, `DELETED`, `NOT FOUND` |
 | `LogUtil.error(CLASS_NAME, "method", "EVENT", details[, e])` | failure or bad data |
-| `LogUtil.detail(CLASS_NAME, "method", "READ", details)` | DB trace before the call, written only when `Constants.LOG_DETAIL_ENABLED = true` (set `false` for production) |
+| `LogUtil.detail(CLASS_NAME, "method", "EVENT", details[, e])` | technical trace (START / CALC / END / OK / BREACH / SKIP / FOUND, DB READ / WRITE), written only when `Constants.LOG_DETAIL_ENABLED = true` (default false) |
 
 **Events** (use only these):
 
 | Group | Events |
 |---|---|
+| Summary | `RESULT` (plain-language outcome of a step) `ACTIVITY` (activity fields at hook start) |
 | Flow | `START` `END` `STEP` `SKIP` `ACTION` |
 | Checks | `OK` `INVALID` `BREACH` `NOT DEFINED` `OVERRIDE` |
 | Calculations | `CALC` `UPDATED` `ADJUSTED` |
