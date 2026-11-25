@@ -92,7 +92,7 @@ Details: [GAPS.md](GAPS.md)
 | D38 | No joint accounts – first CUSTOMER of the arrangement is the only holder (FQ18) |
 | D39 | TXN.DETAILS id = <cust>-<date>-<FT/AAA>-<arrangement>; own-account transfers counted and checked on both sides (FQ6) |
 | D40 | EB.OVERRIDE ids are EB-ABLE.* as created in DEV (code follows T24); EB.ERROR ids EB-ALBE.* |
-| D41 | Credit / debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT) instead of the ACTIVITY.CLASS action; activity not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED (25-Nov) |
+| D41 | Credit / debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT) instead of the ACTIVITY.CLASS action; activity not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED (25-Nov); separate table (key = activity) considered 25-Nov – approval available, **not chosen** (30–40 activities = no performance impact) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
