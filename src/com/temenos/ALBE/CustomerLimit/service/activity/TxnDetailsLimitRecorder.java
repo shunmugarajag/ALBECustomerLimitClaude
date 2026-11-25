@@ -17,11 +17,10 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  *               input or a reversal subtracts from the original day and month.
  *
  *               Record id : <customer id>-<YYYYMMDD>-<transaction key>   (HLSD format)
- *                           YYYYMMDD = T24 date the amount was counted on. It is kept
- *                           in the activity's REMARKS (ALBE.LIMIT.DATE=YYYYMMDD, written by
- *                           DailyMonthlyLimitController.defaultFieldValues), so every later
- *                           step - also a reversal on another day - rebuilds the id and
- *                           reads the record directly by key.
+ *                           YYYYMMDD = T24 date the amount was counted on = the activity's
+ *                           ORG.SYSTEM.DATE (kept by T24 on authorisation / rejection /
+ *                           reversal), so every later step rebuilds the id and reads the
+ *                           record directly by key (fallback: SELECT by transaction).
  *               Fields    : ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE (value date),
  *                           TXN.AMOUNT (in the limit currency). No other field is written.
  *------------------------------------------------------------------------------
@@ -31,6 +30,7 @@ import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRe
  * 21-Nov-2026   Development      HLSD id <customer>-<date>-<AAA>; date from AAA REMARKS
  * 23-Nov-2026   Development      Id <customer>-<date>-<FT/AAA>-<arrangement> (FQ6)
  * 25-Nov-2026   Development      note for the RESULT log line
+ * 26-Nov-2026   Development      comment: date from ORG.SYSTEM.DATE (REMARKS tag removed, D42)
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {

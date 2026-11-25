@@ -43,6 +43,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 25-Nov-2026   Development      Direction from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY instead of ACTIVITY.CLASS (D41)
  * 25-Nov-2026   Development      activity name on the request (RESULT log line)
  * 25-Nov-2026   Development      logActivity: one ACTIVITY line with the key activity fields (all hooks)
+ * 26-Nov-2026   Development      counted date only from the activity ORG.SYSTEM.DATE / T24 TODAY; dateFromRemarks removed (D42)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -137,14 +138,11 @@ public class ActivityRequestBuilder {
     }
 
     /**
-     * Counted date: the REMARKS tag (date counted at input, so a rejection or reversal on a later
-     * day uses the same day and month), else ORG.SYSTEM.DATE, else T24 TODAY, else the server clock.
+     * Counted date = the T24 date of the activity (ORG.SYSTEM.DATE, else T24 TODAY). The same
+     * activity keeps its ORG.SYSTEM.DATE on authorisation, rejection and reversal, so every step
+     * uses the day the amount was counted on (D42; the REMARKS tag was removed).
      */
     public static LocalDate getCountedDate(AaArrangementActivityRecord aaaRec, CustomerLimitRepository repository) {
-        LocalDate tagged = dateFromRemarks(aaaRec.getRemarks().getValue());
-        if (tagged != null) {
-            return tagged;
-        }
         return getT24Date(aaaRec, repository);
     }
 
@@ -164,21 +162,6 @@ public class ActivityRequestBuilder {
         LogUtil.error(CLASS_NAME, "getT24Date", "FALLBACK", "no ORG.SYSTEM.DATE and no T24 TODAY, server clock "
                 + clock + " used");
         return clock;
-    }
-
-    /** Date from the REMARKS tag ALBE.LIMIT.DATE=YYYYMMDD; null if not there or not a valid date. */
-    public static LocalDate dateFromRemarks(String remarks) {
-        String text = ValidationUtil.nvl(remarks);
-        int pos = text.indexOf(Constants.REMARKS_DATE_TAG);
-        if (pos < 0) {
-            LogUtil.detail(CLASS_NAME, "dateFromRemarks", "NOT FOUND", "no " + Constants.REMARKS_DATE_TAG + " in REMARKS");
-            return null;
-        }
-        int start = pos + Constants.REMARKS_DATE_TAG.length();
-        int end = Math.min(start + Constants.REMARKS_DATE_LENGTH, text.length());
-        LocalDate date = ValidationUtil.toDate(text.substring(start, end));
-        LogUtil.info(CLASS_NAME, "dateFromRemarks", date == null ? "INVALID" : "FOUND", "countedDate=" + date);
-        return date;
     }
 
     /** ORIG.TXN.AMT (full original amount) when useOriginal, else TXN.AMOUNT. */
@@ -222,8 +205,7 @@ public class ActivityRequestBuilder {
                     .append(" currency=").append(aaaRec.getCurrency().getValue())
                     .append(" effectiveDate=").append(aaaRec.getEffectiveDate().getValue())
                     .append(" orgSystemDate=").append(aaaRec.getOrgSystemDate().getValue())
-                    .append(" initiation=").append(getInitiationType(aaaRec))
-                    .append(" remarks='").append(ValidationUtil.nvl(aaaRec.getRemarks().getValue())).append("'");
+                    .append(" initiation=").append(getInitiationType(aaaRec));
         } catch (Exception e) {
             line.append(" (some fields not readable: ").append(e.getClass().getSimpleName()).append(')');
         }

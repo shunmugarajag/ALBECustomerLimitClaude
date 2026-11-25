@@ -1,6 +1,5 @@
 package com.temenos.ALBE.CustomerLimit.controller.activity;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -31,13 +30,9 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *               and lets the view (CustomerLimitOverride) raise the overrides.
  *               No business rules and no DB access here.
  *
- *   defaultFieldValues  UNAUTH   : keeps the T24 date in the activity REMARKS as
- *                                  ALBE.LIMIT.DATE=YYYYMMDD (first input only), so every later
- *                                  step - also a reversal on another day - uses the date the
- *                                  amount was counted on and rebuilds the
- *                                  EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<date>-<AAA>
  *   validateRecord      UNAUTH   : service.validate, then overrides on TXN.AMOUNT
  *   postCoreTableUpdate UNAUTH   : service.countAtInput  (utilisation counted at input)
+ *   Counted date = the activity's ORG.SYSTEM.DATE (else T24 TODAY), see ActivityRequestBuilder.
  *                       DELETE   : service.reverse       (unauthorised input rejected)
  *                       AUTH     : nothing               (already counted)
  *                       AUTH-REV : service.reverse       (authorised transaction reversed)
@@ -53,62 +48,11 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 23-Nov-2026   Development      Block (EB-ALBE.LIMIT.UPDATE.FAILED) when a utilisation save fails (D37)
  * 25-Nov-2026   Development      Credit / debit from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY; not mapped -> error (D41)
  * 25-Nov-2026   Development      ACTIVITY line per hook; RESULT lines (check numbers, overrides / errors, counted / taken back)
+ * 26-Nov-2026   Development      defaultFieldValues removed (D42): date from the activity ORG.SYSTEM.DATE, no REMARKS tag
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
     private static final String CLASS_NAME = "DailyMonthlyLimitController";
-
-    /**
-     * Input defaulting: keeps the counted (T24) date in the activity REMARKS the first time
-     * the activity is input. Existing REMARKS text is kept; a re-input keeps the original date.
-     */
-    @Override
-    public void defaultFieldValues(AaAccountDetailsRecord accountDetailRecord,
-            AaArrangementActivityRecord arrangementActivityRecord, ArrangementContext arrangementContext,
-            AaArrangementRecord arrangementRecord, AaArrangementActivityRecord masterActivityRecord,
-            TStructure productPropertyRecord, AaProductCatalogRecord productRecord, TStructure currRecord) {
-
-        String activityStatus = "";
-        try {
-            activityStatus = arrangementContext.getActivityStatus();
-            LogUtil.detail(CLASS_NAME, "defaultFieldValues", "START", "status=" + activityStatus);
-            ActivityRequestBuilder.logActivity(CLASS_NAME, "defaultFieldValues", arrangementActivityRecord,
-                    arrangementContext, arrangementRecord);
-            if (!Constants.STATUS_UNAUTH.equalsIgnoreCase(activityStatus)) {
-                LogUtil.detail(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
-                return;
-            }
-            // Only counted activities (mapped to CREDIT / DEBIT, counted initiation type) get the date tag.
-            CustomerLimitRepository repository = new CustomerLimitRepository(this);
-            if (!ActivityRequestBuilder.isCountedActivity(
-                    ActivityRequestBuilder.getDirection(arrangementActivityRecord, repository),
-                    ActivityRequestBuilder.getInitiationType(arrangementActivityRecord),
-                    arrangementActivityRecord.getActivity().getValue())) {
-                return;
-            }
-
-            String remarks = ValidationUtil.nvl(arrangementActivityRecord.getRemarks().getValue()).trim();
-            LocalDate existing = ActivityRequestBuilder.dateFromRemarks(remarks);
-            if (existing != null) {
-                LogUtil.result(CLASS_NAME, "defaultFieldValues", "REMARKS: re-input, limit date " + existing
-                        + " kept (the transaction stays counted on that day)");
-                return;
-            }
-
-            // T24 date of the activity (ORG.SYSTEM.DATE / T24 TODAY), not the server clock.
-            LocalDate countedDate = ActivityRequestBuilder.getT24Date(arrangementActivityRecord, repository);
-            String tag = Constants.REMARKS_DATE_TAG + countedDate.format(Constants.DAILY_ID_FORMAT);
-            String newRemarks = remarks.isEmpty() ? tag : remarks + Constants.REMARKS_SEPARATOR + tag;
-            arrangementActivityRecord.setRemarks(newRemarks);
-            LogUtil.info(CLASS_NAME, "defaultFieldValues", "UPDATED", "REMARKS '" + remarks + "' -> '" + newRemarks
-                    + "'");
-            LogUtil.result(CLASS_NAME, "defaultFieldValues", "REMARKS: limit date " + countedDate
-                    + " added (the transaction is counted on this T24 date)");
-
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "defaultFieldValues", "ERROR", "status=" + activityStatus, e);
-        }
-    }
 
     /** Input validation: daily and monthly limit check, overrides on TXN.AMOUNT. */
     @Override

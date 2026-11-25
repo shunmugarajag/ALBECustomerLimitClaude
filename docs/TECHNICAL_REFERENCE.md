@@ -118,7 +118,7 @@ Field lists are in [T24_CONFIGURATION.md §1](T24_CONFIGURATION.md#1-local-table
 |---|---|
 | customerId | AA.ARRANGEMENT CUSTOMER (first) |
 | transactionId | AAA id (`arrangementContext.getArrangementActivityId()`); arrangement id as fallback. Maximum CIF check: arrangement id |
-| transactionDate | counted date: REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD` (written at first input with the T24 date) → AAA ORG.SYSTEM.DATE → T24 TODAY (`Session !TODAY`) → server clock (logged last resort) |
+| transactionDate | counted date: the activity's ORG.SYSTEM.DATE, else T24 TODAY (D42; until 26-Nov: REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD`) → AAA ORG.SYSTEM.DATE → T24 TODAY (`Session !TODAY`) → server clock (logged last resort) |
 | creditAmount / debitAmount | ORIG.TXN.AMT if filled, else TXN.AMOUNT; credit or debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (AAA ACTIVITY → CREDIT/DEBIT, `CustomerLimitReader.getActivityDirection`; not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED, D41); INITIATION.TYPE must be counted (all types); otherwise skipped – `controller/activity/ActivityRequestBuilder`, common for all activities |
 | amountLcy | ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY – used instead of a rate when the limit currency is the local currency |
 | transactionCurrency | AAA CURRENCY, else AA.ARRANGEMENT CURRENCY |
@@ -425,6 +425,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 23-Nov-2026 | SonarQube findings: Constants lists `List.of` (read-only), repeated log literals as class constants, unused imports removed; no logic change |
 | 22-Nov-2026 | Service sub-packages `service.activity` (engine, daily/monthly, max CIF, TXN.DETAILS recorder, conversion) and `service.customer` (creation); shared Reader / UtilizationUpdater stay in `service`; no logic change |
 | 22-Nov-2026 | Report sub-packages `model.enquiry` (report rows) and `service.enquiry` (CustomerLimitEnquiryService); no logic change |
+| 26-Nov-2026 | D42: counted date only from the activity ORG.SYSTEM.DATE (else T24 TODAY); `defaultFieldValues` (DEF routine) and the REMARKS tag removed; G4 / G5 closed |
 | 25-Nov-2026 | Credit/debit mapping in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41); unmapped activity → EB-ALBE.ACTIVITY.NOT.MAPPED; ACTIVITY.CLASS action logic removed |
 | 22-Nov-2026 | Controller sub-packages `controller.customer`, `controller.activity`, `controller.enquiry` (EB.API package names updated) |
 | 22-Nov-2026 | FT / TELLER / ACCOUNT.PARAMETER routines **removed** – FT, TT and other postings on AA accounts arrive as activities, covered by ACTIVITY.API (classes in Git history) |

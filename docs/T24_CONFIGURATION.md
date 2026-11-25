@@ -211,16 +211,16 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | EB.API id | Java package | Java class | Hook method |
 |---|---|---|---|
 | ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` | `postUpdateRequest` |
-| ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `defaultFieldValues`, `validateRecord`, `postCoreTableUpdate` |
+| ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller.activity` | `MaximumCifLimitController` | `validateRecord` |
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitTxnEnquiryController` | `setIds` |
 
 Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METHOD **(confirm)**.
-If your release needs one EB.API record per hook method, create three for `DailyMonthlyLimitController`
-(e.g. `ALBE.CL.DAILY.MONTHLY.DEF` → `defaultFieldValues`, `ALBE.CL.DAILY.MONTHLY.VAL` → `validateRecord`,
-`ALBE.CL.DAILY.MONTHLY.UPD` → `postCoreTableUpdate`).
+If your release needs one EB.API record per hook method, create two for `DailyMonthlyLimitController`
+(`ALBE.CL.DAILY.MONTHLY.VAL` → `validateRecord`, `ALBE.CL.DAILY.MONTHLY.UPD` → `postCoreTableUpdate`).
+**`ALBE.CL.DAILY.MONTHLY.DEF` (`defaultFieldValues`) is no longer used (D42, 26-Nov)** – remove it from Record Rtn in ACTIVITY.API.
 
 ---
 
@@ -243,10 +243,8 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 | Activity | Routine | Hook | Must run for |
 |---|---|---|---|
-| ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `defaultFieldValues` | input (UNAUTH) – writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
-| ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `defaultFieldValues` | input (UNAUTH) – writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS |
 | ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
 | ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
 | ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.MAX.CIF | `validateRecord` | input (UNAUTH) |
@@ -254,9 +252,9 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 | ACCOUNTS-TRANSFEROUT-ARRANGEMENT | same 3 hooks as DEBIT | as above | mapped DEBIT in GEN.PARAM |
 
 - Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
-- **REMARKS:** `defaultFieldValues` appends `ALBE.LIMIT.DATE=YYYYMMDD` to the activity REMARKS at first input (user text is kept; a re-input keeps the first date). Users should not delete this tag. Without it a rejection / reversal uses today's date.
+- **No Record Rtn (DEF) any more** (D42): REMARKS is not touched. DEV 25-Nov: for FT-created activities (ACCOUNT / CR.MOVEMENT, DR.MOVEMENT) T24 calls **only the Post Routine** – Record and Validate routines are never called.
 - **The routines can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routines here (no code change).
-- **Date:** the T24 date – REMARKS tag, else the activity's ORG.SYSTEM.DATE, else T24 TODAY (server clock only as a logged last resort).
+- **Date:** the activity's **ORG.SYSTEM.DATE** (T24 date), else T24 TODAY (server clock only as a logged last resort). Not DATE.TIME – that is the server clock.
 - **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again; the REMARKS tag, if kept, keeps the original day).
 - The maximum CIF check is for **credit** activities only.
 - ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).

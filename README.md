@@ -138,7 +138,7 @@ Monthly utilisation = UTILISED.MIGRATED.* + UTILISED.* of the monthly record.
 **EB.ALBE.TXN.DETAILS.LIMIT** (EB.TABLE.DEFINITION `ALBE.TXN.DETAILS.LIMIT`) – **structure as approved, no change**
 
 Record id: `<customer>-<YYYYMMDD>-<FT/TT or AAA id>-<arrangement id>`, e.g. `100234-20261120-FT26324ABCDE-AA26324XYZ12`; YYYYMMDD = T24 date the amount was counted on.
-That date is kept in the activity **REMARKS** as `ALBE.LIMIT.DATE=YYYYMMDD` (written by `defaultFieldValues` at first input, existing text kept), so every later step – also a rejection or a reversal on another day – rebuilds the id and reads the record **directly by key** (no SELECT).
+That date is the activity's own **ORG.SYSTEM.DATE** (the T24 date of the activity, kept by T24 on authorisation, rejection and reversal; else T24 TODAY), so every later step – also a rejection or a reversal on another day – rebuilds the id and reads the record **directly by key**; if not found, one SELECT by transaction finds the original day. (D42, 26-Nov: the REMARKS tag and the DEF routine were removed – the date comes from the activity's ORG.SYSTEM.DATE)
 
 | Field | Value |
 |---|---|

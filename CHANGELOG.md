@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – counted date from the activity, default routine removed (26-Nov-2026, D42)
+- The counted date is the activity's own **ORG.SYSTEM.DATE** (T24 date; else T24 TODAY). The REMARKS tag `ALBE.LIMIT.DATE=…` and the defaulting routine (`defaultFieldValues`, EB.API `ALBE.CL.DAILY.MONTHLY.DEF`) are removed: DEV showed T24 never calls Record / Validate routines for FT-created activities, and ORG.SYSTEM.DATE is filled on every step. Gaps G4 / G5 closed. Product: remove `ALBE.CL.DAILY.MONTHLY.DEF` from Record Rtn in ACTIVITY.API.
+
 ### Fixed – JAR name must be ALBE_CustomerLimit.jar (25-Nov-2026)
 - DEV outage: the Maven build named the JAR `ALBECustomerLimit.jar`, but JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name. With that file gone the T24 module failed and every deployment was marked `.failed`. The build now produces `ALBE_CustomerLimit.jar`; the deploy copies to `.jar.new` and renames (the file is never missing) and removes wrong-name copies (`ALBECustomerLimit*.jar`).
 

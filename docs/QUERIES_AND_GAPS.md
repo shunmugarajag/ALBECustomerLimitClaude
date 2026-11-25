@@ -37,7 +37,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ5 | FT delete / reversal reach the activity? | 🔴 |
 | TQ6 | AAA fields filled at input | 🔴 |
 | TQ7 | ORG.SYSTEM.DATE stable on change / reversal? | 🔴 |
-| TQ8 | REMARKS kept + max length | 🔴 |
+| TQ8 | REMARKS kept + max length | ✅ not needed (D42) |
 | TQ9 | `!TODAY` = T24 date | 🔴 |
 | TQ10 | COB UNAUTH.PROCESS setting | 🔴 |
 | TQ11 | Reverse and replay – new AAA ids? | 🔴 |
@@ -58,7 +58,7 @@ Details: [GAPS.md](GAPS.md)
 | D3 | Breach = acceptable override |
 | D4 | Limit creation = Auth routine, never overwrite |
 | D5 | GEN.PARAM id `CUSTOMER.LIMIT` |
-| D6 | Counted date in REMARKS tag |
+| D6 | ~~Counted date in REMARKS tag~~ – replaced by D42 |
 | D7 | Convert to limit currency |
 | D8 | Reports: summary, period, transactions |
 | D9 | T24 date, not server clock |
@@ -93,6 +93,7 @@ Details: [GAPS.md](GAPS.md)
 | D39 | TXN.DETAILS id = <cust>-<date>-<FT/AAA>-<arrangement>; own-account transfers counted and checked on both sides (FQ6) |
 | D40 | EB.OVERRIDE ids are EB-ABLE.* as created in DEV (code follows T24); EB.ERROR ids EB-ALBE.* |
 | D41 | Credit / debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT) instead of the ACTIVITY.CLASS action; activity not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED (25-Nov); separate table (key = activity) considered 25-Nov – approval available, **not chosen** (30–40 activities = no performance impact) |
+| D42 | Counted date from the activity's ORG.SYSTEM.DATE only (else T24 TODAY); REMARKS tag + DEF routine (`defaultFieldValues`) removed – DEV 25-Nov: Record Rtn never called for FT activities, `orgSystemDate=20260403` on every hook (user approved 26-Nov) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps
@@ -102,8 +103,8 @@ Details: [GAPS.md](GAPS.md)
 | G1 | Server clock used | 🟢 | T24 date |
 | G2 | Parallel updates lose a count | 🔴 | TQ2 |
 | G3 | Partial write | 🟢 | blocked (D37) |
-| G4 | REMARKS tag lost | 🟡 | ORG.SYSTEM.DATE fallback |
-| G5 | REMARKS too long | 🔴 | TQ8 |
+| G4 | REMARKS tag lost | ✅ closed | D42 – no REMARKS tag |
+| G5 | REMARKS too long | ✅ closed | D42 – no REMARKS tag |
 | G6 | Blank limit CCY | 🟢 | error |
 | G7 | Other-company accounts | 🔴 | TQ14 |
 | G8 | Slow ACCOUNT select | 🔴 | TQ14 |

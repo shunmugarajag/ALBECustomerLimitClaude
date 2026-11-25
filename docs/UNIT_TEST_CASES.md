@@ -20,7 +20,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Utilisation (count / reverse) | UT-U01 … U07 | 7 | 7 | – |
 | Currency conversion | UT-F01 … F08 | 8 | 8 | – |
 | Limit creation | UT-C01 … C03 | 3 | 3 | – |
-| Counted date (REMARKS) | UT-R01 … R08 | 8 | 8 | – |
+| Counted date (REMARKS – removed, D42) | UT-R01 … R08 | 8 | 8 | – |
 | Request validation | UT-V01 … V06 | 6 | 6 | – |
 | Activity mapping (any activity) | UT-A01 … A13 | 13 | 13 | – |
 | Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
@@ -132,13 +132,13 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 
 | Id | Given | When | Expected | Result |
 |---|---|---|---|---|
-| UT-R01 | REMARKS "Salary credit Nov" | first input (UNAUTH) | REMARKS "Salary credit Nov ALBE.LIMIT.DATE=<T24 date>" | Pass |
-| UT-R02 | tag present | re-input | REMARKS unchanged (first date kept) | Pass |
-| UT-R03 | REMARKS "x ALBE.LIMIT.DATE=20261120", today 21-Nov | read date | 20-Nov used | Pass |
-| UT-R04 | status AUTH-REV | defaulting | REMARKS not touched | Pass |
-| UT-R05 | no tag / "ALBE.LIMIT.DATE=20261131" / empty | read date | no date (T24 date used); invalid date rejected | Pass |
-| UT-R06 | REMARKS "Salary", ORG.SYSTEM.DATE 20260401, clock 21-Nov | first input | "Salary ALBE.LIMIT.DATE=20260401" (T24 date, not clock) | Pass |
-| UT-R07 | no ORG.SYSTEM.DATE, T24 TODAY 20260402 | first input | "ALBE.LIMIT.DATE=20260402" | Pass |
+| UT-R01 | REMARKS "Salary credit Nov" | first input (UNAUTH) | REMARKS "Salary credit Nov ALBE.LIMIT.DATE=<T24 date>" | Retired (D42) |
+| UT-R02 | tag present | re-input | REMARKS unchanged (first date kept) | Retired (D42) |
+| UT-R03 | REMARKS "x ALBE.LIMIT.DATE=20261120", today 21-Nov | read date | 20-Nov used | Retired (D42) |
+| UT-R04 | status AUTH-REV | defaulting | REMARKS not touched | Retired (D42) |
+| UT-R05 | no tag / "ALBE.LIMIT.DATE=20261131" / empty | read date | no date (T24 date used); invalid date rejected | Retired (D42) |
+| UT-R06 | REMARKS "Salary" (D42) | first input | REMARKS unchanged – the code never writes REMARKS | Pass |
+| UT-R07 | no ORG.SYSTEM.DATE (D42) | first input | REMARKS unchanged | Pass |
 | UT-R08 | `DEPOSITS-NEW-ARRANGEMENT` | first input | REMARKS untouched (not counted) | Pass |
 
 ## Request validation (controller, once)

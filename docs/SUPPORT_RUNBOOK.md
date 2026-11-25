@@ -9,7 +9,7 @@ For production support and business-user questions after go-live. How the module
 | When | Routine | What it does | What you see |
 |---|---|---|---|
 | Customer authorised (CUSTOMER,ALBE.CORP) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
-| Credit / debit activity input | ALBE.CL.DAILY.MONTHLY | writes `ALBE.LIMIT.DATE=YYYYMMDD` into REMARKS, checks daily / monthly, counts the amount | overrides; UTILISED.LIMIT and TXN.DETAILS records |
+| Credit / debit activity input | ALBE.CL.DAILY.MONTHLY | checks daily / monthly, counts the amount | overrides; UTILISED.LIMIT and TXN.DETAILS records |
 | Credit activity input | ALBE.CL.MAX.CIF | checks total balance against MAX.CIF.BALANCE | override |
 | Activity deleted (unauthorised) / reversed | ALBE.CL.DAILY.MONTHLY | subtracts the amount from the original day and month; deletes the TXN.DETAILS record | totals go down |
 
@@ -53,7 +53,7 @@ EB.ALBE.CIF.LIMITS,AMEND → amend → authorise. Effective for the next transac
 
 ### 3.5 Utilisation looks wrong (too high or too low)
 
-Possible causes: a write failed (G3), parallel inputs (G2), REMARKS tag removed on re-input (G4) – see [GAPS.md](GAPS.md).
+Possible causes: a write failed (G3), parallel inputs (G2) – see [GAPS.md](GAPS.md).
 
 1. Find the log lines for the customer and day: `grep "ALBE.CUSTOMER.LIMIT.*customer=<id>"` (and `record=<id>-<date>`).
 2. List what should be counted: `ENQ ALBE.CUSTOMER.LIMIT.TXN CUSTOMER EQ <id> DATE.FROM EQ <date> DATE.TO EQ <date>` and check each AAA's status (live, unauthorised, deleted, reversed).
@@ -64,7 +64,7 @@ Possible causes: a write failed (G3), parallel inputs (G2), REMARKS tag removed 
 
 ### 3.6 Reversal subtracted from the wrong day
 
-The day comes from the activity REMARKS tag `ALBE.LIMIT.DATE=YYYYMMDD`. If the tag was removed or edited, the activity's ORG.SYSTEM.DATE (T24 date of the activity) was used, else T24 TODAY. Check the AAA REMARKS; correct the two days as in 3.5. Ask users not to edit the tag.
+The day comes from the activity's ORG.SYSTEM.DATE (D42). Previously: REMARKS tag; if the tag was removed or edited, the activity's ORG.SYSTEM.DATE (T24 date of the activity) was used, else T24 TODAY. Check the AAA REMARKS; correct the two days as in 3.5. Ask users not to edit the tag.
 
 ### 3.7 "Exchange rate not available from X to Y"
 
@@ -92,7 +92,7 @@ Normal when nothing matches. Check the selection: the period report needs a date
 | Can I continue after a limit override? | Yes – all limit messages are acceptable overrides. The transaction is counted. |
 | Does an unauthorised transaction use the limit? | Yes, from input. If it is deleted, it is given back. |
 | A transaction from last week was reversed today – which day is given back? | The original day and month (from the activity REMARKS). |
-| What is `ALBE.LIMIT.DATE=…` in the remarks? | The date the amount was counted. Please do not change or delete it. |
+| What is `ALBE.LIMIT.DATE=…` in the remarks of older activities? | The counted date written by an earlier version (until 26-Nov-2026). Not used any more – it can stay. |
 | I changed the generic limits – why did a customer not change? | Generic limits are copied only when a new customer is authorised. Amend the customer's own record. |
 | Which currency are limits in? | The CCY of the customer's limit record (normally local currency); other currencies are converted. |
 

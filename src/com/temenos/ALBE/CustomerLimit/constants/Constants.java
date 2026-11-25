@@ -101,16 +101,6 @@ public final class Constants {
             "NOTFOUND", "NO RECORD", "MISSING");
 
     // -------------------------------------------------------------------------
-    // Counted date kept in the activity REMARKS (no extra table field)
-    // -------------------------------------------------------------------------
-    /** REMARKS tag holding the server date the transaction is counted on: ALBE.LIMIT.DATE=YYYYMMDD. */
-    public static final String REMARKS_DATE_TAG = "ALBE.LIMIT.DATE=";
-    /** Length of the YYYYMMDD after the tag. */
-    public static final int REMARKS_DATE_LENGTH = 8;
-    /** Separator between existing REMARKS text and the tag. */
-    public static final String REMARKS_SEPARATOR = " ";
-
-    // -------------------------------------------------------------------------
     // AA activity statuses and activity name keywords
     // -------------------------------------------------------------------------
     public static final String STATUS_UNAUTH = "UNAUTH";

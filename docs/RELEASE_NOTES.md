@@ -42,7 +42,7 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for 
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
 | 3 | EB.OVERRIDE | EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks), EB-ALBE.ENQ.INVALID.DATE, EB-ALBE.ENQ.INVALID.MONTH, EB-ALBE.ENQ.DATE.RANGE, EB-ALBE.ENQ.PERIOD.MANDATORY, EB-ALBE.ENQ.RANGE.TOO.LONG, EB-ALBE.ENQ.CUSTOMER.OR.DATE (EB-NO.REC.SELECT exists) | new | 14.3 |
-| 5 | EB.API | ALBE.CL.LIMIT.CREATE, ALBE.CL.DAILY.MONTHLY (or .DEF/.VAL/.UPD), ALBE.CL.MAX.CIF, ALBE.E.CUSTOMER.LIMIT.SUMMARY, ALBE.E.CUSTOMER.LIMIT.PERIOD, ALBE.E.CUSTOMER.LIMIT.TXN | new | 6 |
+| 5 | EB.API | ALBE.CL.LIMIT.CREATE, ALBE.CL.DAILY.MONTHLY (or .VAL/.UPD; .DEF not used since D42), ALBE.CL.MAX.CIF, ALBE.E.CUSTOMER.LIMIT.SUMMARY, ALBE.E.CUSTOMER.LIMIT.PERIOD, ALBE.E.CUSTOMER.LIMIT.TXN | new | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
 | 8 | ACTIVITY.API product condition | per product: ACCOUNTS-CREDIT-ARRANGEMENT (daily/monthly: defaultFieldValues, validateRecord, postCoreTableUpdate; max CIF: validateRecord), ACCOUNTS-DEBIT-ARRANGEMENT (daily/monthly) | **changed** | 8 |
@@ -77,7 +77,7 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 | # | Check | Expected | Log line |
 |---|---|---|---|
 | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
-| 2 | Credit below the limit | no override; daily + monthly used updated; AAA REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
+| 2 | Credit below the limit | no override; daily + monthly used updated | `checkLimit \| OK`, `addToRecord \| UPDATED` |
 | 3 | Credit above the daily limit | EB-ABLE.DAILY.LIMIT.EXCEED with customer and difference | `checkLimit \| BREACH` |
 | 4 | Delete the unauthorised transaction of check 3 | used back to the value after check 2 | `ACTION \| REVERSE rejected input` |
 | 5 | Limit summary for the test customer | numbers match checks 2–4 | – |
