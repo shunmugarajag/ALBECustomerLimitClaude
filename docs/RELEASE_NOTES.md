@@ -29,7 +29,7 @@ Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 
 | Object | Content |
 |---|---|
-| `ALBECustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 28 classes (6 controllers, 8 services, 1 repository, 6 models, 2 views, 2 validators, 2 utilities, Constants) |
+| `ALBE_CustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 28 classes (6 controllers, 8 services, 1 repository, 6 models, 2 views, 2 validators, 2 utilities, Constants) |
 | Generated table JARs | Java API of EB.ALBE.CIF.LIMITS, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
 
 Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for production.
@@ -58,7 +58,7 @@ Package the T24 records (items 2–11) in a **DL.DEFINE** (or the team's usual r
 | # | Action | Check |
 |---|---|---|
 | 1 | Install / authorise the EB.TABLE.DEFINITION records; create the files | FILE.CONTROL entries exist |
-| 2 | Generate the table Java API; put the generated JARs and `ALBECustomerLimit.jar` on the TAFJ classpath; restart / refresh TAFJ if your environment needs it | no class-not-found in the TAFJ log |
+| 2 | Generate the table Java API; put the generated JARs and `ALBE_CustomerLimit.jar` on the TAFJ classpath; restart / refresh TAFJ if your environment needs it | no class-not-found in the TAFJ log |
 | 3 | EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` with the bank's values | record authorised |
 | 4 | EB.OVERRIDE and EB.ERROR records | records authorised |
 | 5 | EB.API records | records authorised |
@@ -95,7 +95,7 @@ Remove the routines first so nothing new is counted, then the rest. Data written
 | 2 | Clear AUTH.ROUTINE ALBE.CL.LIMIT.CREATE on CUSTOMER,ALBE.CORP |
 | 3 | Remove the menu entries and role access |
 | 4 | Reverse the release package (EB.API, ENQUIRY, STANDARD.SELECTION, versions, EB.OVERRIDE, EB.ERROR) |
-| 5 | Remove `ALBECustomerLimit.jar` from the TAFJ classpath |
+| 5 | Remove `ALBE_CustomerLimit.jar` from the TAFJ classpath |
 | 6 | *(optional)* keep or clear the local tables – EB.ALBE.UTILISED.LIMIT / TXN.DETAILS hold only bookkeeping; EB.ALBE.CIF.LIMITS holds the customers' limits (keep if a re-install is planned) |
 
 The `ALBE.LIMIT.DATE=…` text stays in the REMARKS of activities input while the release was active; it is plain text and harmless.
