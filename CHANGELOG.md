@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – fewer false alarms in ALERT.API (25-Nov-2026)
+- EB.ALBE.TXN.DETAILS.LIMIT "record does not exist" at first input is normal (no earlier input to take back) – now logged as INFO, not ERROR. Real read failures stay ERROR (event FAILED).
+
 ### Changed – credit / debit from a GEN.PARAM mapping (25-Nov-2026, D41)
 - New EB.ALBE.GEN.PARAM record `CUSTOMER.LIMIT.ACTIVITY`: KEY.NAME = activity name (AAA ACTIVITY), KEY.VALUE = CREDIT or DEBIT. The routines read the direction from here instead of the ACTIVITY.CLASS action.
 - An activity with the routine attached but not in the record → new EB.ERROR `EB-ALBE.ACTIVITY.NOT.MAPPED` (transaction blocked). No table structure change. Tests UT-O01…O07.

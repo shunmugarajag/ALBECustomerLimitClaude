@@ -48,6 +48,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 20-Nov-2026   Development      Initial Version
  * 21-Nov-2026   Development      T24 date and local currency; readActivity for the report
  * 22-Nov-2026   Development      One constructor for every hook (T24Context)
+ * 25-Nov-2026   Development      readTxnDetails: record not found logged as INFO (normal at first input), other errors ERROR
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -286,7 +287,12 @@ public class CustomerLimitRepository {
                     + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue());
             return txnRec;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            if (isRecordNotFound(e)) {
+                // normal: first input of the activity (no earlier input to take back)
+                LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
+            } else {
+                LogUtil.error(CLASS_NAME, "readTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            }
             return null;
         }
     }
