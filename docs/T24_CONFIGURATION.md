@@ -192,7 +192,15 @@ The project is a **Maven** project (`pom.xml`, 25-Nov-2026). Sources stay in `sr
 | `mvn clean package` | `target/ALBECustomerLimit.jar` (only our classes; T24 / table JARs are compile-only) |
 | `mvn clean deploy` | build, then on the T24 server: list + remove `deploy.old.jars` in `deploy.dir` (`/srv/Temenos/T24/bnk/ALBElib`), copy the new JAR, list it (SSH / SCP, port `deploy.port`) |
 
-Eclipse: Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded – or with Maven, as a separate command: **`mvn antrun:run@restart-t24`** runs `deploy/restart_t24.sh` on the server, which stops JBoss (`kill -15` on the `jboss-modules.jar … Transact.xml` process, waits up to `deploy.stop.wait` s, never `kill -9`), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`) and waits for `WFLYSRV0025` (started) up to `deploy.start.wait` s. A restart affects everyone on DEV. Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
+**Short commands** (project folder, PowerShell: `.\deploy`, cmd: `deploy`):
+
+| Command | Does |
+|---|---|
+| `.\deploy` | `mvn clean deploy` – build + copy to the server |
+| `.\restart` | `mvn antrun:run@restart-t24` – restart T24 / JBoss |
+| `.\deploy-restart` | both, restart only if the deploy worked |
+
+Design Studio / Eclipse: **Run → Run Configurations… → Maven Build** shows **T24 deploy**, **T24 restart**, **T24 deploy + restart** (files in `.launch/`); after the first run they are in the Run (▶) drop-down. Or Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded – or with Maven, as a separate command: **`mvn antrun:run@restart-t24`** runs `deploy/restart_t24.sh` on the server, which stops JBoss (`kill -15` on the `jboss-modules.jar … Transact.xml` process, waits up to `deploy.stop.wait` s, never `kill -9`), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`) and waits for `WFLYSRV0025` (started) up to `deploy.start.wait` s. A restart affects everyone on DEV. Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
 
 ---
 
