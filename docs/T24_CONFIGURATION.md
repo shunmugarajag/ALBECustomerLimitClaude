@@ -183,13 +183,13 @@ The project is a **Maven** project (`pom.xml`, 25-Nov-2026). Sources stay in `sr
 1. Eclipse: right-click the project → **Configure → Convert to Maven Project** (or File → Import → Existing Maven Projects).
 2. In `pom.xml` check `t24.home` (default `C:/Temenos/R25`) and that `lib/l3-tables` holds `ALBE_CUSTOMER_LIMIT_TABLE.jar` and `ALBE_GEN_PARAM_TABLE.jar` (names in `l3.table.*.jar`).
 3. Server user / password: in `pom.xml` (uncomment `deploy.user` / `deploy.password` – then **do not commit** the pom with the password), or in `deploy.local.properties` next to the pom (ignored by Git), or on the command line `-Ddeploy.user=… -Ddeploy.password=…`.
-4. `deploy.old.jars` (default `ALBECustomerLimit*.jar`) must match the name of the JAR **now** in `/srv/Temenos/T24/bnk/ALBElib`, otherwise the old one stays and T24 loads two copies of the classes.
+4. **JAR name must be `ALBE_CustomerLimit.jar`**: JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name. If that file is missing, the whole T24 module fails and every deployment is marked `.failed` (DEV 25-Nov). The deploy copies to `ALBE_CustomerLimit.jar.new` and renames, so the file is never missing; `deploy.old.jars` (`ALBECustomerLimit*.jar`) removes wrong-name copies.
 
 **Every build**
 
 | Command | Result |
 |---|---|
-| `mvn clean package` | `target/ALBECustomerLimit.jar` (only our classes; T24 / table JARs are compile-only) |
+| `mvn clean package` | `target/ALBE_CustomerLimit.jar` (only our classes; T24 / table JARs are compile-only) |
 | `mvn clean deploy` | build, then on the T24 server: list + remove `deploy.old.jars` in `deploy.dir` (`/srv/Temenos/T24/bnk/ALBElib`), copy the new JAR, list it (SSH / SCP, port `deploy.port`) |
 
 **Short commands** (project folder, PowerShell: `.\deploy`, cmd: `deploy`):

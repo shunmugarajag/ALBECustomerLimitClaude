@@ -100,7 +100,8 @@
     <build>
         <!-- keep the existing Eclipse layout: sources in src/ -->
         <sourceDirectory>src</sourceDirectory>
-        <finalName>ALBECustomerLimit</finalName>
+        <!-- MUST stay ALBE_CustomerLimit: JBoss modules/com/temenos/t24/main/module.xml loads ./localLib/ALBE_CustomerLimit.jar by name -->
+        <finalName>ALBE_CustomerLimit</finalName>
 
         <plugins>
             <plugin>
@@ -166,10 +167,14 @@
                                 <echo message="T24 deploy: ${deploy.user}@${deploy.host}:${deploy.dir}"/>
                                 <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
                                          password="${deploy.password}" trust="true" failonerror="true"
-                                         command="cd '${deploy.dir}' &amp;&amp; ls -l ${deploy.old.jars} 2&gt;/dev/null; rm -f ${deploy.old.jars} &amp;&amp; echo 'old JAR removed'"/>
+                                         command="cd '${deploy.dir}' &amp;&amp; ls -l ${project.build.finalName}.jar ${deploy.old.jars} 2&gt;/dev/null; rm -f ${deploy.old.jars}; echo 'wrong-name copies removed (if any)'"/>
+                                <!-- copy to a temporary name, then rename: the JAR the T24 module loads is never missing -->
                                 <scp file="${project.build.directory}/${project.build.finalName}.jar"
-                                     todir="${deploy.user}@${deploy.host}:${deploy.dir}"
+                                     remoteTofile="${deploy.user}@${deploy.host}:${deploy.dir}/${project.build.finalName}.jar.new"
                                      port="${deploy.port}" password="${deploy.password}" trust="true"/>
+                                <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
+                                         password="${deploy.password}" trust="true" failonerror="true"
+                                         command="cd '${deploy.dir}' &amp;&amp; mv -f ${project.build.finalName}.jar.new ${project.build.finalName}.jar &amp;&amp; echo 'replaced ${project.build.finalName}.jar'"/>
                                 <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
                                          password="${deploy.password}" trust="true" failonerror="true"
                                          command="ls -l '${deploy.dir}/${project.build.finalName}.jar'"/>

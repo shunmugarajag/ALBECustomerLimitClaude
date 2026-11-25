@@ -28,6 +28,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | **T24 date** for counting (not the server clock) | REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (see 4) |
 | Don't critique the user's **sample** routines | user said "ignore gaps in the sample" |
 | Keep `'\u00FE'` / `'\u00FD'` as **ASCII escapes** | file tools turn them into raw bytes – check with `LC_ALL=C grep -P '[^\x00-\x7F]' -r src` (must print nothing) |
+| **JAR name = `ALBE_CustomerLimit.jar`** (25-Nov) | JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name – a missing/renamed JAR takes down all T24 deployments (DEV outage 25-Nov) |
 | **T24 server: change no file except the JAR deploy** (25-Nov) | never edit server config (e.g. `TAFJTrace.properties`) or leave files there; the restart script is streamed over SSH (`bash -s`), not saved |
 | Commit + push to `main` when work is done | end commit messages with the attribution lines the session provides |
 

@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Fixed – JAR name must be ALBE_CustomerLimit.jar (25-Nov-2026)
+- DEV outage: the Maven build named the JAR `ALBECustomerLimit.jar`, but JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name. With that file gone the T24 module failed and every deployment was marked `.failed`. The build now produces `ALBE_CustomerLimit.jar`; the deploy copies to `.jar.new` and renames (the file is never missing) and removes wrong-name copies (`ALBECustomerLimit*.jar`).
+
 ### Changed – Maven build with deploy to the T24 server (25-Nov-2026)
 - New `pom.xml` (sources stay in `src/`): `mvn clean package` builds `target/ALBECustomerLimit.jar`; `mvn clean deploy` also removes the old JAR in `/srv/Temenos/T24/bnk/ALBElib` and copies the new one (SSH / SCP). T24 / TAFJ / table JARs are compile-only system dependencies (`t24.home`, `l3.tables.dir`). Credentials in the pom, `deploy.local.properties` (not in Git) or `-D`.
 - Separate restart command `mvn antrun:run@restart-t24`: runs `deploy/restart_t24.sh` on the server – stops JBoss (kill -15 on the `jboss-modules.jar … Transact.xml` process, waits, never kill -9), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`), waits for "started" (WFLYSRV0025).
