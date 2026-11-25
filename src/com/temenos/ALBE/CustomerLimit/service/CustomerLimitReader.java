@@ -27,6 +27,7 @@ import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
  * 20-Nov-2026   Development      Initial Version
  * 23-Nov-2026   Development      GEN.PARAM keys as set up in DEV: CURRENCY, MAXIMUM.OVERALL.CIF.BALANCE
  * 25-Nov-2026   Development      getActivityDirection: activity -> CREDIT / DEBIT from GEN.PARAM (D41)
+ * 25-Nov-2026   Development      getActivityDirection: stream lookup instead of the for loop
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitReader {
@@ -146,17 +147,18 @@ public class CustomerLimitReader {
                 LogUtil.error(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " - no activity mapping");
                 return null;
             }
-            for (KeyNameClass keyName : genParamRec.getKeyName()) {
-                if (wanted.equals(ValidationUtil.nvl(keyName.getKeyName().getValue()).trim())) {
-                    String value = ValidationUtil.nvl(keyName.getKeyValue().getValue()).trim().toUpperCase();
-                    if (Constants.DIRECTION_CREDIT.equals(value) || Constants.DIRECTION_DEBIT.equals(value)) {
-                        LogUtil.info(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
-                        return value;
-                    }
-                    LogUtil.error(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
-                            + " value='" + value + "' (must be CREDIT or DEBIT)");
-                    return null;
-                }
+            String value = genParamRec.getKeyName().stream()
+                    .filter(keyName -> wanted.equals(ValidationUtil.nvl(keyName.getKeyName().getValue()).trim()))
+                    .map(keyName -> ValidationUtil.nvl(keyName.getKeyValue().getValue()).trim().toUpperCase())
+                    .findFirst().orElse(null);
+            if (Constants.DIRECTION_CREDIT.equals(value) || Constants.DIRECTION_DEBIT.equals(value)) {
+                LogUtil.info(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
+                return value;
+            }
+            if (value != null) {
+                LogUtil.error(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
+                        + " value='" + value + "' (must be CREDIT or DEBIT)");
+                return null;
             }
             LogUtil.info(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " has no activity=" + wanted);
             return null;

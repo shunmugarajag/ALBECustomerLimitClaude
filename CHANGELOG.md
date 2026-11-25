@@ -7,6 +7,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 ### Changed – credit / debit from a GEN.PARAM mapping (25-Nov-2026, D41)
 - New EB.ALBE.GEN.PARAM record `CUSTOMER.LIMIT.ACTIVITY`: KEY.NAME = activity name (AAA ACTIVITY), KEY.VALUE = CREDIT or DEBIT. The routines read the direction from here instead of the ACTIVITY.CLASS action.
 - An activity with the routine attached but not in the record → new EB.ERROR `EB-ALBE.ACTIVITY.NOT.MAPPED` (transaction blocked). No table structure change. Tests UT-O01…O07.
+- Lookup written as a Java stream (filter / findFirst) instead of a for loop – same result.
 
 ### Fixed – customer limit not created in DEV (24-Nov-2026, TQ13)
 - R25 reports a missing record as `T24CoreException EB-INTERNAL.ERROR … Record does not exist`. That text was not in `Constants.RECORD_NOT_FOUND_MARKERS`, so a new customer's limit read was treated as a failure and the record was not created. "RECORD DOES NOT EXIST" added; other read errors still create nothing. Tests UT-N01/N02. Logging note: our lines go to `api.log` via ALERT.API / DIAGNOSTIC.API – set `logger.DIAGNOSTIC_API.level = INFO` to see INFO lines.
