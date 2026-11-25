@@ -4,8 +4,9 @@
 
   Build only            : mvn clean package          -> target/ALBECustomerLimit.jar
   Build + deploy to T24 : mvn clean deploy           -> removes the old JAR(s) ${deploy.old.jars} in ${deploy.dir}
-                                                         on the T24 server, copies the new one (SSH / SCP),
-                                                         then (optional) runs deploy.restart.command
+                                                         on the T24 server, copies the new one (SSH / SCP)
+  Restart T24 (separate): mvn antrun:run@restart-t24  -> deploy/restart_t24.sh on the server (stop JBoss, start,
+                                                         wait for "started")
 
   Local settings (set once below, or pass on the command line with -Dname=value):
     t24.home        folder with TAFJ/lib, TAFJ/ext and T24/bnk/t24lib (the R25 libraries, compile only)
@@ -58,15 +59,17 @@
         <deploy.old.jars>ALBECustomerLimit*.jar</deploy.old.jars>
         <deploy.skip>false</deploy.skip>
         <!--
-          Restart / refresh T24 after the copy (mvn clean deploy). Off by default.
-          Set deploy.restart.skip=false and the command your team uses on the server, e.g.
-            sudo systemctl restart jboss      or      /srv/Temenos/scripts/restart_t24.sh
-          (run as deploy.user over SSH; sudo must not ask for a password). Output is shown in the build.
+          Restart T24 (JBoss) after the copy - deploy/restart_t24.sh, same steps as by hand:
+          kill -15 the JBoss java process, wait until stopped, nohup ./standalone.sh -c Transact.xml,
+          wait for "started" in the start-up log.
+          Separate command (not part of clean deploy):  mvn antrun:run@restart-t24
+          Restarting DEV affects everyone using it.
         -->
-        <deploy.restart.skip>true</deploy.restart.skip>
-        <deploy.restart.command>echo "set deploy.restart.command in pom.xml"</deploy.restart.command>
-        <!-- max wait for the restart command, ms (15 minutes) -->
-        <deploy.restart.timeout>900000</deploy.restart.timeout>
+        <deploy.jboss.bin>/srv/Temenos/3rdParty/AS/jboss-eap-8.0/bin</deploy.jboss.bin>
+        <deploy.jboss.config>Transact.xml</deploy.jboss.config>
+        <deploy.startup.log>/tmp/tafj-startup.log</deploy.startup.log>
+        <deploy.stop.wait>180</deploy.stop.wait>
+        <deploy.start.wait>900</deploy.start.wait>
     </properties>
 
     <!-- T24 / TAFJ libraries needed to compile (found with javac -verbose against R25) -->
@@ -169,25 +172,27 @@
                                 <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
                                          password="${deploy.password}" trust="true" failonerror="true"
                                          command="ls -l '${deploy.dir}/${project.build.finalName}.jar'"/>
-                                <echo message="Deployed ${project.build.finalName}.jar - restart / refresh TAFJ to load it"/>
+                                <echo message="Deployed ${project.build.finalName}.jar - restart T24 to load it: mvn antrun:run@restart-t24"/>
                             </target>
                         </configuration>
                     </execution>
-                    <!-- optional: restart T24 after the copy (deploy.restart.skip=false) -->
+                    <!-- restart T24: separate command, mvn antrun:run@restart-t24 (not bound to a phase) -->
                     <execution>
                         <id>restart-t24</id>
-                        <phase>deploy</phase>
+                        <phase>none</phase>
                         <goals><goal>run</goal></goals>
                         <configuration>
-                            <skip>${deploy.restart.skip}</skip>
                             <target>
                                 <property file="${project.basedir}/deploy.local.properties"/>
-                                <echo message="T24 restart on ${deploy.host}: ${deploy.restart.command}"/>
+                                <echo message="T24 restart on ${deploy.host} (${deploy.jboss.bin} -c ${deploy.jboss.config})"/>
+                                <scp file="${project.basedir}/deploy/restart_t24.sh"
+                                     remoteTofile="${deploy.user}@${deploy.host}:/tmp/albe_restart_t24.sh"
+                                     port="${deploy.port}" password="${deploy.password}" trust="true"/>
                                 <sshexec host="${deploy.host}" port="${deploy.port}" username="${deploy.user}"
                                          password="${deploy.password}" trust="true" failonerror="true"
-                                         timeout="${deploy.restart.timeout}" usepty="true"
-                                         command="${deploy.restart.command}"/>
-                                <echo message="T24 restart command finished"/>
+                                         timeout="1500000"
+                                         command="sed -i 's/\r$//' /tmp/albe_restart_t24.sh &amp;&amp; bash /tmp/albe_restart_t24.sh '${deploy.jboss.bin}' '${deploy.jboss.config}' '${deploy.startup.log}' ${deploy.stop.wait} ${deploy.start.wait}"/>
+                                <echo message="T24 restarted - new JAR loaded"/>
                             </target>
                         </configuration>
                     </execution>

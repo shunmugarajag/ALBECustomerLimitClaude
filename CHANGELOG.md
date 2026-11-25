@@ -6,6 +6,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ### Changed – Maven build with deploy to the T24 server (25-Nov-2026)
 - New `pom.xml` (sources stay in `src/`): `mvn clean package` builds `target/ALBECustomerLimit.jar`; `mvn clean deploy` also removes the old JAR in `/srv/Temenos/T24/bnk/ALBElib` and copies the new one (SSH / SCP). T24 / TAFJ / table JARs are compile-only system dependencies (`t24.home`, `l3.tables.dir`). Credentials in the pom, `deploy.local.properties` (not in Git) or `-D`.
+- Separate restart command `mvn antrun:run@restart-t24`: runs `deploy/restart_t24.sh` on the server – stops JBoss (kill -15 on the `jboss-modules.jar … Transact.xml` process, waits, never kill -9), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`), waits for "started" (WFLYSRV0025).
 
 ### Changed – clear logs (25-Nov-2026)
 - New **RESULT** line per step in plain words: the transaction (FT, activity, customer, CREDIT/DEBIT, amount, date, arrangement), each check with its numbers (`used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00`), the overrides / errors raised, and what was counted or taken back (used before -> after, TXN.DETAILS saved).
