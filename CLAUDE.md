@@ -34,7 +34,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 
 | Table | Id | Fields used |
 |---|---|---|
-| EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM) | KEY.NAME / KEY.VALUE (DEV record 23-Nov): **CURRENCY**, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, **MAXIMUM.OVERALL.CIF.BALANCE** (`Constants.PARAM_KEY_*`; CURRENCY → CIF.LIMIT CCY, MAXIMUM.OVERALL… → MAX.CIF.BALANCE) |
+| EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM); **`CUSTOMER.LIMIT.ACTIVITY`** = ACTIVITY → CREDIT/DEBIT (D41) | KEY.NAME / KEY.VALUE (DEV record 23-Nov): **CURRENCY**, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, **MAXIMUM.OVERALL.CIF.BALANCE** (`Constants.PARAM_KEY_*`; CURRENCY → CIF.LIMIT CCY, MAXIMUM.OVERALL… → MAX.CIF.BALANCE) |
 | EB.ALBE.CIF.LIMITS (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`, 23-Nov) | customer id | CURRENCY + the 5 limits – same names as GEN.PARAM except CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
 | EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>-<arrangement id>`** (root ref = FT/TT behind the AAA, else AAA id; arrangement since 23-Nov, FQ6; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
@@ -52,7 +52,7 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
 
-Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY.CLASS action CREDIT/DEBIT (any product line) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ABLE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked – **except a failed utilisation save → ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (blocks, D37)**.
+Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + **ACTIVITY mapped CREDIT/DEBIT in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`** (not mapped → ERROR `EB-ALBE.ACTIVITY.NOT.MAPPED`, blocks; D41) + INITIATION.TYPE in list (all); date for every step = REMARKS tag → ORG.SYSTEM.DATE → T24 TODAY (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ABLE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked – **except a failed utilisation save → ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (blocks, D37)**.
 
 ## 5. Code map
 
@@ -98,6 +98,7 @@ constants/    Constants (the only final class)
 | Routines common for **any activity**: credit/debit by the **ACTIVITY.CLASS action** (`Constants.CREDIT_ACTIONS/DEBIT_ACTIONS`, any product line), INITIATION.TYPE list (all), ORIG.TXN.AMT, LCY amount | user (21-Nov): "common for all activities"; chose "any activity with TXN.AMOUNT, balance sign" – sign not available at validateRecord (no accounting yet; R25 TransactionData has no amount) → class action used; all initiation types; ORIG.TXN.AMT; TXN.AMOUNT.LCY |
 | **ACTIVITY.API only** – FT / TELLER / ACCOUNT.PARAMETER routines built then **removed** (22-Nov); one engine; key = root ref | user 22-Nov: "FT will trigger activity" → remove the others (Git history has them) |
 | T24 date instead of server clock | DEV: ORG.SYSTEM.DATE 01 APR 2026 vs clock 29 OCT 26 |
+| **Direction from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`** (D41, 25-Nov): KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT; replaces the ACTIVITY.CLASS action (`CREDIT_ACTIONS/DEBIT_ACTIONS` removed); unmapped activity → EB.ERROR | user 25-Nov: "mapping table"; chose GEN.PARAM record (no new table), key ACTIVITY, unmapped → error |
 | Bank decides where the routines are attached; code generic; direction = ACTIVITY.CLASS action **for now** | user 21-Nov; FT/TT source/destination account reading discussed, not chosen; other actions (APPLYPAYMENT…) and deposit payouts: decide later (GAPS A7/A8) |
 
 HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM instead of EB.ALBE.GEN.CIF.LIMIT, counted date in REMARKS, currency conversion.
@@ -135,9 +136,9 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **reports**, **menu & access**) |
 | `docs/REPORTS.md` | the three reports: selection, columns, sample data, how they work |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D40, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D41, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 124 cases (115 pass outside T24, 9 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 131 cases (122 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

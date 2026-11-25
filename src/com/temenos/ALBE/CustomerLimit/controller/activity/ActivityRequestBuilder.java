@@ -7,6 +7,7 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
+import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.service.activity.CustomerLimitEngine;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
@@ -20,10 +21,9 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *               attached to any activity; this class decides whether it is counted:
  *
  *                 amount     ORIG.TXN.AMT if filled, else TXN.AMOUNT; no amount => not counted
- *                 direction  ACTION of the system-filled ACTIVITY.CLASS
- *                            (<PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>): Constants.CREDIT_ACTIONS =
- *                            credit, Constants.DEBIT_ACTIONS = debit, any product line; other
- *                            actions => not counted (direction unknown)
+ *                 direction  AAA ACTIVITY mapped in EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY
+ *                            (KEY.VALUE CREDIT / DEBIT, D41); not mapped => not counted here and the
+ *                            controllers raise EB-ALBE.ACTIVITY.NOT.MAPPED
  *                 initiation INITIATION.TYPE must be in Constants.COUNTED_INITIATION_TYPES
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
  *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id -
@@ -39,6 +39,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 22-Nov-2026   Development      Key = root of TXN.CONTRACT.ID (else AAA id) (CustomerLimitEngine)
  * 22-Nov-2026   Development      AA_SKIP_TXN_SYSTEM_IDS removed - the common key prevents double counting
  * 23-Nov-2026   Development      Arrangement id on the request (part of the TXN.DETAILS id, FQ6)
+ * 25-Nov-2026   Development      Direction from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY instead of ACTIVITY.CLASS (D41)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -58,7 +59,8 @@ public class ActivityRequestBuilder {
         String activity = aaaRec.getActivity().getValue();
         String activityClass = aaaRec.getActivityClass().getValue();
         String initiationType = getInitiationType(aaaRec);
-        if (!isCountedActivity(activityClass, initiationType, activity)) {
+        String direction = getDirection(aaaRec, repository);
+        if (!isCountedActivity(direction, initiationType, activity)) {
             return null;
         }
 
@@ -71,7 +73,7 @@ public class ActivityRequestBuilder {
         }
 
         // Same key wherever the routine is attached: the FT / TT behind the activity if there is one.
-        boolean credit = ValidationUtil.isCreditActivityClass(activityClass);
+        boolean credit = Constants.DIRECTION_CREDIT.equals(direction);
         String contractId = ValidationUtil.rootReference(aaaRec.getTxnContractId().getValue());
         String reference = ValidationUtil.isBlank(contractId) ? aaaId : contractId;
 
@@ -88,20 +90,27 @@ public class ActivityRequestBuilder {
             request.setDebitAmount(amount);
         }
         LogUtil.info(CLASS_NAME, "build", "CALC", "activity=" + activity + " class=" + activityClass
-                + " initiation=" + initiationType + " amountFrom=" + (useOriginal ? "ORIG.TXN.AMT" : "TXN.AMOUNT")
+                + " direction=" + direction + " initiation=" + initiationType + " amountFrom=" + (useOriginal ? "ORIG.TXN.AMT" : "TXN.AMOUNT")
                 + " request=" + request);
         return request;
     }
 
     /**
-     * True when activities of this class and initiation type are counted (amount not checked):
-     * the class action is a credit or debit action and the initiation type is counted.
+     * CREDIT / DEBIT of the activity from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY (D41); null when
+     * the activity is not mapped (the controllers then raise ERR_ACTIVITY_NOT_MAPPED at input).
      */
-    public static boolean isCountedActivity(String activityClass, String initiationType, String activity) {
-        if (!ValidationUtil.isCreditActivityClass(activityClass) && !ValidationUtil.isDebitActivityClass(activityClass)) {
-            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity + " class=" + activityClass
-                    + " action=" + ValidationUtil.activityAction(activityClass)
-                    + " is neither a credit nor a debit action");
+    public static String getDirection(AaArrangementActivityRecord aaaRec, CustomerLimitRepository repository) {
+        return new CustomerLimitReader(repository).getActivityDirection(aaaRec.getActivity().getValue());
+    }
+
+    /**
+     * True when the activity is counted (amount not checked): it is mapped to CREDIT / DEBIT and
+     * its initiation type is counted.
+     */
+    public static boolean isCountedActivity(String direction, String initiationType, String activity) {
+        if (direction == null) {
+            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity
+                    + " not mapped in " + Constants.GEN_PARAM_ACTIVITY_ID);
             return false;
         }
         if (!ValidationUtil.isCountedInitiationType(initiationType)) {

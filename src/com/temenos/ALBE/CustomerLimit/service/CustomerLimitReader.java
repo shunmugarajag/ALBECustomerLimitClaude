@@ -18,12 +18,15 @@ import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
  *                                   CustomerLimitCreationService), KEY.NAME / KEY.VALUE pairs:
  *                    CCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT,
  *                    MONTHLY.DEBIT.LIMIT, MAX.CIF.BALANCE
+ *               getActivityDirection : EB.ALBE.GEN.PARAM, record CUSTOMER.LIMIT.ACTIVITY,
+ *                                   KEY.NAME = AAA ACTIVITY, KEY.VALUE = CREDIT / DEBIT (D41).
  *               A blank limit means "no limit".
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 23-Nov-2026   Development      GEN.PARAM keys as set up in DEV: CURRENCY, MAXIMUM.OVERALL.CIF.BALANCE
+ * 25-Nov-2026   Development      getActivityDirection: activity -> CREDIT / DEBIT from GEN.PARAM (D41)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitReader {
@@ -125,6 +128,40 @@ public class CustomerLimitReader {
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND",
                     "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record", e);
+            return null;
+        }
+    }
+
+    /**
+     * Direction of an AA activity from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY: Constants.DIRECTION_CREDIT
+     * or Constants.DIRECTION_DEBIT; null when the activity is not listed (or the record cannot be read,
+     * or its value is neither CREDIT nor DEBIT) - the caller then raises ERR_ACTIVITY_NOT_MAPPED.
+     */
+    public String getActivityDirection(String activity) {
+        String wanted = ValidationUtil.nvl(activity).trim();
+        String key = Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ACTIVITY_ID;
+        try {
+            EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ACTIVITY_ID);
+            if (genParamRec == null) {
+                LogUtil.error(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " - no activity mapping");
+                return null;
+            }
+            for (KeyNameClass keyName : genParamRec.getKeyName()) {
+                if (wanted.equals(ValidationUtil.nvl(keyName.getKeyName().getValue()).trim())) {
+                    String value = ValidationUtil.nvl(keyName.getKeyValue().getValue()).trim().toUpperCase();
+                    if (Constants.DIRECTION_CREDIT.equals(value) || Constants.DIRECTION_DEBIT.equals(value)) {
+                        LogUtil.info(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
+                        return value;
+                    }
+                    LogUtil.error(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
+                            + " value='" + value + "' (must be CREDIT or DEBIT)");
+                    return null;
+                }
+            }
+            LogUtil.info(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " has no activity=" + wanted);
+            return null;
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "getActivityDirection", "ERROR", key + " activity=" + wanted, e);
             return null;
         }
     }

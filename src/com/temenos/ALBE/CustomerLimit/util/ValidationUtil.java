@@ -105,23 +105,6 @@ public class ValidationUtil {
         return !isBlank(ccy1) && !isBlank(ccy2) && ccy1.trim().equalsIgnoreCase(ccy2.trim());
     }
 
-    /** ACTION part of an activity class id <PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>; "" if not there. */
-    public static String activityAction(String activityClass) {
-        String[] parts = nvl(activityClass).trim().split(Constants.ACTIVITY_CLASS_SEPARATOR);
-        return parts.length > Constants.ACTIVITY_CLASS_ACTION_POS ? parts[Constants.ACTIVITY_CLASS_ACTION_POS].trim()
-                : "";
-    }
-
-    /** True when the activity class action moves money in (Constants.CREDIT_ACTIONS), any product line. */
-    public static boolean isCreditActivityClass(String activityClass) {
-        return contains(Constants.CREDIT_ACTIONS, activityAction(activityClass));
-    }
-
-    /** True when the activity class action moves money out (Constants.DEBIT_ACTIONS), any product line. */
-    public static boolean isDebitActivityClass(String activityClass) {
-        return contains(Constants.DEBIT_ACTIONS, activityAction(activityClass));
-    }
-
     /** True when activities of this INITIATION.TYPE are counted; a blank type is counted. */
     public static boolean isCountedInitiationType(String initiationType) {
         return isBlank(initiationType) || contains(Constants.COUNTED_INITIATION_TYPES, initiationType.trim());

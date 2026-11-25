@@ -135,6 +135,19 @@ Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to
 The KEY.NAME values must be spelled exactly as above (`Constants.PARAM_KEY_*`). A misspelt CURRENCY gives new customers a blank CCY, and every transaction is then blocked (EB-ALBE.CIF.LIMIT.CCY.MISSING). Values are the DEV set-up – the bank provides the production ones.
 Changing this record later does **not** change existing customers' EB.ALBE.CIF.LIMITS records.
 
+### 3a. Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` – credit / debit mapping *(mandatory, D41)*
+
+Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME = the AAA **ACTIVITY** name, KEY.VALUE = `CREDIT` or `DEBIT`. Id in `Constants.GEN_PARAM_ACTIVITY_ID`.
+
+| KEY.NAME (ACTIVITY) | KEY.VALUE |
+|---|---|
+| ACCOUNTS-CREDIT-ARRANGEMENT | CREDIT |
+| ACCOUNTS-DEBIT-ARRANGEMENT | DEBIT |
+
+- Add one line for **every** activity the routines are attached to (ACTIVITY.API).
+- Activity has the routine but is **not in this record** (or value is not CREDIT/DEBIT, or the record is missing) → **EB.ERROR `EB-ALBE.ACTIVITY.NOT.MAPPED`**, transaction blocked.
+- Value is not case-sensitive (`debit` = DEBIT).
+
 ---
 
 ## 4. EB.OVERRIDE records
@@ -156,6 +169,7 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 |---|---|---|
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
+| EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
 
 The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are filled in the override text **(confirm)**.
 
@@ -219,7 +233,7 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 - Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
 - **REMARKS:** `defaultFieldValues` appends `ALBE.LIMIT.DATE=YYYYMMDD` to the activity REMARKS at first input (user text is kept; a re-input keeps the first date). Users should not delete this tag. Without it a rejection / reversal uses today's date.
-- **The routines can be attached to any activity.** An activity is counted when (1) the **action** of its ACTIVITY.CLASS (`<PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>`, filled by the system) is `CREDIT` (credit) or `DEBIT` (debit) – any product line, user-defined activities included; (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Anything else is skipped – attaching the routines there does nothing. More actions can be added in `Constants.CREDIT_ACTIONS` / `DEBIT_ACTIONS`.
+- **The routines can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Anything else is skipped – attaching the routines there does nothing. More actions can be added in `Constants.CREDIT_ACTIONS` / `DEBIT_ACTIONS`.
 - **Date:** the T24 date – REMARKS tag, else the activity's ORG.SYSTEM.DATE, else T24 TODAY (server clock only as a logged last resort).
 - **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again; the REMARKS tag, if kept, keeps the original day).
 - The maximum CIF check is for **credit** activities only.

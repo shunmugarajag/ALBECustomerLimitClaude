@@ -31,8 +31,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
 | Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
 | Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
+| Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **124** | **115** | **9** |
+| **Total** | | **131** | **122** | **9** |
 
 ---
 
@@ -212,6 +213,18 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 |---|---|---|---|
 | UT-N01 | CIF.LIMITS read throws the R25 DEV text `EB-INTERNAL.ERROR … Record does not exist` | not found → limit record created | Pass |
 | UT-N02 | read throws another error (`File does not exist …`) | existence unknown → nothing created (never overwrite) | Pass |
+
+### Activity credit/debit mapping (D41)
+
+| Id | Case | Expected | Result |
+|---|---|---|---|
+| UT-O01 | ACCOUNTS-CREDIT-ARRANGEMENT = CREDIT in the mapping | CREDIT | Pass |
+| UT-O02 | value `debit` (lower case) | DEBIT | Pass |
+| UT-O03 | activity not in the mapping | null → EB-ALBE.ACTIVITY.NOT.MAPPED | Pass |
+| UT-O04 | value `X` (not CREDIT/DEBIT) | null → error | Pass |
+| UT-O05 | custom activity mapped CREDIT, ACTIVITY.CLASS says DEBIT | counted as credit (mapping wins) | Pass |
+| UT-O06 | not-mapped activity in the request builder | not counted | Pass |
+| UT-O07 | mapping record missing | null → error | Pass |
 
 ## Block on save failure (D37) – 23-Nov-2026
 

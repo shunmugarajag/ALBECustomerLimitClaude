@@ -169,6 +169,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
+| EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 
 `view.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
 

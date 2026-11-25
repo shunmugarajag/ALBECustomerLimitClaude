@@ -51,6 +51,16 @@ public final class Constants {
 
     /** EB.ALBE.GEN.PARAM record holding the generic limits. */
     public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
+    /**
+     * EB.ALBE.GEN.PARAM record that maps an AA activity to credit or debit (user 25-Nov-2026, D41):
+     * KEY.NAME = AAA ACTIVITY (e.g. ACCOUNTS-CREDIT-ARRANGEMENT), KEY.VALUE = CREDIT or DEBIT.
+     * An activity the routine is attached to but not listed here raises ERR_ACTIVITY_NOT_MAPPED.
+     */
+    public static final String GEN_PARAM_ACTIVITY_ID = "CUSTOMER.LIMIT.ACTIVITY";
+    /** KEY.VALUE in GEN_PARAM_ACTIVITY_ID for an activity that moves money INTO the account. */
+    public static final String DIRECTION_CREDIT = "CREDIT";
+    /** KEY.VALUE in GEN_PARAM_ACTIVITY_ID for an activity that moves money OUT of the account. */
+    public static final String DIRECTION_DEBIT = "DEBIT";
 
     // -------------------------------------------------------------------------
     // Limit names (used in logs / overrides). Table EB.ALBE.CIF.LIMITS field names differ for two of them:
@@ -107,18 +117,6 @@ public final class Constants {
     // -------------------------------------------------------------------------
     // Which activities are counted (the routines can be attached to any activity)
     // -------------------------------------------------------------------------
-    /**
-     * Separator in the AA.ACTIVITY.CLASS id <PRODUCT.LINE>-<ACTION>-<PROPERTY.CLASS>,
-     * e.g. ACCOUNTS-CREDIT-ARRANGEMENT. The AAA field ACTIVITY.CLASS is filled by the system,
-     * so user-defined activities linked to a class are covered too.
-     */
-    public static final String ACTIVITY_CLASS_SEPARATOR = "-";
-    /** Position of the ACTION in the activity class id (0 = product line). */
-    public static final int ACTIVITY_CLASS_ACTION_POS = 1;
-    /** Class actions that move money INTO the account (counted as credit), any product line. */
-    public static final List<String> CREDIT_ACTIONS = List.of("CREDIT");
-    /** Class actions that move money OUT of the account (counted as debit), any product line. */
-    public static final List<String> DEBIT_ACTIONS = List.of("DEBIT");
     /**
      * AAA INITIATION.TYPE values that are counted (agreed: all types). Remove a value here to stop
      * counting it, e.g. SECONDARY (charges) or SCHEDULED*EOD. A blank type is always counted.
@@ -213,6 +211,12 @@ public final class Constants {
      * EB.ALBE.CIF.LIMITS has a blank CCY. EB.ERROR record.
      */
     public static final String ERR_LIMIT_CCY_MISSING = "EB-ALBE.CIF.LIMIT.CCY.MISSING";
+    /**
+     * ERROR (blocks the transaction): Activity & not defined in EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY.
+     * EB.ERROR record. Raised by the check routines when the activity they are attached to has no
+     * CREDIT / DEBIT mapping (D41).
+     */
+    public static final String ERR_ACTIVITY_NOT_MAPPED = "EB-ALBE.ACTIVITY.NOT.MAPPED";
     /**
      * Customer limit could not be updated - transaction cancelled. EB.ERROR record. Raised from
      * postCoreTableUpdate when saving EB.ALBE.UTILISED.LIMIT / EB.ALBE.TXN.DETAILS.LIMIT fails

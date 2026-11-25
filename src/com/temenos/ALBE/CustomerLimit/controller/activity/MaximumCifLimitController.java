@@ -31,6 +31,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 21-Nov-2026   Development      Credit only by ACTIVITY.CLASS (was: name without DEBIT) (G9)
  * 21-Nov-2026   Development      Common activity mapping (ActivityRequestBuilder): ORIG.TXN.AMT, LCY amount
  * 22-Nov-2026   Development      Check through CustomerLimitEngine
+ * 25-Nov-2026   Development      Activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY -> error EB-ALBE.ACTIVITY.NOT.MAPPED (D41)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -61,6 +62,14 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             }
             // Common activity mapping; HLSD: maximum balance check is for credit activities only.
             CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            // D41: the activity must be mapped to CREDIT / DEBIT in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY.
+            if (ActivityRequestBuilder.getDirection(arrangementActivityRecord, repository) == null) {
+                LogUtil.error(CLASS_NAME, "validateRecord", "NOT MAPPED", "activity=" + activity + " not in "
+                        + Constants.GEN_PARAM_ACTIVITY_ID + ", raising " + Constants.ERR_ACTIVITY_NOT_MAPPED);
+                CustomerLimitOverride.raiseError(arrangementActivityRecord.getTxnAmount(),
+                        Constants.ERR_ACTIVITY_NOT_MAPPED, ValidationUtil.nvl(activity).trim());
+                return arrangementActivityRecord.getValidationResponse();
+            }
             String aaaId = ValidationUtil.isBlank(arrangementContext.getArrangementActivityId())
                     ? arrangementActivityRecord.getArrangement().getValue()
                     : arrangementContext.getArrangementActivityId().trim();

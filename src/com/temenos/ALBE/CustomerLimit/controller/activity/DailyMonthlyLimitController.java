@@ -51,6 +51,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *                                ORIG.TXN.AMT, TXN.AMOUNT.LCY, T24 date instead of server clock (G1)
  * 22-Nov-2026   Development      Check / count / reverse through CustomerLimitEngine
  * 23-Nov-2026   Development      Block (EB-ALBE.LIMIT.UPDATE.FAILED) when a utilisation save fails (D37)
+ * 25-Nov-2026   Development      Credit / debit from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY; not mapped -> error (D41)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -74,8 +75,10 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                 LogUtil.info(CLASS_NAME, "defaultFieldValues", "SKIP", "status=" + activityStatus + " (not UNAUTH)");
                 return;
             }
-            // Only counted activities (credit / debit action, counted initiation type) get the date tag.
-            if (!ActivityRequestBuilder.isCountedActivity(arrangementActivityRecord.getActivityClass().getValue(),
+            // Only counted activities (mapped to CREDIT / DEBIT, counted initiation type) get the date tag.
+            CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            if (!ActivityRequestBuilder.isCountedActivity(
+                    ActivityRequestBuilder.getDirection(arrangementActivityRecord, repository),
                     ActivityRequestBuilder.getInitiationType(arrangementActivityRecord),
                     arrangementActivityRecord.getActivity().getValue())) {
                 return;
@@ -89,8 +92,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             }
 
             // T24 date of the activity (ORG.SYSTEM.DATE / T24 TODAY), not the server clock.
-            LocalDate countedDate = ActivityRequestBuilder.getT24Date(arrangementActivityRecord,
-                    new CustomerLimitRepository(this));
+            LocalDate countedDate = ActivityRequestBuilder.getT24Date(arrangementActivityRecord, repository);
             String tag = Constants.REMARKS_DATE_TAG + countedDate.format(Constants.DAILY_ID_FORMAT);
             String newRemarks = remarks.isEmpty() ? tag : remarks + Constants.REMARKS_SEPARATOR + tag;
             arrangementActivityRecord.setRemarks(newRemarks);
@@ -122,6 +124,11 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             }
 
             CustomerLimitRepository repository = new CustomerLimitRepository(this);
+            // D41: the activity must be mapped to CREDIT / DEBIT in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY.
+            if (ActivityRequestBuilder.getDirection(arrangementActivityRecord, repository) == null) {
+                raiseNotMapped(arrangementActivityRecord);
+                return arrangementActivityRecord.getValidationResponse();
+            }
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null) {
@@ -170,6 +177,12 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             CustomerLimitDTO request = ActivityRequestBuilder.build(arrangementActivityRecord, arrangementRecord,
                     getAaaId(arrangementContext, arrangementActivityRecord), repository);
             if (request == null) {
+                if (!Constants.STATUS_UNAUTH.equals(status)
+                        && ActivityRequestBuilder.getDirection(arrangementActivityRecord, repository) == null) {
+                    LogUtil.error(CLASS_NAME, "postCoreTableUpdate", "NOT MAPPED", "status=" + status + " activity="
+                            + arrangementActivityRecord.getActivity().getValue() + " not in "
+                            + Constants.GEN_PARAM_ACTIVITY_ID + " - nothing taken back, check the utilisation");
+                }
                 return;
             }
 
@@ -205,6 +218,16 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
                     + " save failed, raising " + Constants.ERR_LIMIT_UPDATE_FAILED);
             throw new T24CoreException("", Constants.ERR_LIMIT_UPDATE_FAILED);
         }
+    }
+
+    /** D41: activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY - error on TXN.AMOUNT (blocks the input). */
+    private void raiseNotMapped(AaArrangementActivityRecord arrangementActivityRecord) {
+        String activity = ValidationUtil.nvl(arrangementActivityRecord.getActivity().getValue()).trim();
+        LogUtil.error(CLASS_NAME, "validateRecord", "NOT MAPPED", "activity=" + activity + " not in "
+                + Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ACTIVITY_ID + ", raising "
+                + Constants.ERR_ACTIVITY_NOT_MAPPED);
+        CustomerLimitOverride.raiseError(arrangementActivityRecord.getTxnAmount(), Constants.ERR_ACTIVITY_NOT_MAPPED,
+                activity);
     }
 
     /** UNAUTH, DELETE and AUTH-REV change utilisation; AUTH and anything else do not. */
