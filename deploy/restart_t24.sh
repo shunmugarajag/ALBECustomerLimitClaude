@@ -14,7 +14,13 @@ LOG="${3:-/tmp/tafj-startup.log}"
 STOP_WAIT="${4:-180}"
 START_WAIT="${5:-900}"
 
+SERVER_LOG="${BIN}/../standalone/log/server.log"
+
 jboss_pids() { pgrep -f "jboss-modules.jar.*${CFG}" ; }
+# lines written since this start: console log + JBoss server.log (only lines after the start)
+new_lines() { cat "${LOG}" 2>/dev/null; tail -n +"$((SERVER_LOG_START + 1))" "${SERVER_LOG}" 2>/dev/null; }
+# last non-empty line, colours removed
+last_line() { new_lines | sed 's/\x1b\[[0-9;]*m//g' | grep -v '^[[:space:]]*$' | tail -1 | cut -c1-110; }
 
 echo "=== T24 restart: ${BIN} -c ${CFG}"
 
@@ -40,29 +46,31 @@ else
 fi
 
 # 2. start
+SERVER_LOG_START=$(wc -l < "${SERVER_LOG}" 2>/dev/null || echo 0)
 cd "${BIN}" || { echo "ERROR: folder ${BIN} not found"; exit 1; }
 nohup setsid ./standalone.sh -c "${CFG}" > "${LOG}" 2>&1 < /dev/null &
-echo "Starting JBoss - log ${LOG}"
+echo "Starting JBoss - log ${LOG} (also watching ${SERVER_LOG})"
 
 # 3. wait for "started"
 waited=0
 while [ "${waited}" -lt "${START_WAIT}" ]; do
     sleep 10; waited=$((waited + 10))
-    if grep -q "WFLYSRV0025" "${LOG}" 2>/dev/null; then
-        echo "STARTED after ${waited}s:"; grep "WFLYSRV0025" "${LOG}" | tail -1 | cut -c1-200
+    if new_lines | grep -q "WFLYSRV0025"; then
+        echo "STARTED after ${waited}s:"; new_lines | sed "s/\x1b\[[0-9;]*m//g" | grep "WFLYSRV0025" | tail -1 | cut -c1-200
+        echo "New JBoss pid: $(jboss_pids)"
         exit 0
     fi
-    if grep -q "WFLYSRV0026" "${LOG}" 2>/dev/null; then
-        echo "STARTED WITH ERRORS after ${waited}s - check ${LOG}:"
-        grep -E "WFLYSRV0026|ERROR" "${LOG}" | tail -15 | cut -c1-200
+    if new_lines | grep -q "WFLYSRV0026"; then
+        echo "STARTED WITH ERRORS after ${waited}s - check ${LOG} / ${SERVER_LOG}:"
+        new_lines | grep -E "WFLYSRV0026|ERROR" | tail -15 | cut -c1-200
         exit 2
     fi
     if [ -z "$(jboss_pids)" ] && [ "${waited}" -ge 60 ]; then
-        echo "ERROR: JBoss process ended during start-up - last lines of ${LOG}:"; tail -30 "${LOG}" | cut -c1-200
+        echo "ERROR: JBoss process ended during start-up - last lines:"; new_lines | tail -30 | cut -c1-200
         exit 1
     fi
-    [ $((waited % 60)) -eq 0 ] && echo "  starting... ${waited}s ($(tail -1 "${LOG}" 2>/dev/null | cut -c1-100))"
+    [ $((waited % 60)) -eq 0 ] && echo "  starting... ${waited}s pid=$(jboss_pids | tr '\n' ' ')| $(last_line)"
 done
-echo "ERROR: no 'started' message within ${START_WAIT}s - JBoss may still be starting, check ${LOG}"
-tail -20 "${LOG}" | cut -c1-200
+echo "ERROR: no 'started' message within ${START_WAIT}s - JBoss may still be starting, check ${LOG} / ${SERVER_LOG}"
+new_lines | tail -20 | cut -c1-200
 exit 1
