@@ -7,7 +7,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 
 ## 1. What this is
 
-- **Project:** ALBE (Albaraka Egypt) **Customer Limit Management** on **Temenos Transact (T24) / TAFJ**, Java 21, Eclipse Java project (no Maven/Gradle). Source: `src/`, package root `com.temenos.ALBE.CustomerLimit`.
+- **Project:** ALBE (Albaraka Egypt) **Customer Limit Management** on **Temenos Transact (T24) / TAFJ**, Java 21, Eclipse project built with **Maven** (`pom.xml`, 25-Nov: `mvn clean package` / `mvn clean deploy` = copy to `/srv/Temenos/T24/bnk/ALBElib` over SSH, old JAR removed; sources stay in `src/`; T24 JARs are system-scope compile deps via `t24.home`; credentials never committed – `deploy.local.properties` is git-ignored). Source: `src/`, package root `com.temenos.ALBE.CustomerLimit`.
 - **Spec:** HLSD *Albaraka T24 project – Account module – 3 CBE Mandate CRs V2*, section **7.2.1** (customer limit creation; daily/monthly limit check; maximum CIF balance check; overrides).
 - **Repo:** `shunmugarajag/ALBECustomerLimitClaude`, branch **`main`** (the only branch used). The old repo `shunmugarajag/ALBECustomerLimit` (PR #1) is **not used any more**.
 - **User:** T24 Java developer, 15 years' experience, works in Eclipse on Windows (`D:\Claude\ALBECustomerLimitClaude`). Often asks to have things "explained with easy words".

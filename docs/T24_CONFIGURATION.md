@@ -177,10 +177,22 @@ The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are fi
 
 ## 5. Build and deploy the routine JAR
 
-1. Pull `main` of `shunmugarajag/ALBECustomerLimitClaude` into Eclipse (Java 21).
-2. Before **production**: set `Constants.LOG_DETAIL_ENABLED = false` (DB trace lines off).
-3. Export the project as a JAR (File → Export → Java → JAR file; source folder `src`), e.g. `ALBECustomerLimit.jar`.
-4. Copy it to the folder TAFJ loads local Java from, as for other L3 Java routines **(confirm)**, and restart / refresh the TAFJ runtime if your environment needs it.
+The project is a **Maven** project (`pom.xml`, 25-Nov-2026). Sources stay in `src/`.
+
+**One-time set-up (laptop)**
+1. Eclipse: right-click the project → **Configure → Convert to Maven Project** (or File → Import → Existing Maven Projects).
+2. In `pom.xml` check `t24.home` (default `C:/Temenos/R25`) and that `lib/l3-tables` holds `ALBE_CUSTOMER_LIMIT_TABLE.jar` and `ALBE_GEN_PARAM_TABLE.jar` (names in `l3.table.*.jar`).
+3. Server user / password: in `pom.xml` (uncomment `deploy.user` / `deploy.password` – then **do not commit** the pom with the password), or in `deploy.local.properties` next to the pom (ignored by Git), or on the command line `-Ddeploy.user=… -Ddeploy.password=…`.
+4. `deploy.old.jars` (default `ALBECustomerLimit*.jar`) must match the name of the JAR **now** in `/srv/Temenos/T24/bnk/ALBElib`, otherwise the old one stays and T24 loads two copies of the classes.
+
+**Every build**
+
+| Command | Result |
+|---|---|
+| `mvn clean package` | `target/ALBECustomerLimit.jar` (only our classes; T24 / table JARs are compile-only) |
+| `mvn clean deploy` | build, then on the T24 server: list + remove `deploy.old.jars` in `deploy.dir` (`/srv/Temenos/T24/bnk/ALBElib`), copy the new JAR, list it (SSH / SCP, port `deploy.port`) |
+
+Eclipse: Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded. Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
 
 ---
 
