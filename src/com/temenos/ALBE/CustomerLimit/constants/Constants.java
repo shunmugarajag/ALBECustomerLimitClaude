@@ -245,6 +245,12 @@ public final class Constants {
     public static final String ACTION_AUTHORISE = "AUTHORISE";
     public static final String ACTION_REVERSAL_INPUT = "REVERSAL INPUT";
     public static final String LOG_EVENT_ACTION = "ACTION";
+    /**
+     * Added to the INPUT RESULT line: the count is written in the same commit as the transaction, so
+     * T24 undoes it when the override is rejected / the FT is not committed (DEV 26-Nov, FT26093B7DNL).
+     */
+    public static final String NOTE_KEPT_IF_COMMITTED = " | count kept only if the transaction is committed"
+            + " (override rejected / not committed -> T24 undoes it)";
 
 
     // -------------------------------------------------------------------------

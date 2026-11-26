@@ -51,6 +51,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 26-Nov-2026   Development      Initial Version (D44)
  * 26-Nov-2026   Development      Review: no take-back fallback (second AUTH-REV call), NOTHING TAKEN BACK /
  *                                SAVE FAILED in the RESULT line, ACTION line on a technical error
+ * 26-Nov-2026   Development      RESULT says the count is kept only if the FT is committed (user)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitActivityController extends ActivityLifecycle {
@@ -140,7 +141,8 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
         CustomerLimitOverride.raiseFor(arrangementActivityRecord, result);
         LogUtil.result(CLASS_NAME, HOOK, "INPUT " + result.describe()
                 + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))
-                + " | raised: " + CustomerLimitOverride.ids(result) + saveFailedText(engineRepository));
+                + " | raised: " + CustomerLimitOverride.ids(result) + saveFailedText(engineRepository)
+                + (result.isBlocked() ? "" : Constants.NOTE_KEPT_IF_COMMITTED));
     }
 
     /** " | SAVE FAILED ..." when a utilisation / TXN.DETAILS save failed, else "". */

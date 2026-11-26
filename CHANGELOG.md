@@ -7,6 +7,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 ### Changed – clear override messages; one count per FT in the same commit (26-Nov-2026, D46)
 - DEV showed the second `&` of a message is not filled ("for Customer 100128,23000.00 by"). Every override / error now has **one** `&` and the code fills it with the whole text, e.g. "100128 by 12000.00".
 - The message says **debit or credit**: new override ids EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED (EB.OVERRIDE records to create; the old DAILY / MONTHLY.LIMIT.EXCEED are not used). MAX.CIF, EXCH.RATE and error texts change to one `&` too.
+- The INPUT log line now says the count is kept only if the transaction is committed: a rejected override undoes it (DEV: FT26093B7DNL committed 3 times without accepting, usage unchanged).
 - TXN.DETAILS is read like UTILISED.LIMIT (Table class), so a record written earlier in the same commit is found and the FT is not counted twice (DEV FT2609332FH0 was counted twice when old and new routines were both attached).
 
 ### Fixed – review findings; max CIF without CUSTOMER.ACCOUNT blocks (26-Nov-2026, D45)

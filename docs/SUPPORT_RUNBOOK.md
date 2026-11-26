@@ -71,6 +71,10 @@ The day comes from the activity's ORG.SYSTEM.DATE (D42), else T24 TODAY. The rev
 - **Error** (EB-ALBE.EXCH.RATE.MISSING, transaction blocked, D44): the transaction is in another currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE, or the customer's limit is not in EGP. Check the customer's CIF.LIMITS CURRENCY and the FT; nothing was counted.
 - **Override** (EB-ABLE.EXCH.RATE.MISSING): max CIF only – another account of the customer is in a currency with no rate (E1, parked); the max CIF check was skipped. Report the pair.
 
+### 3.9 The log says INPUT … counted, but the utilisation did not change
+
+Normal when the override was **rejected** or the FT was not committed: the count is written in the same commit as the transaction, so T24 undoes it (the RESULT line says "count kept only if the transaction is committed"). Only a committed FT (override accepted) keeps its count; it is taken back on DELETE / authorised reversal.
+
 ### 3.8 "No accounts found in CUSTOMER.ACCOUNT for Customer X"
 
 Error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked): the max CIF check (credit, max CIF limit filled) found no CUSTOMER.ACCOUNT record for the customer. Data problem – check CUSTOMER.ACCOUNT `<customer>` (e.g. after a migration); nothing was counted.

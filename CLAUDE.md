@@ -82,7 +82,7 @@ constants/    Constants (the only final class)
 
 | Decision | Why / history |
 |---|---|
-| Count utilisation at **input** (UNAUTH); reverse on DELETE and AUTH-REV | user: unauthorised transactions must count; rejected and reversed ones must be taken back; accepted-override transactions count |
+| Count utilisation at **input** (UNAUTH), **kept only if the FT is committed** (rejected override → T24 undoes it, TQ22 passed 26-Nov); reverse on DELETE and AUTH-REV | user: unauthorised transactions must count; rejected and reversed ones must be taken back; accepted-override transactions count |
 | Breach → **acceptable override**, incl. missing record / blank limit | user changed "reject with error" to override |
 | Key **without .CR/.DR**, **with the arrangement id**; **own-account transfer counted on both sides** (two arrangements = two records), checked like any transaction incl. max CIF | user 22-Nov: drop suffix; user 23-Nov (FQ6, D39): add arrangement id, count both sides (marker logic removed) |
 | Blank CIF.LIMIT **CCY → error** (blocks) | user 22-Nov: "CCY can't be blank, if so throw error"; chose "at transaction time – block" |
