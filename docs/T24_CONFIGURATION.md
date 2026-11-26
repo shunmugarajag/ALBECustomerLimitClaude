@@ -272,7 +272,7 @@ Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-
 | Product condition | Found | Fix (`ALBE_OFS_ACTIVITY_API_FIX.txt`) |
 |---|---|---|
 | `ACCT.MANDATE.API-20260401` | TRANSFERIN / TRANSFEROUT: Post Routine.1 = ALBE.CL.ACTIVITY.LIMIT | add Post Routine 1.2 = ALBE.CL.MAX.CIF (TRANSFERIN) |
-| `ALBE.STMT.FEE.API-20260403` | TRANSFERIN / TRANSFEROUT: old ALBE.CL.DAILY.MONTHLY.VAL + .UPD – **"MISSING EB.API"** after the reversal | 1.1 / 2.1 = ALBE.CL.ACTIVITY.LIMIT, 1.2 = ALBE.CL.MAX.CIF, 2.2 removed (`=-`) |
+| `ALBE.STMT.FEE.API-20260403` | TRANSFERIN / TRANSFEROUT: old ALBE.CL.DAILY.MONTHLY.VAL + .UPD – **"MISSING EB.API"** after the reversal | **left as is (user 27-Nov: ignore)** – OFS `=-` does not clear a Post Routine; fix on screen if this condition is ever used for customer limits |
 
 ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT are mapped in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` but **not attached** to any condition (FQ20). `ALBE.STMT.FEE.API-20260403` no longer has the ACCOUNTS-NEW-ARRANGEMENT line of `-20260401` (not ours – ask the owner). Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**. **Never** leave an old VAL / UPD / MAX.CIF routine next to it (double count, DEV 26-Nov).
 
