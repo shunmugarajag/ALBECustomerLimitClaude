@@ -52,7 +52,7 @@ public class ValidationUtil {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
-            LogUtil.error(CLASS_NAME, "toAmount", "INVALID", "invalid amount '" + value + "', using 0");
+            LogUtil.info(CLASS_NAME, "toAmount", "INVALID", "invalid amount '" + value + "', using 0");
             return BigDecimal.ZERO;
         }
     }
@@ -68,7 +68,7 @@ public class ValidationUtil {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
-            LogUtil.error(CLASS_NAME, "toOptionalAmount", "INVALID", "invalid amount '" + value
+            LogUtil.info(CLASS_NAME, "toOptionalAmount", "INVALID", "invalid amount '" + value
                     + "', treated as blank");
             return null;
         }
@@ -87,7 +87,7 @@ public class ValidationUtil {
         try {
             return LocalDate.parse(value.trim(), Constants.DATE_PARSE_FORMAT);
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "toDate", "INVALID", "invalid date '" + value + "'");
+            LogUtil.info(CLASS_NAME, "toDate", "INVALID", "invalid date '" + value + "'");
             return null;
         }
     }

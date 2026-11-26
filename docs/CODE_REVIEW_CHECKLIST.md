@@ -36,7 +36,7 @@ Tick every line before a change is merged to `main`. These are the project's sta
 
 - [ ] Request validated **once**, in the controller (`CustomerLimitRequestValidator`); services do not repeat the checks.
 - [ ] Common value checks through `ValidationUtil` (no own isBlank / parse helpers).
-- [ ] Every controller body in `try`; unexpected exceptions logged with `LogUtil.error(..., e)`.
+- [ ] Every controller body in `try`; unexpected exceptions logged with `LogUtil.info(CLASS_NAME, method, "ERROR", ..., e)` (INFO only, D47).
 - [ ] No empty `catch` blocks.
 - [ ] Limit breaches raise **acceptable overrides** (not errors).
 

@@ -5,23 +5,17 @@ import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;
 
 /*-----------------------------------------------------------------------------
- * Description : One place that writes every log line for Customer Limit, in one format:
+ * Description : One place that writes every log line for Customer Limit, at INFO level only
+ *               (user, 26-Nov), in one format:
  *
- *                 ALBE.CUSTOMER.LIMIT | <Class>.<method> | <EVENT> | key=value key=value
+ *                 ALBE.CUSTOMER.LIMIT | <Class>.<method> | <EVENT> | details
  *
- *               e.g. ALBE.CUSTOMER.LIMIT | DailyMonthlyLimitService.validate | BREACH | customer=100234 ...
+ *               e.g. ALBE.CUSTOMER.LIMIT | CustomerLimitActivityController.validateRecord | RESULT | INPUT ...
  *
- *               Levels
- *                 result - one plain-language line per step that tells what happened and why
- *                          (event RESULT, info level), e.g.
- *                          RESULT | CHECK FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT
- *                          11,000.00 EGP on 2026-04-03 | daily credit: used 10,000.00 + this 11,000.00 =
- *                          21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | overrides: EB-ABLE...
- *                 info   - real events: UPDATED, NEW, WRITTEN, DELETED, OVERRIDE, NOT FOUND, ADJUSTED
- *                 error  - something failed or data is wrong: FAILED, ERROR, INVALID
- *                 detail - technical trace (START / CALC / END / OK / BREACH / SKIP / FOUND and the DB
- *                          READ / WRITE / DELETE before the call); written at
- *                          info level only when Constants.LOG_DETAIL_ENABLED is true
+ *               Events tell the kind of line: ACTIVITY / ACTION / RESULT (plain-language outcome of a
+ *               call), READ / WRITE / FOUND / NOT FOUND / UPDATED / CALC (trace), OVERRIDE / ERROR
+ *               (what was raised), FAILED / BLOCKED (something went wrong - grep these first).
+ *               In api.log the lines go to DIAGNOSTIC.API: set it to INFO to see them.
  *
  *               Exceptions are written as ExceptionClass: message @ first stack frame.
  *               Logging never throws, so it can never break a transaction.
@@ -29,7 +23,8 @@ import com.temenos.logging.facade.LoggerFactory;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
- * 25-Nov-2026   Development      result(): plain-language RESULT line per step; technical lines moved to detail
+ * 25-Nov-2026   Development      result(): plain-language RESULT line per step
+ * 26-Nov-2026   Development      Clean rewrite (D47): info only - error / detail / result removed (user)
  *-----------------------------------------------------------------------------
  */
 public class LogUtil {
@@ -40,47 +35,17 @@ public class LogUtil {
         // Static helpers only.
     }
 
-    /** Normal flow step. */
+    /** One log line. */
     public static void info(String className, String method, String event, Object details) {
-        write(false, className, method, event, details, null);
+        write(className, method, event, details, null);
     }
 
-    /** Normal flow step that also carries an exception (expected case, e.g. record not found). */
+    /** One log line with the exception that goes with it. */
     public static void info(String className, String method, String event, Object details, Exception e) {
-        write(false, className, method, event, details, e);
+        write(className, method, event, details, e);
     }
 
-    /** Failure or bad data. */
-    public static void error(String className, String method, String event, Object details) {
-        write(true, className, method, event, details, null);
-    }
-
-    /** Failure with the exception that caused it. */
-    public static void error(String className, String method, String event, Object details, Exception e) {
-        write(true, className, method, event, details, e);
-    }
-
-    /** Plain-language summary of one step (what happened and why), event RESULT, info level. */
-    public static void result(String className, String method, String text) {
-        write(false, className, method, Constants.LOG_EVENT_RESULT, text, null);
-    }
-
-    /** Technical trace with an exception; switched off with Constants.LOG_DETAIL_ENABLED. */
-    public static void detail(String className, String method, String event, Object details, Exception e) {
-        if (Constants.LOG_DETAIL_ENABLED) {
-            write(false, className, method, event, details, e);
-        }
-    }
-
-    /** Low-level DB trace; switched off in production with Constants.LOG_DETAIL_ENABLED. */
-    public static void detail(String className, String method, String event, Object details) {
-        if (Constants.LOG_DETAIL_ENABLED) {
-            write(false, className, method, event, details, null);
-        }
-    }
-
-    private static void write(boolean isError, String className, String method, String event, Object details,
-            Exception e) {
+    private static void write(String className, String method, String event, Object details, Exception e) {
         try {
             StringBuilder line = new StringBuilder(160);
             line.append(Constants.LOG_APP_TAG).append(Constants.LOG_SEPARATOR)
@@ -90,11 +55,7 @@ public class LogUtil {
             if (e != null) {
                 line.append(Constants.LOG_SEPARATOR).append(describe(e));
             }
-            if (isError) {
-                logger.error(line.toString());
-            } else {
-                logger.info(line.toString());
-            }
+            logger.info(line.toString());
         } catch (Exception ignored) {
             // A logging problem must never stop the transaction.
         }

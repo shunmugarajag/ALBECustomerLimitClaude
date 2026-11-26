@@ -84,7 +84,7 @@ ID: daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` (written by the rou
 
 ### 1.4 EB.ALBE.TXN.DETAILS.LIMIT – what was counted per transaction  *(exists – no change)*
 
-ID: **`<customer>-<YYYYMMDD>-<root ref>-<arrangement id>`** – root ref = the FT / TT behind the activity (TXN.CONTRACT.ID), else the AAA id – e.g. `100234-20261120-FT26324ABCDE-AA26324XYZ12` (ID max 100 characters) (written by the routine). YYYYMMDD = T24 date the amount was counted on, kept in the activity REMARKS (see step 8).
+ID: **`<customer>-<YYYYMMDD>-<root ref>-<arrangement id>`** – root ref = the FT / TT behind the activity (TXN.CONTRACT.ID), else the AAA id – e.g. `100234-20261120-FT26324ABCDE-AA26324XYZ12` (ID max 100 characters) (written by the routine). YYYYMMDD = T24 date the amount was counted on = the activity's ORG.SYSTEM.DATE (see step 8).
 
 | Field | Type | Value |
 |---|---|---|
@@ -214,7 +214,7 @@ The project is a **Maven** project (`pom.xml`, 25-Nov-2026). Sources stay in `sr
 | `.\restart` | `mvn antrun:run@restart-t24` – restart T24 / JBoss |
 | `.\deploy-restart` | both, restart only if the deploy worked |
 
-Design Studio / Eclipse: **Run → Run Configurations… → Maven Build** shows **T24 deploy**, **T24 restart**, **T24 deploy + restart** (files in `.launch/`); after the first run they are in the Run (▶) drop-down. Or Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded – or with Maven, as a separate command: **`mvn antrun:run@restart-t24`** streams `deploy/restart_t24.sh` to the server over SSH (run in memory, no file saved there), which stops JBoss (`kill -15` on the `jboss-modules.jar … Transact.xml` process, waits up to `deploy.stop.wait` s, never `kill -9`), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`) and waits for `WFLYSRV0025` (started) up to `deploy.start.wait` s. A restart affects everyone on DEV. Before **production** set `Constants.LOG_DETAIL_ENABLED = false` (already the default).
+Design Studio / Eclipse: **Run → Run Configurations… → Maven Build** shows **T24 deploy**, **T24 restart**, **T24 deploy + restart** (files in `.launch/`); after the first run they are in the Run (▶) drop-down. Or Run As → Maven build… → Goals `clean deploy`. Then restart / refresh TAFJ so the new JAR is loaded – or with Maven, as a separate command: **`mvn antrun:run@restart-t24`** streams `deploy/restart_t24.sh` to the server over SSH (run in memory, no file saved there), which stops JBoss (`kill -15` on the `jboss-modules.jar … Transact.xml` process, waits up to `deploy.stop.wait` s, never `kill -9`), starts `standalone.sh -c Transact.xml` with nohup (log `/tmp/tafj-startup.log`) and waits for `WFLYSRV0025` (started) up to `deploy.start.wait` s. A restart affects everyone on DEV.
 
 ---
 
@@ -225,15 +225,11 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | EB.API id | Java package | Java class | Hook method |
 |---|---|---|---|
 | ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` | `postUpdateRequest` |
-| ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `validateRecord`, `postCoreTableUpdate` |
-| ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller.activity` | `MaximumCifLimitController` | `validateRecord` |
-| **ALBE.CL.ACTIVITY.LIMIT** *(single routine, D44)* | `com.temenos.ALBE.CustomerLimit.controller.activity` | `CustomerLimitActivityController` | `validateRecord` |
+| **ALBE.CL.ACTIVITY.LIMIT** | `com.temenos.ALBE.CustomerLimit.controller.activity` | `CustomerLimitActivityController` | `validateRecord` |
 
 Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METHOD **(confirm)**.
-If your release needs one EB.API record per hook method, create two for `DailyMonthlyLimitController`
-(`ALBE.CL.DAILY.MONTHLY.VAL` → `validateRecord`, `ALBE.CL.DAILY.MONTHLY.UPD` → `postCoreTableUpdate`).
-**`ALBE.CL.DAILY.MONTHLY.DEF` (`defaultFieldValues`) is no longer used (D42, 26-Nov)** – remove it from Record Rtn in ACTIVITY.API.
-**`ALBE.CL.ACTIVITY.LIMIT`** (D44) replaces VAL + MAX.CIF + UPD with one routine; easiest: copy `ALBE.CL.DAILY.MONTHLY.VAL` and change the Java class to `CustomerLimitActivityController` (method stays `validateRecord`). The old three stay until after SIT (rollback by configuration).
+
+**Remove the old activity EB.APIs (D47, clean rewrite):** `ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.DAILY.MONTHLY.UPD`, `ALBE.CL.DAILY.MONTHLY.DEF`, `ALBE.CL.MAX.CIF` – their classes are no longer in the JAR. Take them out of every ACTIVITY.API first (an EB.API pointing to a missing class gives "ROUTINE DOES NOT EXIST"), then delete / reverse the EB.API records.
 
 ---
 
@@ -254,22 +250,14 @@ Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMI
 
 Attach on the **ACTIVITY.API** property condition of every AA product that needs the validation (HLSD: "products for which user wants to have this validation").
 
-**Set-up proven in DEV (26-Nov-2026, D43)** – AA.PRD.DES.ACTIVITY.API, one set per activity, **all routines in Post Routine**, in this order:
-
-| Activity Id | Property Class | Pc Action | Post Routine.1 | Post Routine.2 | Post Routine.3 |
-|---|---|---|---|---|---|
-| ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | ALBE.CL.DAILY.MONTHLY.VAL | ALBE.CL.MAX.CIF | ALBE.CL.DAILY.MONTHLY.UPD |
-| ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | ALBE.CL.DAILY.MONTHLY.VAL | ALBE.CL.DAILY.MONTHLY.UPD | |
-
-Same pattern for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT).
-Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**.
-
-**Single routine (D44, 26-Nov) – target set-up.** One Post Routine does everything:
+**Set-up (D47):** AA.PRD.DES.ACTIVITY.API, one line per mapped activity, **one Post Routine**:
 
 | Activity Id | Property Class | Pc Action | Post Routine.1 | Other routine fields |
 |---|---|---|---|---|
 | ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
 | ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
+
+Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT). Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**. **Never** leave an old VAL / UPD / MAX.CIF routine next to it (double count, DEV 26-Nov).
 
 | Status | api.log `ACTION` line | What it does |
 |---|---|---|
@@ -279,22 +267,20 @@ Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**.
 | AUTH | `AUTHORISE` | nothing, no read |
 | REVERSE | `REVERSAL INPUT` | nothing, no read (taken back at AUTH-REV) |
 
-- **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `CustomerLimitActivityController.validateRecord | ACTION | DELETE …` / `REVERSAL …`. If those lines never come, go back to VAL + MAX.CIF + UPD (above).
-- Reads per call (no cache, each record once) **on a first input**: debit about 4 (mapping, CIF.LIMITS, daily + monthly UTILISED, TXN.DETAILS); credit the same + CUSTOMER.ACCOUNT and the customer's accounts when MAX.CIF is filled. A re-input / second call of the same FT reads again (the earlier count is taken back first).
+- **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `CustomerLimitActivityController.validateRecord | ACTION | DELETE …` / `REVERSAL …`. If those lines never come, the take-back does not run – tell development (there is no second routine to fall back on since D47).
+- Reads per input (no cache, each record once): mapping, CIF.LIMITS, TXN.DETAILS (earlier input), daily + monthly UTILISED; credit with MAX.CIF filled also CUSTOMER.ACCOUNT and the customer's accounts. Writes: daily + monthly UTILISED once each, TXN.DETAILS once. A second call of the same FT with the same amount writes nothing to UTILISED (`unchanged`).
+- Re-input of an amended FT: each record = used − earlier input + new amount, in one write (no separate take-back).
 - Take-back (DELETE / AUTH-REV) only takes back what TXN.DETAILS shows was counted – a second call finds nothing and changes nothing (`NOTHING TAKEN BACK`).
-- **TQ22 (DEV):** override declined / FT cancelled after our Post Routine – UTILISED.LIMIT must be unchanged.
+- **TQ22 (passed, DEV 26-Nov):** override declined / FT cancelled after our Post Routine – T24 rolls our writes back.
 - Save failure → `setError EB-ALBE.LIMIT.UPDATE.FAILED` (blocks; DEV test TQ18).
-- **Rollback:** put VAL / MAX.CIF / UPD back in the Post Routines, proof and publish – no redeploy.
-
-- **Why Post Routine:** for FT-created activities T24 calls **only the Post Routine** – Pre, Record and Validate routines are never called (DEV 25/26-Nov). A `validateRecord` routine (VAL, MAX.CIF) attached as a Post Routine runs there and its override **is shown on the FT screen** (DEV 26-Nov, FT26093GZC6N). Record Rtn / Pre Validate Rtn reject a `validateRecord` routine ("Method does not implement a hook interface").
-- **Order matters:** the checks (VAL, MAX.CIF) **before** UPD – they compare "used so far + this transaction" with the limit; UPD then counts the transaction.
-- **No Record Rtn (DEF) any more** (D42): REMARKS is not touched.
+- **Rollback:** the previous JAR (with its own ACTIVITY.API set-up) – there is no configuration-only rollback any more.
+- **Why Post Routine:** for FT-created activities T24 calls **only the Post Routine** – Pre, Record and Validate routines are never called (DEV 25/26-Nov). A `validateRecord` routine attached as a Post Routine runs there and its override **is shown on the FT screen** (DEV 26-Nov, FT26093GZC6N). Record Rtn / Pre Validate Rtn reject a `validateRecord` routine ("Method does not implement a hook interface").
 - Only `validateRecord` can raise an **override** (R25 invokers: only the validate invoker handles overrides; `postCoreTableUpdate` / `defaultFieldValues` / VERSION `postUpdateRequest` can only stop the transaction with an error).
-- **The routines can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routines here (no code change).
+- **The routine can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routine here (no code change).
 - **Date:** the activity's **ORG.SYSTEM.DATE** (T24 date), else T24 TODAY (server clock only as a logged last resort). Not DATE.TIME – that is the server clock.
-- **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again; the REMARKS tag, if kept, keeps the original day).
+- **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again on the re-initiation date).
 - The maximum CIF check is for **credit** activities only.
-- ⚠ If `postCoreTableUpdate` does not fire on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** reversed. Test both (step 13).
+- ⚠ If the routine is not called on DELETE (rejected input) or AUTH-REV (reversal), the utilisation is **not** taken back. Test both (step 13).
 - Rebuild / re-authorise the product (AA.PRODUCT.DESIGNER proof and publish) as usual so the arrangements pick up the new condition.
 
 ---
@@ -338,7 +324,7 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
   grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR|FAILED) \|" <tafj log>
   ```
   A technical failure does **not** block the transaction, so these lines are the only signal that a check was skipped.
-- **What you see per transaction (INFO, 25-Nov-2026):** one `ACTIVITY` line per hook (the activity as T24 sent it), one `RESULT` line per step in plain words (the check with its numbers, the overrides / errors raised, what was counted or taken back), plus `OVERRIDE` (exact text sent) and `UPDATED` / `WRITTEN` (records changed). Errors (NOT MAPPED, NO CCY, FAILED, BLOCK) are always written.
+- **What you see per transaction (all lines are INFO, D47):** one `ACTIVITY` line per call (the activity as T24 sent it), one `RESULT` line per step in plain words (the check with its numbers, the overrides / errors raised, what was counted or taken back), plus `OVERRIDE` (exact text sent) and `UPDATED` / `WRITTEN` (records changed). Problems are lines with the events FAILED / BLOCKED / NOT MAPPED / NO CCY. DIAGNOSTIC.API must be at **INFO** to see any line.
   ```
   ACTIVITY | hook=validateRecord status=UNAUTH aaa=AAACT26093... activity=ACCOUNTS-CREDIT-ARRANGEMENT class=... arrangement=AA26093XZ06K customer=100199 contract=FT26093BGWJR txnAmount=11000 ... remarks='ALBE.LIMIT.DATE=20260403'
   RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED
@@ -346,7 +332,7 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
   RESULT   | COUNTED FT26093BGWJR ... | daily 100199-20260403 used credit 10,000.00 -> 21,000.00 | monthly 100199-202604 used credit 10,000.00 -> 21,000.00 | saved EB.ALBE.TXN.DETAILS.LIMIT 100199-20260403-FT26093BGWJR-AA26093XZ06K
   ```
   Find one transaction: `grep "ALBE.CUSTOMER.LIMIT" api.log | grep FT26093BGWJR`; only the outcomes: `grep "| RESULT |"`.
-- `Constants.LOG_DETAIL_ENABLED` (default **false**) adds the technical trace (START / CALC / END / OK / BREACH / SKIP / FOUND and every DB read / write). Turn it on only when asked by development.
+- There is no separate trace switch any more (D47): the few trace lines (CALC, FOUND, NOT FOUND, WRITTEN) are always written at INFO.
 
 ---
 
@@ -388,25 +374,27 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 |---|---|---|---|
 | 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
-| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<FT/AAA>-<arrangement>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
-| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
-| 5 | Accept the override and commit test 4 | utilisation 7000 | `postCoreTableUpdate \| ACTION \| COUNT` |
-| 6 | **Reject / delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| REVERSE rejected input` |
-| 7 | Amend an unauthorised transaction's amount (re-input) | counted once with the new amount, not twice | `validate \| CALC \| earlierInputs=1` |
-| 8 | Authorise test 3 | no change to utilisation | `postCoreTableUpdate \| SKIP \| status=AUTH` |
-| 9 | **Reverse** the authorised transaction of test 3 (next day if possible) | 3000 subtracted from the **original** day's and month's records | `ACTION \| REVERSE reversal` |
-| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `checkLimit \| BREACH \| DAILY.DEBIT.LIMIT` |
-| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED; MIGRATED field unchanged | `validateMonthlyLimit \| CALC \| ... migrated=` |
-| 12 | Credit that takes total balance over MAX.CIF.BALANCE | EB-ABLE.MAX.CIF.BAL.EXCEED "... by <difference>" | `MaximumCifLimitService.validate \| BREACH` |
-| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ABLE.CIF.LIMIT.NOT.DEFINED | `getCustomerLimits \| NOT FOUND` |
-| 14 | Blank DAILY.CREDIT.LIMIT | EB-ABLE.CIF.LIMIT.NOT.DEFINED (once) | `checkLimit \| NOT DEFINED` |
-| 15 | Transaction in another currency (before step 12) | EB-ABLE.EXCH.RATE.MISSING "from USD to EGP" | `convertRequest \| NO RATE` |
-| 16 | Any test | no `ERROR` / `FAILED` lines | `grep "\| ERROR \|\|\| FAILED \|"` |
+| 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `RESULT \| INPUT ... -> OK`, `add \| UPDATED` |
+| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `RESULT \| INPUT ... -> EXCEEDED by 2,000.00` |
+| 5 | Accept the override and commit test 4 | utilisation 7000 | `RESULT \| INPUT ... used credit 3,000.00 -> 7,000.00` |
+| 5a | Repeat test 4 but **reject** the override | utilisation stays 3000 (T24 rolls back, TQ22) | no `RESULT` change kept |
+| 6 | **Delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| DELETE ... take back`, `RESULT \| TAKEN BACK (input rejected)` |
+| 7 | Amend an unauthorised transaction's amount (re-input) | counted once with the new amount, not twice | `RESULT \| ... re-input: earlier input ... is replaced` |
+| 8 | Authorise test 3 | no change to utilisation | `ACTION \| AUTHORISE ... nothing to do` |
+| 9 | **Reverse** the authorised transaction of test 3 (next day if possible) | 3000 subtracted from the **original** day's and month's records | `RESULT \| TAKEN BACK (reversal)` |
+| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| ... daily debit ... EXCEEDED` |
+| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED on TXN.AMOUNT.LCY; MIGRATED field unchanged | `RESULT \| ... monthly ... migrated ...` |
+| 12 | Credit that takes total balance over MAXIMUM.OVERALL.CIF.AMOUNT | EB-ABLE.MAX.CIF.BAL.EXCEED "... by <difference>" on ORIG.TXN.AMT | `RESULT \| ... max CIF ... EXCEEDED` |
+| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ABLE.CIF.LIMIT.NOT.DEFINED; still counted | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
+| 14 | Blank DAILY.CREDIT.LIMIT | EB-ABLE.CIF.LIMIT.NOT.DEFINED (once) | `RESULT \| ... is blank -> not checked` |
+| 15 | USD transaction with no LCY amount and no TXN.EXCH.RATE | ERROR EB-ALBE.EXCH.RATE.MISSING "from USD to EGP"; not counted | `convertRequest \| BLOCKED` |
+| 16 | Own-account transfer | both sides checked and counted, two TXN.DETAILS records (one per arrangement) | two `RESULT \| INPUT` lines |
+| 17 | Any test | no `FAILED` / unexpected `BLOCKED` lines | `grep "\| FAILED \|\|\| BLOCKED \|"` |
 
 Also note in the DEV log (once):
 
 - the AAA id format (test 3) – the TXN.DETAILS id must fit;
-- the override text shows both `&` values (test 4);
+- the override text shows the `&` value "<customer> by <amount>" (test 4);
 - the T24 "record not found" text for a missing EB.ALBE.CIF.LIMITS (test 1). If you see `cifLimitExists | FAILED` instead of `NOT FOUND`, add the word from that log line to `Constants.RECORD_NOT_FOUND_MARKERS`.
 
 ---

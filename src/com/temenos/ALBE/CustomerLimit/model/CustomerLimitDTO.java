@@ -6,14 +6,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.temenos.ALBE.CustomerLimit.constants.Constants;
-
 /*-----------------------------------------------------------------------------
  * Description : Input and result data passed between the customer limit routines.
- *               Input  : customer, transaction key, T24 date, transaction currency, credit or debit
- *                        amount (converted to the limit currency by the services).
- *               Result : valid flag, last message, limitMissing flag and one LimitBreach
- *                        per breached limit (override id + amount difference).
+ *               Input  : customer, transaction key, arrangement, T24 date, transaction currency,
+ *                        credit or debit amount (converted to the limit currency by the engine).
+ *               Result : one LimitBreach per breached limit, the "not defined" / "no rate" flags
+ *                        (overrides), the blocking flags (errors) and plain-language notes.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -21,6 +19,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  * 22-Nov-2026   Development      limitCcyMissing (blank CIF.LIMIT CCY = error); copyTransaction
  * 26-Nov-2026   Development      txnExchangeRate, rateBlocked (D44); customerAccountMissing, isBlocked
  * 25-Nov-2026   Development      activity, notes and describe() for the RESULT log line
+ * 26-Nov-2026   Development      Clean rewrite (D47): valid / validationMessage / copyTransaction removed
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitDTO {
@@ -30,16 +29,12 @@ public class CustomerLimitDTO {
     private String transactionId;
     /** AA arrangement the activity belongs to: part of the TXN.DETAILS id, so both sides of an own transfer count (FQ6). */
     private String arrangementId;
-    /** Server date the transaction is counted on (from the activity REMARKS tag ALBE.LIMIT.DATE; else today). */
+    /** T24 date the transaction is counted on (activity ORG.SYSTEM.DATE, else T24 TODAY). */
     private LocalDate transactionDate;
     /** Credit amount (in the limit currency once converted); zero for a debit. */
     private BigDecimal creditAmount = BigDecimal.ZERO;
     /** Debit amount (in the limit currency once converted); zero for a credit. */
     private BigDecimal debitAmount = BigDecimal.ZERO;
-    /** Message of the last breach / error, for logging. */
-    private String validationMessage;
-    /** False once any limit is breached or the limit record is missing. */
-    private boolean valid = true;
     /** True when the customer has no EB.ALBE.CIF.LIMITS record. */
     private boolean limitMissing = false;
     /** True when the EB.ALBE.CIF.LIMITS record has a blank CCY. */
@@ -106,7 +101,7 @@ public class CustomerLimitDTO {
     /** The transaction amount: the credit amount for a credit, the debit amount for a debit. */
     public BigDecimal getAmount() { return isCredit() ? creditAmount : debitAmount; }
 
-    /** "customer=<id> aaa=<id>" - the key that starts most log lines about this request. */
+    /** "customer=<id> txn=<key> arrangement=<id>" - the key that starts most log lines about this request. */
     public String logKey() { return "customer=" + customerId + " txn=" + transactionId + " arrangement=" + arrangementId; }
 
     public String getActivity() { return activity; }
@@ -137,25 +132,6 @@ public class CustomerLimitDTO {
     public BigDecimal getOriginalAmount() { return originalAmount; }
     public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
 
-    /**
-     * New request with the same transaction info (customer, transaction, date, currency, amounts)
-     * and no check results - one request per check (daily / monthly, maximum CIF).
-     */
-    public CustomerLimitDTO copyTransaction() {
-        CustomerLimitDTO copy = new CustomerLimitDTO();
-        copy.setCustomerId(customerId);
-        copy.setTransactionId(transactionId);
-        copy.setArrangementId(arrangementId);
-        copy.setTransactionDate(transactionDate);
-        copy.setTransactionCurrency(transactionCurrency);
-        copy.setCreditAmount(creditAmount);
-        copy.setDebitAmount(debitAmount);
-        copy.setAmountLcy(amountLcy);
-        copy.setTxnExchangeRate(txnExchangeRate);
-        copy.setActivity(activity);
-        return copy;
-    }
-
     public BigDecimal getAmountLcy() { return amountLcy; }
     public void setAmountLcy(BigDecimal amountLcy) { this.amountLcy = amountLcy == null ? BigDecimal.ZERO : amountLcy; }
 
@@ -171,16 +147,12 @@ public class CustomerLimitDTO {
     public void setRateBlocked(String fromCurrency) {
         this.rateBlocked = true;
         this.rateMissingCurrency = fromCurrency;
-        valid = false;
     }
 
     /** True when CUSTOMER.ACCOUNT gave no accounts for the max CIF check (error, blocks). */
     public boolean isCustomerAccountMissing() { return customerAccountMissing; }
     public void setCustomerAccountMissing(boolean customerAccountMissing) {
         this.customerAccountMissing = customerAccountMissing;
-        if (customerAccountMissing) {
-            valid = false;
-        }
     }
 
     /** True when the transaction is blocked by an error (not counted): blank CCY, not convertible, no accounts. */
@@ -194,33 +166,18 @@ public class CustomerLimitDTO {
     public void setRateMissing(String fromCurrency) {
         this.rateMissing = true;
         this.rateMissingCurrency = fromCurrency;
-        valid = false;
-        validationMessage = String.format(Constants.MSG_EXCH_RATE_MISSING, fromCurrency, limitCurrency);
     }
-
-    public String getValidationMessage() { return validationMessage; }
-    public void setValidationMessage(String validationMessage) { this.validationMessage = validationMessage; }
-
-    public boolean isValid() { return valid; }
-    public void setValid(boolean valid) { this.valid = valid; }
 
     /** True when the customer has no EB.ALBE.CIF.LIMITS record ("limit not defined" override). */
     public boolean isLimitMissing() { return limitMissing; }
     public void setLimitMissing(boolean limitMissing) {
         this.limitMissing = limitMissing;
-        if (limitMissing) {
-            valid = false;
-            validationMessage = String.format(Constants.MSG_LIMIT_NOT_DEFINED, customerId);
-        }
     }
 
     /** True when the customer's EB.ALBE.CIF.LIMITS has a blank CCY (error - blocks the transaction). */
     public boolean isLimitCcyMissing() { return limitCcyMissing; }
     public void setLimitCcyMissing(boolean limitCcyMissing) {
         this.limitCcyMissing = limitCcyMissing;
-        if (limitCcyMissing) {
-            valid = false;
-        }
     }
 
     /** True when at least one required limit field is blank. */
@@ -232,16 +189,13 @@ public class CustomerLimitDTO {
         if (!undefinedLimits.contains(fieldName)) {
             undefinedLimits.add(fieldName);
         }
-        validationMessage = String.format(Constants.MSG_LIMIT_NOT_DEFINED, customerId) + " (" + fieldName + ")";
     }
 
     public List<LimitBreach> getBreaches() { return Collections.unmodifiableList(breaches); }
 
-    /** Records a breach and marks the request invalid. */
-    public void addBreach(String overrideId, String message, BigDecimal difference) {
-        breaches.add(new LimitBreach(overrideId, message, difference));
-        valid = false;
-        validationMessage = message;
+    /** Records a breached limit (override id + amount above the limit). */
+    public void addBreach(String overrideId, BigDecimal difference) {
+        breaches.add(new LimitBreach(overrideId, difference));
     }
 
     /** Compact form for log lines. */
@@ -251,7 +205,7 @@ public class CustomerLimitDTO {
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
                 + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount + ", amountLcy=" + amountLcy
                 + ", txnExchRate=" + txnExchangeRate + ", rateBlocked=" + rateBlocked
-                + ", rateMissing=" + rateMissing + ", valid=" + valid
+                + ", rateMissing=" + rateMissing
                 + ", limitMissing=" + limitMissing + ", limitCcyMissing=" + limitCcyMissing + ", undefinedLimits=" + undefinedLimits
                 + ", breaches=" + breaches.size() + "]";
     }

@@ -44,8 +44,6 @@ public class CustomerLimitReader {
      * @return the limits, or null if the customer has no record (the validators then raise an override)
      */
     public Limits getCustomerLimits(String customerId) {
-        LogUtil.detail(CLASS_NAME, "getCustomerLimits", "START", "reading " + Constants.CIF_LIMIT_TABLE + ">"
-                + customerId);
         try {
             EbAlbeCifLimitsRecord cifLimitRec = repository.readCifLimit(customerId);
             if (cifLimitRec == null) {
@@ -75,12 +73,10 @@ public class CustomerLimitReader {
      * @return the limits, or null if the record or its keys are missing
      */
     public Limits getGenericLimits() {
-        LogUtil.detail(CLASS_NAME, "getGenericLimits", "START", "reading " + Constants.GEN_PARAM_TABLE + ">"
-                + Constants.GEN_PARAM_ID);
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ID);
             if (genParamRec == null) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND",
+                LogUtil.info(CLASS_NAME, "getGenericLimits", "NOT FOUND",
                         "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record");
                 return null;
             }
@@ -92,7 +88,7 @@ public class CustomerLimitReader {
                 if (key == null) {
                     continue;
                 }
-                LogUtil.detail(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
+                LogUtil.info(CLASS_NAME, "getGenericLimits", "CALC", "key=" + key + " value=" + value);
                 found = true;
                 switch (key.trim()) {
                 case Constants.PARAM_KEY_CCY:
@@ -118,7 +114,7 @@ public class CustomerLimitReader {
                 }
             }
             if (!found) {
-                LogUtil.error(CLASS_NAME, "getGenericLimits", "INVALID",
+                LogUtil.info(CLASS_NAME, "getGenericLimits", "INVALID",
                         Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " has no keys");
                 return null;
             }
@@ -126,7 +122,7 @@ public class CustomerLimitReader {
             logLimits("getGenericLimits", limits);
             return limits;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getGenericLimits", "NOT FOUND",
+            LogUtil.info(CLASS_NAME, "getGenericLimits", "NOT FOUND",
                     "no " + Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " record", e);
             return null;
         }
@@ -143,17 +139,17 @@ public class CustomerLimitReader {
         try {
             EbAlbeGenParamRecord genParamRec = repository.readGenParam(Constants.GEN_PARAM_ACTIVITY_ID);
             if (genParamRec == null) {
-                LogUtil.error(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " - no activity mapping");
+                LogUtil.info(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " - no activity mapping");
                 return null;
             }
             for (KeyNameClass keyName : genParamRec.getKeyName()) {
                 if (wanted.equals(ValidationUtil.nvl(keyName.getKeyName().getValue()).trim())) {
                     String value = ValidationUtil.nvl(keyName.getKeyValue().getValue()).trim().toUpperCase();
                     if (Constants.DIRECTION_CREDIT.equals(value) || Constants.DIRECTION_DEBIT.equals(value)) {
-                        LogUtil.detail(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
+                        LogUtil.info(CLASS_NAME, "getActivityDirection", "FOUND", "activity=" + wanted + " -> " + value);
                         return value;
                     }
-                    LogUtil.error(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
+                    LogUtil.info(CLASS_NAME, "getActivityDirection", "INVALID", key + " activity=" + wanted
                             + " value='" + value + "' (must be CREDIT or DEBIT)");
                     return null;
                 }
@@ -161,7 +157,7 @@ public class CustomerLimitReader {
             LogUtil.info(CLASS_NAME, "getActivityDirection", "NOT FOUND", key + " has no activity=" + wanted);
             return null;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getActivityDirection", "ERROR", key + " activity=" + wanted, e);
+            LogUtil.info(CLASS_NAME, "getActivityDirection", "ERROR", key + " activity=" + wanted, e);
             return null;
         }
     }
@@ -173,9 +169,9 @@ public class CustomerLimitReader {
                 + " monthlyCredit=" + limits.monthlyCreditLimit + " monthlyDebit=" + limits.monthlyDebitLimit
                 + " maxCifBalance=" + limits.maxCifBalance;
         if ("getGenericLimits".equals(method)) {
-            LogUtil.detail(CLASS_NAME, method, "CALC", details);
+            LogUtil.info(CLASS_NAME, method, "CALC", details);
         } else {
-            LogUtil.detail(CLASS_NAME, method, "CALC", details);
+            LogUtil.info(CLASS_NAME, method, "CALC", details);
         }
     }
 }

@@ -4,6 +4,15 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – clean rewrite: one routine, one flow (26-Nov-2026, D47)
+- Only **one** activity routine is left: `ALBE.CL.ACTIVITY.LIMIT` (`CustomerLimitActivityController`). The old routines (`ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF`, `ALBE.CL.MAX.CIF`) and their classes are removed – take them out of ACTIVITY.API and remove their EB.API records.
+- The engine has two simple paths. **Input:** read the limits, convert the amount, find the earlier input of the same FT, read the day and month records once, check, check max CIF for a credit, then count – each record is written once as "used − earlier input + new amount". **Take back:** take off exactly what TXN.DETAILS shows was counted, from the day it was counted on.
+- A re-input of an amended FT is now one write per record (before: take back, then count again).
+- Unchanged rules: no limit record → override, still counted; own-account transfer → both sides counted (two activities, two records); no record locking.
+- Logging: `LogUtil` writes **INFO only** (error / detail / result methods and the `LOG_DETAIL_ENABLED` switch removed); fewer trace lines. DIAGNOSTIC.API must be at INFO to see any line.
+- One small change: if the local currency cannot be read (technical), a foreign-currency transaction gets the rate override and is **not counted** (before it was counted unconverted).
+- Tests rewritten (87 cases outside T24); compiles with 0 errors against the real R25 libraries.
+
 ### Changed – clear override messages; one count per FT in the same commit (26-Nov-2026, D46)
 - DEV showed the second `&` of a message is not filled ("for Customer 100128,23000.00 by"). Every override / error now has **one** `&` and the code fills it with the whole text, e.g. "100128 by 12000.00".
 - The message says **debit or credit**: new override ids EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED (EB.OVERRIDE records to create; the old DAILY / MONTHLY.LIMIT.EXCEED are not used). MAX.CIF, EXCH.RATE and error texts change to one `&` too.

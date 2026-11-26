@@ -41,13 +41,12 @@ public class CustomerLimitCreationService {
      * @return true if a record was created; false if it already existed or could not be created
      */
     public boolean create(String customerId) {
-        LogUtil.info(CLASS_NAME, METHOD_CREATE, "START", "customer=" + customerId);
 
         // Never overwrite: the customer is authorised again after every amendment, and the
         // limits may have been changed for this customer. Create only when T24 says "no record".
         Boolean exists = repository.cifLimitExists(customerId);
         if (exists == null) {
-            LogUtil.error(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMITS read failed for " + customerId
+            LogUtil.info(CLASS_NAME, METHOD_CREATE, "SKIP", "EB.ALBE.CIF.LIMITS read failed for " + customerId
                     + ", not created so an existing record is not overwritten");
             return false;
         }
@@ -59,7 +58,7 @@ public class CustomerLimitCreationService {
 
         Limits genericLimits = limitReader.getGenericLimits();
         if (genericLimits == null) {
-            LogUtil.error(CLASS_NAME, METHOD_CREATE, "NOT FOUND",
+            LogUtil.info(CLASS_NAME, METHOD_CREATE, "NOT FOUND",
                     Constants.GEN_PARAM_TABLE + " " + Constants.GEN_PARAM_ID + " not found, limit not created for "
                     + customerId);
             return false;

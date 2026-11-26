@@ -18,7 +18,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
 
 /*-----------------------------------------------------------------------------
  * Description : Common mapping from ANY arrangement activity (AA.ARRANGEMENT.ACTIVITY) to the
- *               request model, shared by the ACTIVITY.API controllers. The routines can be
+ *               request model, used by the single routine. The routines can be
  *               attached to any activity; this class decides whether it is counted:
  *
  *                 amount     ORIG.TXN.AMT if filled, else TXN.AMOUNT; no amount => not counted
@@ -27,10 +27,9 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                            controllers raise EB-ALBE.ACTIVITY.NOT.MAPPED
  *                 initiation INITIATION.TYPE must be in Constants.COUNTED_INITIATION_TYPES
  *                 LCY amount ORIG.TXN.AMT.LCY / TXN.AMOUNT.LCY (used when the limit CCY is the LCY)
- *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id -
- *                            same key as the FT and accounting-entry routines
- *                 date       REMARKS tag (date counted at input) -> ORG.SYSTEM.DATE (T24 date of the
- *                            activity) -> T24 TODAY -> server clock (last resort, logged)
+ *                 key        root of TXN.CONTRACT.ID (the FT / TT behind it), else the AAA id
+ *                 date       ORG.SYSTEM.DATE (T24 date of the activity) -> T24 TODAY ->
+ *                            server clock (last resort, logged)
  *
  *               No business rules and no DB access here (T24 TODAY comes from the repository).
  *------------------------------------------------------------------------------
@@ -45,6 +44,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 25-Nov-2026   Development      logActivity: one ACTIVITY line with the key activity fields (all hooks)
  * 26-Nov-2026   Development      counted date only from the activity ORG.SYSTEM.DATE / T24 TODAY; dateFromRemarks removed (D42)
  * 26-Nov-2026   Development      build with the direction already read; TXN.EXCH.RATE on the request (D44)
+ * 26-Nov-2026   Development      Clean rewrite (D47): one build (direction passed in)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -54,16 +54,11 @@ public class ActivityRequestBuilder {
     }
 
     /**
-     * Request for the limit checks from any activity: customer, AAA id, counted date, currency,
-     * credit or debit amount (and its LCY amount). Null when the activity is not counted
-     * (no amount, direction unknown or initiation type not counted) - the reason is logged.
+     * Request for the limit check from any activity: customer, transaction key, arrangement, counted
+     * date, currency, credit or debit amount (and its LCY amount / TXN.EXCH.RATE). Null when the
+     * activity is not counted (no amount, direction unknown or initiation type not counted) - logged.
+     * @param direction CREDIT / DEBIT from getDirection (read once by the caller)
      */
-    public static CustomerLimitDTO build(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord,
-            String aaaId, CustomerLimitRepository repository) {
-        return build(aaaRec, arrangementRecord, aaaId, getDirection(aaaRec, repository), repository);
-    }
-
-    /** Same, with the CREDIT / DEBIT direction already read by the caller (no second GEN.PARAM read). */
     public static CustomerLimitDTO build(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord,
             String aaaId, String direction, CustomerLimitRepository repository) {
 
@@ -77,7 +72,7 @@ public class ActivityRequestBuilder {
         boolean useOriginal = ValidationUtil.isPositive(ValidationUtil.toAmount(aaaRec.getOrigTxnAmt().getValue()));
         BigDecimal amount = getAmount(aaaRec, useOriginal);
         if (!ValidationUtil.isPositive(amount)) {
-            LogUtil.detail(CLASS_NAME, "build", "SKIP", "activity=" + activity + " class=" + activityClass
+            LogUtil.info(CLASS_NAME, "build", "SKIP", "activity=" + activity + " class=" + activityClass
                     + " has no TXN.AMOUNT / ORIG.TXN.AMT");
             return null;
         }
@@ -101,7 +96,7 @@ public class ActivityRequestBuilder {
         } else {
             request.setDebitAmount(amount);
         }
-        LogUtil.detail(CLASS_NAME, "build", "CALC", "activity=" + activity + " class=" + activityClass
+        LogUtil.info(CLASS_NAME, "build", "CALC", "activity=" + activity + " class=" + activityClass
                 + " direction=" + direction + " initiation=" + initiationType + " amountFrom=" + (useOriginal ? "ORIG.TXN.AMT" : "TXN.AMOUNT")
                 + " request=" + request);
         return request;
@@ -121,12 +116,12 @@ public class ActivityRequestBuilder {
      */
     public static boolean isCountedActivity(String direction, String initiationType, String activity) {
         if (direction == null) {
-            LogUtil.detail(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity
+            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity
                     + " not mapped in " + Constants.GEN_PARAM_ACTIVITY_ID);
             return false;
         }
         if (!ValidationUtil.isCountedInitiationType(initiationType)) {
-            LogUtil.detail(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity + " initiation="
+            LogUtil.info(CLASS_NAME, "isCountedActivity", "SKIP", "activity=" + activity + " initiation="
                     + initiationType + " not counted");
             return false;
         }
@@ -157,16 +152,16 @@ public class ActivityRequestBuilder {
     public static LocalDate getT24Date(AaArrangementActivityRecord aaaRec, CustomerLimitRepository repository) {
         LocalDate orgSystemDate = ValidationUtil.toDate(aaaRec.getOrgSystemDate().getValue());
         if (orgSystemDate != null) {
-            LogUtil.detail(CLASS_NAME, "getT24Date", "FOUND", "ORG.SYSTEM.DATE=" + orgSystemDate);
+            LogUtil.info(CLASS_NAME, "getT24Date", "FOUND", "ORG.SYSTEM.DATE=" + orgSystemDate);
             return orgSystemDate;
         }
         LocalDate today = repository.getT24Today();
         if (today != null) {
-            LogUtil.detail(CLASS_NAME, "getT24Date", "FOUND", "T24 TODAY=" + today);
+            LogUtil.info(CLASS_NAME, "getT24Date", "FOUND", "T24 TODAY=" + today);
             return today;
         }
         LocalDate clock = LocalDate.now();
-        LogUtil.error(CLASS_NAME, "getT24Date", "FALLBACK", "no ORG.SYSTEM.DATE and no T24 TODAY, server clock "
+        LogUtil.info(CLASS_NAME, "getT24Date", "FALLBACK", "no ORG.SYSTEM.DATE and no T24 TODAY, server clock "
                 + clock + " used");
         return clock;
     }

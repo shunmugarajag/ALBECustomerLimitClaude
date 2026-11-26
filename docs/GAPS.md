@@ -183,10 +183,10 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 
 | Item | Owner |
 |---|---|
-| HLSD update for the agreed deviations (creation as Auth routine, GEN.PARAM `CUSTOMER.LIMIT`, counted date in REMARKS, currency conversion) | BA |
+| HLSD update for the agreed deviations (creation as Auth routine, GEN.PARAM `CUSTOMER.LIMIT`, counted date = ORG.SYSTEM.DATE, currency conversion) | BA |
 | One-off creation of EB.ALBE.CIF.LIMITS for existing customers (separate flow) | bank / dev |
 | Verify the T24 API calls listed in TECHNICAL_REFERENCE.md §12 in DEV | dev |
-| Set `Constants.LOG_DETAIL_ENABLED = false` before production | dev |
+| Decide the DIAGNOSTIC.API level in production (all lines are INFO since D47) | bank / dev |
 | Housekeeping of old EB.ALBE.TXN.DETAILS.LIMIT records (keep as long as a reversal is possible) | bank / dev |
 
 ## Suggested order

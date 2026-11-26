@@ -15,6 +15,7 @@ import java.util.List;
  * 26-Nov-2026   Development      Report (enquiry) constants removed (reports dropped)
  * 26-Nov-2026   Development      ERR_CUSTOMER_ACCOUNT_MISSING (max CIF, no CUSTOMER.ACCOUNT)
  * 26-Nov-2026   Development      D46: debit / credit override ids, one parameter per message
+ * 26-Nov-2026   Development      Clean rewrite (D47): unused constants and HLSD log messages removed
  *-----------------------------------------------------------------------------
  */
 public final class Constants {
@@ -35,9 +36,7 @@ public final class Constants {
     /** Separator between the parts of a log line. */
     public static final String LOG_SEPARATOR = " | ";
 
-    /** true = also log every DB READ / WRITE / DELETE before the call (DEV/SIT); false in production. */
-    public static final boolean LOG_DETAIL_ENABLED = false;
-    /** Event of the plain-language summary lines (LogUtil.result). */
+    /** Event of the plain-language summary lines (one per routine call). */
     public static final String LOG_EVENT_RESULT = "RESULT";
     /** Event of the activity field dump at the start of each hook (ActivityRequestBuilder.logActivity). */
     public static final String LOG_EVENT_ACTIVITY = "ACTIVITY";
@@ -67,15 +66,12 @@ public final class Constants {
     public static final String DIRECTION_DEBIT = "DEBIT";
 
     // -------------------------------------------------------------------------
-    // Limit names (used in logs / overrides). Table EB.ALBE.CIF.LIMITS field names differ for two of them:
-    // CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE).
+    // Limit names (used in logs / the "limit not defined" note); same names in EB.ALBE.CIF.LIMITS.
     // -------------------------------------------------------------------------
-    public static final String KEY_CCY = "CCY";
     public static final String KEY_DAILY_CREDIT_LIMIT = "DAILY.CREDIT.LIMIT";
     public static final String KEY_DAILY_DEBIT_LIMIT = "DAILY.DEBIT.LIMIT";
     public static final String KEY_MONTHLY_CREDIT_LIMIT = "MONTHLY.CREDIT.LIMIT";
     public static final String KEY_MONTHLY_DEBIT_LIMIT = "MONTHLY.DEBIT.LIMIT";
-    public static final String KEY_MAX_CIF_BALANCE = "MAX.CIF.BALANCE";
     /** EB.ALBE.CIF.LIMITS field holding the maximum CIF balance (shown when it is blank). */
     public static final String CIF_FIELD_MAX_CIF_AMOUNT = "MAXIMUM.OVERALL.CIF.AMOUNT";
 
@@ -132,11 +128,7 @@ public final class Constants {
     // -------------------------------------------------------------------------
     // Transactions behind an activity
     // -------------------------------------------------------------------------
-    /** Transaction id prefixes, to know which application a counted transaction came from. */
-    public static final String TXN_PREFIX_AAA = "AAA";
-    public static final String TXN_PREFIX_FT = "FT";
-    public static final String TXN_PREFIX_TT = "TT";
-    /** Between the parts of the EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-<transaction>. */
+    /** Between the parts of the EB.ALBE.TXN.DETAILS.LIMIT id <customer>-<YYYYMMDD>-<transaction>-<arrangement>. */
     public static final String TXN_ID_SEPARATOR = "-";
 
     // -------------------------------------------------------------------------
@@ -161,8 +153,6 @@ public final class Constants {
     /** Strict YYYYMMDD for reading dates: an impossible date such as 20261131 is rejected, not adjusted. */
     public static final DateTimeFormatter DATE_PARSE_FORMAT =
             DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
-    /** Length of the YYYYMMDD part of a daily utilisation id. */
-    public static final int DAILY_PERIOD_LENGTH = 8;
 
     // -------------------------------------------------------------------------
     // Currency conversion
@@ -251,18 +241,6 @@ public final class Constants {
      */
     public static final String NOTE_KEPT_IF_COMMITTED = " | count kept only if the transaction is committed"
             + " (override rejected / not committed -> T24 undoes it)";
-
-
-    // -------------------------------------------------------------------------
-    // Messages (HLSD text, used for logging; %s = customer id, difference)
-    // -------------------------------------------------------------------------
-    public static final String MSG_DAILY_DEBIT_EXCEEDED = "Daily debit limit exceeded for Customer %s by %s";
-    public static final String MSG_DAILY_CREDIT_EXCEEDED = "Daily credit limit exceeded for Customer %s by %s";
-    public static final String MSG_MONTHLY_DEBIT_EXCEEDED = "Monthly debit limit exceeded for Customer %s by %s";
-    public static final String MSG_MONTHLY_CREDIT_EXCEEDED = "Monthly credit limit exceeded for Customer %s by %s";
-    public static final String MSG_MAX_CIF_EXCEEDED = "Overall balance limit exceeded for Customer %s by %s";
-    public static final String MSG_LIMIT_NOT_DEFINED = "Customer limit not defined for Customer %s";
-    public static final String MSG_EXCH_RATE_MISSING = "Exchange rate not available from %s to %s";
 
     // -------------------------------------------------------------------------
     // Override / error text sent to T24: [ID,param1,param2]

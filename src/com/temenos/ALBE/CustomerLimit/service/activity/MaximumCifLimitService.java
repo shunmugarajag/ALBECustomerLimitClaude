@@ -7,185 +7,107 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
-import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.account.AccountRecord;
 
 /*-----------------------------------------------------------------------------
- * Description : Business rules for the maximum overall CIF balance (HLSD 7.2.1 - 3).
- *               Called by MaximumCifLimitController; all DB access goes through
- *               CustomerLimitRepository.
+ * Description : Maximum overall CIF balance (HLSD 7.2.1 - 3), credits only. Called by
+ *               CustomerLimitEngine with the limits already read and the credit already in the
+ *               limit currency.
  *
- *               total working balance of all the customer's accounts + credit amount
- *               above MAX.CIF.BALANCE => breach by the difference.
- *               No EB.ALBE.CIF.LIMITS record => limitMissing; blank MAX.CIF.BALANCE =>
- *               limit not defined. The credit amount and every account balance are converted
- *               to the limit currency (EB.ALBE.CIF.LIMITS CCY) when their currency differs.
+ *               CUSTOMER.ACCOUNT <customer> -> each ACCOUNT WORKING.BALANCE (in the limit currency)
+ *               total + credit ABOVE MAXIMUM.OVERALL.CIF.AMOUNT -> breach by the difference
+ *
+ *               blank MAXIMUM.OVERALL.CIF.AMOUNT -> "limit not defined" (override)
+ *               no CUSTOMER.ACCOUNT record        -> customerAccountMissing (ERROR, blocked)
+ *               account in another currency, no rate -> rateMissing (override), not checked (E1)
+ *               account not readable             -> balance 0 (logged)
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
- * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
- * 25-Nov-2026   Development      plain-language notes for the RESULT log line
- * 26-Nov-2026   Development      validate with the limits already read (single routine); D44 blocked conversion
- * 26-Nov-2026   Development      CUSTOMER.ACCOUNT empty -> error, transaction blocked (no SELECT fallback)
+ * 26-Nov-2026   Development      CUSTOMER.ACCOUNT empty -> error, transaction blocked (D45)
+ * 26-Nov-2026   Development      Clean rewrite (D47): one check on the converted request
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitService {
     private static final String CLASS_NAME = "MaximumCifLimitService";
 
     private final CustomerLimitRepository repository;
-    private final CustomerLimitReader limitReader;
     private final CurrencyConversionService currencyService;
 
     public MaximumCifLimitService(CustomerLimitRepository repository) {
         this.repository = repository;
-        this.limitReader = new CustomerLimitReader(repository);
         this.currencyService = new CurrencyConversionService(repository);
     }
 
-    /**
-     * Maximum CIF balance check; records a breach with the HLSD message and amount difference.
-     * The request has been checked by CustomerLimitRequestValidator (customer, credit > 0).
-     */
-    public void validate(CustomerLimitDTO request) {
-        validate(request, limitReader.getCustomerLimits(request.getCustomerId()));
-    }
-
-    /** Same check with the customer's limits already read (null = no EB.ALBE.CIF.LIMITS record). */
-    public void validate(CustomerLimitDTO request, Limits limits) {
+    /** Checks the credit against the maximum CIF balance; the result is recorded on the request. */
+    public void check(CustomerLimitDTO request, Limits limits) {
         String customerId = request.getCustomerId();
-        LogUtil.detail(CLASS_NAME, "validate", "START", request);
-
-        // Step 1: customer's maximum balance limit.
-        if (limits == null) {
-            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS record");
-            request.addNote("no EB.ALBE.CIF.LIMITS record for customer " + customerId + " -> max CIF not checked");
-            request.setLimitMissing(true);
-            return;
-        }
-        if (ValidationUtil.isBlank(limits.ccy)) {
-            LogUtil.error(CLASS_NAME, "validate", "NO CCY", "customer=" + customerId
-                    + " EB.ALBE.CIF.LIMITS CCY is blank - error, transaction blocked");
-            request.addNote("EB.ALBE.CIF.LIMITS CURRENCY is blank for customer " + customerId);
-            request.setLimitCcyMissing(true);
-            return;
-        }
-        BigDecimal maximumCifLimit = limits.maxCifBalance;
-        if (maximumCifLimit == null) {
-            LogUtil.detail(CLASS_NAME, "validate", "NOT DEFINED", "MAX.CIF.BALANCE is blank for customer=" + customerId);
+        BigDecimal maximum = limits.maxCifBalance;
+        if (maximum == null) {
             request.addNote("max CIF: " + Constants.CIF_FIELD_MAX_CIF_AMOUNT + " is blank -> not checked");
             request.addUndefinedLimit(Constants.CIF_FIELD_MAX_CIF_AMOUNT);
             return;
         }
-
-        // Credit amount in the limit currency.
-        if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId
-                    + " credit cannot be converted, transaction blocked (D44)");
+        BigDecimal total = getTotalBalance(request, limits.ccy);
+        if (total == null) {
             return;
         }
-        BigDecimal transactionAmount = request.getCreditAmount();
-
-        // Step 2: total working balance of all the customer's accounts.
-        String finMnemonic = repository.getFinancialMnemonic();
-        BigDecimal totalBalance = getTotalCifBalance(request, finMnemonic, limits.ccy);
-        if (totalBalance == null && request.isCustomerAccountMissing()) {
-            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no CUSTOMER.ACCOUNT, blocked");
-            return;
-        }
-        if (totalBalance == null) {
-            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId
-                    + " no exchange rate for account currency "
-                    + request.getRateMissingCurrency());
-            request.addNote("no exchange rate for account currency " + request.getRateMissingCurrency() + " -> "
-                    + limits.ccy + " -> max CIF not checked");
-            return;
-        }
-
-        // Step 3: compare total + credit amount with the limit (equal to the limit is allowed).
-        BigDecimal projectedBalance = totalBalance.add(transactionAmount);
-        LogUtil.detail(CLASS_NAME, "validate", "CALC", "customer=" + customerId + " totalBalance=" + totalBalance
-                + " txnAmount=" + transactionAmount + " projected=" + projectedBalance + " maxLimit="
-                        + maximumCifLimit);
-
-        if (projectedBalance.compareTo(maximumCifLimit) > 0) {
-            BigDecimal difference = projectedBalance.subtract(maximumCifLimit);
-            request.addNote("max CIF: balance of all accounts " + ValidationUtil.formatAmount(totalBalance) + " + this "
-                    + ValidationUtil.formatAmount(transactionAmount) + " = " + ValidationUtil.formatAmount(projectedBalance)
-                    + " > maximum " + ValidationUtil.formatAmount(maximumCifLimit) + " -> EXCEEDED by "
-                    + ValidationUtil.formatAmount(difference));
-            LogUtil.detail(CLASS_NAME, "validate", "BREACH", "customer=" + customerId + " difference=" + difference);
-            request.addBreach(Constants.OVR_MAX_CIF_BAL_EXCEED,
-                    String.format(Constants.MSG_MAX_CIF_EXCEEDED, customerId, difference.toPlainString()), difference);
+        BigDecimal credit = request.getCreditAmount();
+        BigDecimal projected = total.add(credit);
+        String calc = "max CIF: balance of all accounts " + ValidationUtil.formatAmount(total) + " + this "
+                + ValidationUtil.formatAmount(credit) + " = " + ValidationUtil.formatAmount(projected);
+        if (projected.compareTo(maximum) > 0) {
+            BigDecimal excess = projected.subtract(maximum);
+            request.addNote(calc + " > maximum " + ValidationUtil.formatAmount(maximum) + " -> EXCEEDED by "
+                    + ValidationUtil.formatAmount(excess));
+            request.addBreach(Constants.OVR_MAX_CIF_BAL_EXCEED, excess);
         } else {
-            request.addNote("max CIF: balance of all accounts " + ValidationUtil.formatAmount(totalBalance) + " + this "
-                    + ValidationUtil.formatAmount(transactionAmount) + " = " + ValidationUtil.formatAmount(projectedBalance)
-                    + " <= maximum " + ValidationUtil.formatAmount(maximumCifLimit) + " -> OK");
-            LogUtil.detail(CLASS_NAME, "validate", "OK", "customer=" + customerId + " headroom="
-                    + maximumCifLimit.subtract(projectedBalance));
+            request.addNote(calc + " <= maximum " + ValidationUtil.formatAmount(maximum) + " -> OK");
         }
-        LogUtil.detail(CLASS_NAME, "validate", "END", request);
+        LogUtil.info(CLASS_NAME, "check", "CALC", "customer=" + customerId + " total=" + total + " credit="
+                + credit + " maximum=" + maximum);
     }
 
     /**
-     * Sums the working balances of every account belonging to the customer, each converted
-     * to the limit currency. Null if an account's currency has no exchange rate (rateMissing set).
+     * Working balance of every account in CUSTOMER.ACCOUNT, in the limit currency.
+     * Null when there is no account (customerAccountMissing) or an account has no rate (rateMissing).
      */
-    private BigDecimal getTotalCifBalance(CustomerLimitDTO request, String finMnemonic, String limitCcy) {
+    private BigDecimal getTotalBalance(CustomerLimitDTO request, String limitCcy) {
         String customerId = request.getCustomerId();
-        BigDecimal total = BigDecimal.ZERO;
+        String finMnemonic = repository.getFinancialMnemonic();
         List<String> accountIds = repository.getCustomerAccountIds(finMnemonic, customerId);
         if (accountIds.isEmpty()) {
-            LogUtil.error(CLASS_NAME, "getTotalCifBalance", "BLOCKED", "customer=" + customerId + " no accounts in "
+            LogUtil.info(CLASS_NAME, "getTotalBalance", "BLOCKED", "customer=" + customerId + " no accounts in "
                     + Constants.CUSTOMER_ACCOUNT_FILE + ", raising " + Constants.ERR_CUSTOMER_ACCOUNT_MISSING);
-            request.addNote("BLOCKED: no accounts in " + Constants.CUSTOMER_ACCOUNT_FILE + " for customer " + customerId);
+            request.addNote("BLOCKED: no accounts in " + Constants.CUSTOMER_ACCOUNT_FILE + " for customer "
+                    + customerId);
             request.setCustomerAccountMissing(true);
             return null;
         }
-        int index = 0;
+        BigDecimal total = BigDecimal.ZERO;
         for (String accountId : accountIds) {
-            index++;
-            BigDecimal balance = getAccountBalance(request, finMnemonic, accountId, limitCcy);
-            if (balance == null) {
-                LogUtil.error(CLASS_NAME, "getTotalCifBalance", "NO RATE", "account=" + accountId
-                        + " no exchange rate to "
-                        + limitCcy);
+            AccountRecord accountRec = repository.readAccount(finMnemonic, accountId);
+            if (accountRec == null) {
+                LogUtil.info(CLASS_NAME, "getTotalBalance", "NOT FOUND", "account=" + accountId
+                        + " not readable, balance 0");
+                continue;
+            }
+            BigDecimal balance = ValidationUtil.toAmount(accountRec.getWorkingBalance().getValue());
+            String accountCcy = accountRec.getCurrency().getValue();
+            BigDecimal converted = currencyService.convert(balance, accountCcy, limitCcy);
+            if (converted == null) {
+                request.setRateMissing(accountCcy);
+                request.addNote("max CIF: account " + accountId + " in " + accountCcy + ", no rate to " + limitCcy
+                        + " -> not checked");
                 return null;
             }
-            total = total.add(balance);
-            LogUtil.detail(CLASS_NAME, "getTotalCifBalance", "CALC", "[" + index + "/" + accountIds.size() + "] account="
-                    + accountId + " balance=" + balance + " runningTotal=" + total);
+            total = total.add(converted);
+            LogUtil.info(CLASS_NAME, "getTotalBalance", "CALC", "account=" + accountId + " balance=" + balance
+                    + " " + accountCcy + " inLimitCcy=" + converted + " total=" + total);
         }
-        LogUtil.detail(CLASS_NAME, "getTotalCifBalance", "CALC", "customer=" + customerId + " accounts="
-                + accountIds.size()
-                + " total=" + total);
         return total;
-    }
-
-    /**
-     * Working balance of one account in the limit currency; 0 if the account cannot be read,
-     * null if its currency has no exchange rate.
-     */
-    private BigDecimal getAccountBalance(CustomerLimitDTO request, String finMnemonic, String accountId,
-            String limitCcy) {
-        AccountRecord accountRec = repository.readAccount(finMnemonic, accountId);
-        if (accountRec == null) {
-            LogUtil.info(CLASS_NAME, "getAccountBalance", "NOT FOUND", "account=" + accountId
-                    + " not readable, balance=0");
-            return BigDecimal.ZERO;
-        }
-        BigDecimal balance = ValidationUtil.toAmount(accountRec.getWorkingBalance().getValue());
-        String accountCcy = accountRec.getCurrency().getValue();
-        BigDecimal converted = currencyService.convert(balance, accountCcy, limitCcy);
-        if (converted == null) {
-            request.setRateMissing(accountCcy);
-            return null;
-        }
-        LogUtil.detail(CLASS_NAME, "getAccountBalance", "CALC", "account=" + accountId + " balance=" + balance + " "
-                + accountCcy
-                + " inLimitCcy=" + converted + " " + limitCcy);
-        return converted;
     }
 }

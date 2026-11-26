@@ -18,7 +18,7 @@
 | Daily / monthly limit check | acceptable overrides on credit / debit activities; utilisation counted at input, reversed on rejection and reversal |
 | Maximum CIF balance check | acceptable override on credit activities |
 | Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ABLE.EXCH.RATE.MISSING) |
-| Logging | standard `ALBE.CUSTOMER.LIMIT | …` lines through logger `API` → `TAFJ/log/api.log` (ALERT.API errors, DIAGNOSTIC.API info) |
+| Logging | standard `ALBE.CUSTOMER.LIMIT | …` lines through logger `API` → `TAFJ/log/api.log`, all at INFO (DIAGNOSTIC.API), D47 |
 
 Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 
@@ -28,10 +28,10 @@ Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 
 | Object | Content |
 |---|---|
-| `ALBE_CustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 24 classes (5 controllers, 8 services, 1 repository, 4 models, 1 view, 1 validator, 2 utilities, Constants) |
+| `ALBE_CustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 19 classes (2 controllers + 1 request builder, 7 services, 1 repository, 3 models, 1 view, 1 validator, 2 utilities, Constants) |
 | Generated table JARs | Java API of EB.ALBE.CIF.LIMITS, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
 
-Build setting: `Constants.LOG_DETAIL_ENABLED` = **false** (default). Set true only for a short DEV trace; INFO lines (ACTION / ACTIVITY / RESULT) are enough for SIT.
+Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any line, including FAILED / BLOCKED.
 
 ### 2.2 T24 records
 
@@ -41,10 +41,10 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **false** (default). Set true on
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
 | 3 | EB.OVERRIDE | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks),  | new | 14.3 |
-| 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT** (single routine, D44); rollback: ALBE.CL.DAILY.MONTHLY.VAL / .UPD, ALBE.CL.MAX.CIF (.DEF not used since D42) | new | 6 |
+| 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT** (the only activity routine, D47); **remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF and ALBE.CL.MAX.CIF (classes no longer in the JAR) | new / removed | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
-| 8 | ACTIVITY.API product condition | **target (D44): one Post Routine `ALBE.CL.ACTIVITY.LIMIT`**; fallback: per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – **all as Post Routine**: `ALBE.CL.DAILY.MONTHLY.VAL`, (credit) `ALBE.CL.MAX.CIF`, then `ALBE.CL.DAILY.MONTHLY.UPD` (D43) | **changed** | 8 |
+| 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – **one Post Routine `ALBE.CL.ACTIVITY.LIMIT`**, all other routine fields blank (D47) | **changed** | 8 |
 | 11 | Menu | Customer Limits sub-menu (maintain) | new / changed | 15.1 |
 | 12 | Security | access of the roles in 15.2 | changed | 15.2 |
 
@@ -96,14 +96,13 @@ Remove the routines first so nothing new is counted, then the rest. Data written
 | 5 | **Do not just delete `ALBE_CustomerLimit.jar`**: JBoss `module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name and a missing file takes down every T24 deployment (DEV 25-Nov). Leave the JAR (no routine points to it), or remove its entry from module.xml first in a planned change with a restart. |
 | 6 | *(optional)* keep or clear the local tables – EB.ALBE.UTILISED.LIMIT / TXN.DETAILS hold only bookkeeping; EB.ALBE.CIF.LIMITS holds the customers' limits (keep if a re-install is planned) |
 
-Quick rollback of the single routine only: put `ALBE.CL.DAILY.MONTHLY.VAL` (+ `ALBE.CL.MAX.CIF` for credit) and `ALBE.CL.DAILY.MONTHLY.UPD` back as Post Routines, proof and publish – no redeploy.
+There is no configuration-only rollback any more (D47: the old routines are not in the JAR). To go back to the previous behaviour, redeploy the previous JAR together with its ACTIVITY.API set-up.
 
 ## 6. Configuration per environment
 
 | Setting | SIT / UAT | Production |
 |---|---|---|
-| `Constants.LOG_DETAIL_ENABLED` | false | **false** |
-| Logger `API` (ALERT.API / DIAGNOSTIC.API in TAFJTrace.properties) | INFO during tests | **ERROR** |
+| Logger `API` (DIAGNOSTIC.API in TAFJTrace.properties) | INFO | **decide**: INFO = all lines incl. FAILED / BLOCKED; ERROR = no Customer Limit lines at all (all lines are INFO, D47) |
 | EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` values | test values | bank-approved values |
 | Exchange rate (E1) | as soon as configured | must be configured before go-live if foreign-currency transactions are in scope |
 

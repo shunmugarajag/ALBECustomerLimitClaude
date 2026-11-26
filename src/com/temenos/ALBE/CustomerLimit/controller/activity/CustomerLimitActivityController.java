@@ -41,10 +41,12 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *   and - credits with MAX.CIF filled only - the customer's accounts.
  *
  *   Blocking errors (EB.ERROR, on TXN.AMOUNT): activity not mapped, blank limit CCY, amount not
- *   convertible (D44), utilisation save failed (D37, setError - a thrown exception would only be
- *   logged by the validate invoker). Any other technical failure is logged and does not block.
+ *   convertible (D44), no CUSTOMER.ACCOUNT (max CIF, D45), utilisation save failed (D37, setError -
+ *   a thrown exception would only be logged by the validate invoker). Any other technical failure
+ *   is logged and does not block.
  *
- *   DailyMonthlyLimitController / MaximumCifLimitController stay for rollback by configuration.
+ *   Own-account transfer: T24 creates one activity per side (debit + credit arrangement); each
+ *   calls this routine and is checked / counted on its own (D39).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -52,6 +54,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 26-Nov-2026   Development      Review: no take-back fallback (second AUTH-REV call), NOTHING TAKEN BACK /
  *                                SAVE FAILED in the RESULT line, ACTION line on a technical error
  * 26-Nov-2026   Development      RESULT says the count is kept only if the FT is committed (user)
+ * 26-Nov-2026   Development      Clean rewrite (D47): the only activity routine (old VAL / UPD / MAX.CIF removed)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitActivityController extends ActivityLifecycle {
@@ -101,27 +104,26 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
                 input(engine, repository, request, arrangementActivityRecord, arrangementRecord);
             } else {
                 logAction(action, request.describe(), status, "take back");
-                // No "take back from today" fallback: validateRecord can be called more than once, and a
-                // second call must not take back another transaction's amount (review 26-Nov).
-                int takenBack = engine.reverse(request, false);
-                LogUtil.result(CLASS_NAME, HOOK, (takenBack == 0 ? "NOTHING TAKEN BACK (nothing counted for it) "
+                // Only what TXN.DETAILS shows was counted is taken back (never a guess, D45).
+                int takenBack = engine.reverse(request);
+                LogUtil.info(CLASS_NAME, HOOK, Constants.LOG_EVENT_RESULT, (takenBack == 0 ? "NOTHING TAKEN BACK (nothing counted for it) "
                         : Constants.STATUS_DELETE.equals(status) ? "TAKEN BACK (input rejected) "
                         : "TAKEN BACK (reversal) ") + request.describe()
                         + (request.getNotes().isEmpty() ? "" : " | " + String.join(" | ", request.getNotes()))
                         + saveFailedText(repository));
             }
-            LogUtil.detail(CLASS_NAME, HOOK, "END", "status=" + status + " " + request.logKey() + " elapsedMs="
+            LogUtil.info(CLASS_NAME, HOOK, "END", "status=" + status + " " + request.logKey() + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, HOOK, "ERROR", "status=" + status, e);
+            LogUtil.info(CLASS_NAME, HOOK, "ERROR", "status=" + status, e);
             LogUtil.info(CLASS_NAME, HOOK, Constants.LOG_EVENT_ACTION, actionOf(status) + " (status " + status
                     + ") -> technical error, not checked / not counted / nothing taken back (see the ERROR line)");
         }
 
         // D37: a failed utilisation / TXN.DETAILS save blocks the transaction.
         if (repository != null && repository.isSaveFailed()) {
-            LogUtil.error(CLASS_NAME, HOOK, "BLOCK", "status=" + status + " save failed, raising "
+            LogUtil.info(CLASS_NAME, HOOK, "BLOCK", "status=" + status + " save failed, raising "
                     + Constants.ERR_LIMIT_UPDATE_FAILED);
             CustomerLimitOverride.raiseError(arrangementActivityRecord.getTxnAmount(), Constants.ERR_LIMIT_UPDATE_FAILED);
         }
@@ -134,12 +136,12 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
         CustomerLimitDTO result = engine.processInput(request, getAccountNo(arrangementRecord),
                 arrangementActivityRecord.getEffectiveDate().getValue());
         if (result == null) {
-            LogUtil.result(CLASS_NAME, HOOK, "INPUT " + request.describe() + " | transaction info not valid"
+            LogUtil.info(CLASS_NAME, HOOK, Constants.LOG_EVENT_RESULT, "INPUT " + request.describe() + " | transaction info not valid"
                     + " -> not checked, not counted");
             return;
         }
         CustomerLimitOverride.raiseFor(arrangementActivityRecord, result);
-        LogUtil.result(CLASS_NAME, HOOK, "INPUT " + result.describe()
+        LogUtil.info(CLASS_NAME, HOOK, Constants.LOG_EVENT_RESULT, "INPUT " + result.describe()
                 + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))
                 + " | raised: " + CustomerLimitOverride.ids(result) + saveFailedText(engineRepository)
                 + (result.isBlocked() ? "" : Constants.NOTE_KEPT_IF_COMMITTED));
@@ -156,14 +158,14 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
             String status) {
         String activity = ValidationUtil.nvl(arrangementActivityRecord.getActivity().getValue()).trim();
         if (Constants.STATUS_UNAUTH.equals(status)) {
-            LogUtil.error(CLASS_NAME, HOOK, "NOT MAPPED", "activity=" + activity + " not in "
+            LogUtil.info(CLASS_NAME, HOOK, "NOT MAPPED", "activity=" + activity + " not in "
                     + Constants.GEN_PARAM_TABLE + ">" + Constants.GEN_PARAM_ACTIVITY_ID + ", raising "
                     + Constants.ERR_ACTIVITY_NOT_MAPPED);
             CustomerLimitOverride.raiseError(arrangementActivityRecord.getTxnAmount(),
                     Constants.ERR_ACTIVITY_NOT_MAPPED, activity);
             logAction(action, transaction, status, "ERROR " + Constants.ERR_ACTIVITY_NOT_MAPPED + " (input blocked)");
         } else {
-            LogUtil.error(CLASS_NAME, HOOK, "NOT MAPPED", "status=" + status + " activity=" + activity + " not in "
+            LogUtil.info(CLASS_NAME, HOOK, "NOT MAPPED", "status=" + status + " activity=" + activity + " not in "
                     + Constants.GEN_PARAM_ACTIVITY_ID + " - nothing taken back, check the utilisation");
         }
     }
@@ -199,7 +201,7 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
         if (!ValidationUtil.isBlank(aaaId)) {
             return aaaId.trim();
         }
-        LogUtil.error(CLASS_NAME, "getAaaId", "NOT FOUND", "AAA id not available, using arrangement id");
+        LogUtil.info(CLASS_NAME, "getAaaId", "NOT FOUND", "AAA id not available, using arrangement id");
         return arrangementActivityRecord.getArrangement().getValue();
     }
 

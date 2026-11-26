@@ -58,7 +58,6 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | Done | Step | Check |
 |---|---|---|
 | [ ] | Tag the packaged commit on `main` (repo `shunmugarajag/ALBECustomerLimitClaude`) | tag noted: ______ |
-| [ ] | `Constants.LOG_DETAIL_ENABLED = false` (default) in the build | – |
 | [ ] | `mvn clean package` → `target/ALBE_CustomerLimit.jar` | JAR exists |
 | [ ] | **JAR name is exactly `ALBE_CustomerLimit.jar`** – JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name. Missing / renamed JAR = **all T24 deployments fail** (DEV outage 25-Nov) | name checked |
 | [ ] | Confirm the production target folder (pom default `deploy.dir` = `/srv/Temenos/T24/bnk/ALBElib`, `deploy.host` = DEV) and that it is the folder module.xml loads from | folder: ______ |
@@ -105,12 +104,9 @@ Note: override ids are **EB-ABLE.*** (as created in DEV, D40); error ids are **E
 
 | Done | EB.API id | Class (`com.temenos.ALBE.CustomerLimit.controller…`) | Method | Use |
 |---|---|---|---|---|
-| [ ] | **ALBE.CL.ACTIVITY.LIMIT** | `activity.CustomerLimitActivityController` | validateRecord | **target** (D44) |
-| [ ] | ALBE.CL.DAILY.MONTHLY.VAL | `activity.DailyMonthlyLimitController` | validateRecord | fallback / rollback |
-| [ ] | ALBE.CL.MAX.CIF | `activity.MaximumCifLimitController` | validateRecord | fallback / rollback (credit) |
-| [ ] | ALBE.CL.DAILY.MONTHLY.UPD | `activity.DailyMonthlyLimitController` | postCoreTableUpdate | fallback / rollback |
+| [ ] | **ALBE.CL.ACTIVITY.LIMIT** | `activity.CustomerLimitActivityController` | validateRecord | the only activity routine (D47) |
 | [ ] | ALBE.CL.LIMIT.CREATE | `customer.CustomerLimitCreationController` | postUpdateRequest | customer version |
-| [ ] | ALBE.CL.DAILY.MONTHLY.DEF – **not installed** (no longer used, D42) | – | – | – |
+| [ ] | **Not installed / removed:** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF, ALBE.CL.MAX.CIF – their classes are not in the JAR (DEV: take them out of ACTIVITY.API first, then remove the EB.API) | – | – | – |
 
 SOURCE.TYPE = JAVA, JAVA.PACKAGE / JAVA.CLASS / JAVA.METHOD (confirm field names on R25).
 
@@ -137,9 +133,8 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 
 | Done | Step |
 |---|---|
-| [ ] | TQ20 passed? **Yes** → target set-up below. **No** → fallback set-up below. |
-| [ ] | **Target (D44):** Post Routine.1 = `ALBE.CL.ACTIVITY.LIMIT`; every other routine field blank |
-| [ ] | **Fallback:** credit = Post Routine 1 `ALBE.CL.DAILY.MONTHLY.VAL`, 2 `ALBE.CL.MAX.CIF`, 3 `ALBE.CL.DAILY.MONTHLY.UPD`; debit = 1 VAL, 2 UPD (checks **before** UPD) |
+| [ ] | TQ20 passed in DEV (DELETE / AUTH-REV reach the routine) – **must** pass, there is no fallback routine since D47 |
+| [ ] | Post Routine.1 = `ALBE.CL.ACTIVITY.LIMIT`; every other routine field blank |
 | [ ] | Pre Routine, Record Rtn, Validate Rtn, Pre Validate Rtn **blank** (not called for FT activities) |
 | [ ] | No routine on FUNDS.TRANSFER / TELLER versions or ACCOUNT.PARAMETER |
 | [ ] | Every activity with the routine is in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (else EB-ALBE.ACTIVITY.NOT.MAPPED blocks) |
@@ -159,7 +154,7 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 | Done | Step |
 |---|---|
 | [ ] | For go-live day / hypercare: server admin sets `logger.DIAGNOSTIC_API.level = INFO` in `TAFJ/conf/TAFJTrace.properties` + restart, to see ACTION / RESULT lines in `TAFJ/log/api.log` (bank's own change – the deploy itself touches only the JAR) |
-| [ ] | ERROR / FAILED lines are always written (ALERT.API) |
+| [ ] | All lines are INFO (D47) – with DIAGNOSTIC.API at ERROR nothing of Customer Limit is written, also not FAILED / BLOCKED |
 
 ---
 
@@ -202,13 +197,12 @@ If tests 5 or 7 show no `ACTION | DELETE` / `REVERSAL` line → TQ20 failed → 
 
 ## 5. Rollback
 
-### 5.1 Single routine not working → fallback (no redeploy)
+### 5.1 Routine not working
 
 | Done | # | Step |
 |---|---|---|
-| [ ] | R1 | In each ACTIVITY.API: replace `ALBE.CL.ACTIVITY.LIMIT` by Post Routines VAL (+ MAX.CIF for credit) + UPD (section 2.8 fallback) |
-| [ ] | R2 | Proof and publish the products |
-| [ ] | R3 | Repeat smoke tests 3–7 (log lines now from `DailyMonthlyLimitController`) |
+| [ ] | R1 | Take `ALBE.CL.ACTIVITY.LIMIT` out of the ACTIVITY.API conditions (nothing is checked or counted any more), proof and publish |
+| [ ] | R2 | Or redeploy the previous JAR together with its own ACTIVITY.API set-up (no configuration-only fallback since D47) |
 
 ### 5.2 Full rollback (remove the module)
 
@@ -229,15 +223,12 @@ Remove the routines first so nothing new is counted. Data already written does n
 
 | Done | Item | When |
 |---|---|---|
-| [ ] | Set `logger.DIAGNOSTIC_API.level` back to **ERROR** (server admin) + restart | end of hypercare |
-| [ ] | `Constants.LOG_DETAIL_ENABLED` stays **false** (turn on only when development asks) | always |
-| [ ] | Daily: `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED) \|"` – a technical failure does **not** block the transaction, so this is the only signal a check was skipped | daily |
+| [ ] | Decide `logger.DIAGNOSTIC_API.level` after hypercare: INFO = keep every line (incl. FAILED / BLOCKED); ERROR = no Customer Limit lines (D47) | end of hypercare |
+| [ ] | Daily: `grep -E "ALBE.CUSTOMER.LIMIT.*\| (FAILED\|BLOCKED) \|"` – a technical failure does **not** block the transaction, so this is the only signal a check was skipped | daily |
 | [ ] | Daily: `grep "ALBE.CUSTOMER.LIMIT.*\| NO RATE \|"` → report currency pairs (E1) | daily |
 | [ ] | Daily: `getCustomerLimits \| NOT FOUND` → create the missing limit record (RUNBOOK 3.3) | daily |
-| [ ] | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY OVER.LIMIT EQ Y` – business follow-up | daily |
-| [ ] | `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ <yesterday> OVERRIDDEN EQ Y` – compliance review | daily |
+| [ ] | `grep "ALBE.CUSTOMER.LIMIT.*\| OVERRIDE \|"` – overridden transactions, compliance review (reports removed 26-Nov) | daily |
 | [ ] | Housekeeping of EB.ALBE.TXN.DETAILS.LIMIT – retention period **OPEN (FQ12)**; keep as long as a reversal is possible | after FQ12 |
-| [ ] | Remove the old routines after SIT: EB.API ALBE.CL.DAILY.MONTHLY.VAL / .UPD, ALBE.CL.MAX.CIF (and the old controllers in code) – only once the single routine is proven (TQ20) | after SIT sign-off |
 | [ ] | Exchange rate for max CIF other-currency accounts (E1 / FQ8): set `Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD`, complete `CustomerLimitRepository.readExchangeRate` | when bank answers |
 | [ ] | Support team has `docs/SUPPORT_RUNBOOK.md` (error lines §4, common cases §3) | go-live day |
 | [ ] | Sign-off (RELEASE_NOTES §7): developer, reviewer, QA / SIT, business owner | go-live |

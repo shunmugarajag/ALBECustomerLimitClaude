@@ -1,8 +1,6 @@
 package com.temenos.ALBE.CustomerLimit.service.activity;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
@@ -12,29 +10,28 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 
 /*-----------------------------------------------------------------------------
- * Description : Keeps EB.ALBE.TXN.DETAILS.LIMIT for every transaction counted in
- *               EB.ALBE.UTILISED.LIMIT (written at input), so a re-input, a rejected
- *               input or a reversal subtracts from the original day and month.
+ * Description : EB.ALBE.TXN.DETAILS.LIMIT - one record for every transaction counted in
+ *               EB.ALBE.UTILISED.LIMIT (written at input), so a re-input, a rejected input
+ *               or a reversal takes back exactly what was counted, from the day it was counted on.
  *
- *               Record id : <customer id>-<YYYYMMDD>-<transaction key>   (HLSD format)
- *                           YYYYMMDD = T24 date the amount was counted on = the activity's
- *                           ORG.SYSTEM.DATE (kept by T24 on authorisation / rejection /
- *                           reversal), so every later step rebuilds the id and reads the
- *                           record directly by key (fallback: SELECT by transaction).
+ *               Record id : <customer>-<YYYYMMDD>-<transaction key>-<arrangement id>
+ *                           YYYYMMDD = the activity's ORG.SYSTEM.DATE (T24 date it was counted on)
+ *                           transaction key = FT / TT behind the activity, else the AAA id
+ *                           arrangement = makes the two sides of an own-account transfer two
+ *                           records, so both are counted (FQ6)
  *               Fields    : ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE (value date),
  *                           TXN.AMOUNT (in the limit currency). No other field is written.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
- * 21-Nov-2026   Development      HLSD id <customer>-<date>-<AAA>; date from AAA REMARKS
  * 23-Nov-2026   Development      Id <customer>-<date>-<FT/AAA>-<arrangement> (FQ6)
- * 25-Nov-2026   Development      note for the RESULT log line
- * 26-Nov-2026   Development      comment: date from ORG.SYSTEM.DATE (REMARKS tag removed, D42)
+ * 26-Nov-2026   Development      Clean rewrite (D47): findCounted returns the one record or null
  *-----------------------------------------------------------------------------
  */
 public class TxnDetailsLimitRecorder {
     private static final String CLASS_NAME = "TxnDetailsLimitRecorder";
+    private static final String LABEL_ID = "id=";
 
     private final CustomerLimitRepository repository;
 
@@ -43,10 +40,7 @@ public class TxnDetailsLimitRecorder {
         this.repository = repository;
     }
 
-    /**
-     * <customer id>-<YYYYMMDD counted on>-<transaction key: root reference of the FT / TT / AAA>-<arrangement id>.
-     * The arrangement makes the two sides of an own-account transfer two records, so both are counted (FQ6).
-     */
+    /** <customer>-<YYYYMMDD>-<transaction key>-<arrangement id> of the request. */
     public static String recordId(CustomerLimitDTO request) {
         return request.getCustomerId() + Constants.TXN_ID_SEPARATOR
                 + request.getTransactionDate().format(Constants.DAILY_ID_FORMAT) + Constants.TXN_ID_SEPARATOR
@@ -54,12 +48,11 @@ public class TxnDetailsLimitRecorder {
     }
 
     /**
-     * Writes the details of a transaction that was added to utilisation (called on input, UNAUTH).
+     * Writes (or replaces) the record of a counted transaction.
      * @param effectiveDate value date of the transaction, stored in EFF.DATE
      */
     public void record(CustomerLimitDTO request, String accountNo, String effectiveDate) {
         String recordId = recordId(request);
-        LogUtil.detail(CLASS_NAME, "record", "START", "id=" + recordId);
         try {
             boolean credit = request.isCredit();
             EbAlbeTxnDetailsLimitRecord txnRec = repository.newTxnDetailsRecord();
@@ -67,73 +60,58 @@ public class TxnDetailsLimitRecorder {
             txnRec.setCreditDebitFlag(credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT);
             txnRec.setEffDate(ValidationUtil.nvl(effectiveDate));
             txnRec.setTxnAmount(request.getAmount().toPlainString());
-            repository.writeTxnDetails(recordId, txnRec);
-            request.addNote("saved EB.ALBE.TXN.DETAILS.LIMIT " + recordId);
-            LogUtil.info(CLASS_NAME, "record", "WRITTEN", "id=" + recordId + " account=" + accountNo + " flag="
-                    + (credit ? Constants.FLAG_CREDIT : Constants.FLAG_DEBIT) + " effDate=" + effectiveDate
-                    + " amount=" + request.getAmount());
+            if (repository.writeTxnDetails(recordId, txnRec)) {
+                request.addNote("saved EB.ALBE.TXN.DETAILS.LIMIT " + recordId);
+            } else {
+                request.addNote("EB.ALBE.TXN.DETAILS.LIMIT " + recordId + " SAVE FAILED");
+            }
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "record", "FAILED", "id=" + recordId, e);
+            LogUtil.info(CLASS_NAME, "record", "FAILED", LABEL_ID + recordId, e);
             request.addNote("EB.ALBE.TXN.DETAILS.LIMIT " + recordId + " SAVE FAILED");
             repository.markSaveFailed(CLASS_NAME, "record " + recordId);
         }
     }
 
     /**
-     * Finds what was recorded for this transaction: direct read of <customer>-<date>-<transaction key>,
-     * the date being the one the request carries (from the activity REMARKS).
-     * The returned entry carries the original date (from the id), flag and amount.
-     * @return 0 or 1 entries
+     * What was counted for this transaction on the request's date (direct read by key).
+     * @return the counted transaction (customer, key, arrangement, date, credit or debit amount);
+     *         null when nothing was counted under this key
      */
-    public List<CustomerLimitDTO> findOriginal(CustomerLimitDTO request) {
-        List<CustomerLimitDTO> originals = new ArrayList<>();
+    public CustomerLimitDTO findCounted(CustomerLimitDTO request) {
         String recordId = recordId(request);
-        LogUtil.detail(CLASS_NAME, "findOriginal", "START", "direct read id=" + recordId);
-        CustomerLimitDTO original = toRequest(recordId, request);
-        if (original != null) {
-            originals.add(original);
-        }
-        LogUtil.detail(CLASS_NAME, "findOriginal", "END", "id=" + recordId + " found=" + originals.size());
-        return originals;
-    }
-
-    /** Removes the record once reversed, so the same transaction is never reversed twice. */
-    public void delete(CustomerLimitDTO original) {
-        String recordId = recordId(original);
-        try {
-            repository.deleteTxnDetails(recordId);
-            LogUtil.info(CLASS_NAME, "delete", "DELETED", "id=" + recordId);
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "delete", "FAILED", "id=" + recordId, e);
-            repository.markSaveFailed(CLASS_NAME, "delete " + recordId);
-        }
-    }
-
-    /** Rebuilds the original transaction from its record (flag, amount); the date is the id's. */
-    private CustomerLimitDTO toRequest(String recordId, CustomerLimitDTO request) {
         EbAlbeTxnDetailsLimitRecord txnRec = repository.readTxnDetails(recordId);
         if (txnRec == null) {
             return null;
         }
         try {
             BigDecimal amount = ValidationUtil.toAmount(txnRec.getTxnAmount().getValue());
-            CustomerLimitDTO original = new CustomerLimitDTO();
-            original.setCustomerId(request.getCustomerId());
-            original.setTransactionId(request.getTransactionId());
-            original.setArrangementId(request.getArrangementId());
-            original.setTransactionDate(request.getTransactionDate());
+            CustomerLimitDTO counted = new CustomerLimitDTO();
+            counted.setCustomerId(request.getCustomerId());
+            counted.setTransactionId(request.getTransactionId());
+            counted.setArrangementId(request.getArrangementId());
+            counted.setTransactionDate(request.getTransactionDate());
             if (Constants.FLAG_CREDIT.equalsIgnoreCase(txnRec.getCreditDebitFlag().getValue())) {
-                original.setCreditAmount(amount);
+                counted.setCreditAmount(amount);
             } else {
-                original.setDebitAmount(amount);
+                counted.setDebitAmount(amount);
             }
-            LogUtil.detail(CLASS_NAME, "toRequest", "FOUND", "id=" + recordId + " countedOn="
-                    + original.getTransactionDate() + " flag=" + txnRec.getCreditDebitFlag().getValue()
-                    + " amount=" + amount);
-            return original;
+            LogUtil.info(CLASS_NAME, "findCounted", "FOUND", LABEL_ID + recordId + " flag="
+                    + txnRec.getCreditDebitFlag().getValue() + " amount=" + amount);
+            return counted;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "toRequest", "FAILED", "unable to use id=" + recordId, e);
+            LogUtil.info(CLASS_NAME, "findCounted", "FAILED", "unable to use " + LABEL_ID + recordId, e);
             return null;
+        }
+    }
+
+    /** Removes the record once taken back, so the same transaction is never taken back twice. */
+    public void delete(CustomerLimitDTO counted) {
+        String recordId = recordId(counted);
+        try {
+            repository.deleteTxnDetails(recordId);
+        } catch (Exception e) {
+            LogUtil.info(CLASS_NAME, "delete", "FAILED", LABEL_ID + recordId, e);
+            repository.markSaveFailed(CLASS_NAME, "delete " + recordId);
         }
     }
 }

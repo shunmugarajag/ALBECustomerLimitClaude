@@ -83,7 +83,7 @@ public class CustomerLimitRepository {
     /** Records a save failure noticed outside the write itself (e.g. the record could not be built). */
     public void markSaveFailed(String className, String reason) {
         saveFailed = true;
-        LogUtil.error(CLASS_NAME, "markSaveFailed", "FAILED", className + ": " + reason);
+        LogUtil.info(CLASS_NAME, "markSaveFailed", "FAILED", className + ": " + reason);
     }
 
     // =========================================================================
@@ -92,7 +92,6 @@ public class CustomerLimitRepository {
 
     /** Reads EB.ALBE.CIF.LIMITS <customer id>; null if there is no record. */
     public EbAlbeCifLimitsRecord readCifLimit(String customerId) {
-        LogUtil.detail(CLASS_NAME, "readCifLimit", "READ", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
             EbAlbeCifLimitsRecord cifLimitRec =
                     new EbAlbeCifLimitsRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
@@ -101,7 +100,7 @@ public class CustomerLimitRepository {
                         + ">" + customerId);
                 return null;
             }
-            LogUtil.detail(CLASS_NAME, "readCifLimit", "FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
+            LogUtil.info(CLASS_NAME, "readCifLimit", "FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
             return cifLimitRec;
         } catch (Exception e) {
             LogUtil.info(CLASS_NAME, "readCifLimit", "NOT FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
@@ -117,7 +116,6 @@ public class CustomerLimitRepository {
      *         null  the read failed for another reason: the caller must not create the record
      */
     public Boolean cifLimitExists(String customerId) {
-        LogUtil.detail(CLASS_NAME, "cifLimitExists", "READ", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
             EbAlbeCifLimitsRecord cifLimitRec =
                     new EbAlbeCifLimitsRecord(daObj.getRecord(Constants.CIF_LIMIT_TABLE, customerId));
@@ -130,7 +128,7 @@ public class CustomerLimitRepository {
                 LogUtil.info(CLASS_NAME, "cifLimitExists", "NOT FOUND", Constants.CIF_LIMIT_TABLE + ">" + customerId);
                 return Boolean.FALSE;
             }
-            LogUtil.error(CLASS_NAME, "cifLimitExists", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId
+            LogUtil.info(CLASS_NAME, "cifLimitExists", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId
                     + " existence unknown", e);
             return null;
         }
@@ -155,13 +153,12 @@ public class CustomerLimitRepository {
 
     /** Writes EB.ALBE.CIF.LIMITS <customer id>. */
     public boolean writeCifLimit(String customerId, EbAlbeCifLimitsRecord cifLimitRec) {
-        LogUtil.detail(CLASS_NAME, "writeCifLimit", "WRITE", Constants.CIF_LIMIT_TABLE + ">" + customerId);
         try {
             cifLimitTable.write(customerId, cifLimitRec);
             LogUtil.info(CLASS_NAME, "writeCifLimit", "WRITTEN", Constants.CIF_LIMIT_TABLE + ">" + customerId);
             return true;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "writeCifLimit", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
+            LogUtil.info(CLASS_NAME, "writeCifLimit", "FAILED", Constants.CIF_LIMIT_TABLE + ">" + customerId, e);
             return false;
         }
     }
@@ -172,14 +169,13 @@ public class CustomerLimitRepository {
 
     /** Reads EB.ALBE.GEN.PARAM <id>; null if there is no record. */
     public EbAlbeGenParamRecord readGenParam(String paramId) {
-        LogUtil.detail(CLASS_NAME, "readGenParam", "READ", Constants.GEN_PARAM_TABLE + ">" + paramId);
         try {
             EbAlbeGenParamRecord genParamRec = new EbAlbeGenParamRecord(daObj.getRecord(Constants.GEN_PARAM_TABLE,
                     paramId));
             LogUtil.info(CLASS_NAME, "readGenParam", "FOUND", Constants.GEN_PARAM_TABLE + ">" + paramId);
             return genParamRec;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "readGenParam", "NOT FOUND", Constants.GEN_PARAM_TABLE + ">" + paramId, e);
+            LogUtil.info(CLASS_NAME, "readGenParam", "NOT FOUND", Constants.GEN_PARAM_TABLE + ">" + paramId, e);
             return null;
         }
     }
@@ -190,17 +186,16 @@ public class CustomerLimitRepository {
 
     /** Reads EB.ALBE.UTILISED.LIMIT <id>; null if there is no utilisation yet. */
     public EbAlbeUtilisedLimitRecord readUtilisedLimit(String recordId) {
-        LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "READ", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
         try {
             EbAlbeUtilisedLimitRecord utilRec = utilisedLimitTable.read(recordId);
-            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId
+            LogUtil.info(CLASS_NAME, "readUtilisedLimit", "FOUND", Constants.UTILISED_LIMIT_TABLE + ">" + recordId
                     + " credit=" + utilRec.getUtilisedCreditLimit().getValue()
                     + " debit=" + utilRec.getUtilisedDebitLimit().getValue()
                     + " migratedCredit=" + utilRec.getUtilisedMigratedCreditLimit().getValue()
                     + " migratedDebit=" + utilRec.getUtilisedMigratedDebitLimit().getValue());
             return utilRec;
         } catch (Exception e) {
-            LogUtil.detail(CLASS_NAME, "readUtilisedLimit", "NOT FOUND",
+            LogUtil.info(CLASS_NAME, "readUtilisedLimit", "NOT FOUND",
                     Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
             return null;
         }
@@ -214,15 +209,12 @@ public class CustomerLimitRepository {
 
     /** Writes EB.ALBE.UTILISED.LIMIT <id>. */
     public boolean writeUtilisedLimit(String recordId, EbAlbeUtilisedLimitRecord utilRec) {
-        LogUtil.detail(CLASS_NAME, "writeUtilisedLimit", "WRITE", Constants.UTILISED_LIMIT_TABLE + ">" + recordId
-                + " credit=" + utilRec.getUtilisedCreditLimit().getValue()
-                + " debit=" + utilRec.getUtilisedDebitLimit().getValue());
         try {
             utilisedLimitTable.write(recordId, utilRec);
             LogUtil.info(CLASS_NAME, "writeUtilisedLimit", "WRITTEN", Constants.UTILISED_LIMIT_TABLE + ">" + recordId);
             return true;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "writeUtilisedLimit", "FAILED", Constants.UTILISED_LIMIT_TABLE + ">" + recordId,
+            LogUtil.info(CLASS_NAME, "writeUtilisedLimit", "FAILED", Constants.UTILISED_LIMIT_TABLE + ">" + recordId,
                     e);
             saveFailed = true;
             return false;
@@ -240,20 +232,19 @@ public class CustomerLimitRepository {
      * counted twice).
      */
     public EbAlbeTxnDetailsLimitRecord readTxnDetails(String recordId) {
-        LogUtil.detail(CLASS_NAME, "readTxnDetails", "READ", Constants.TXN_DETAILS_TABLE + ">" + recordId);
         try {
             EbAlbeTxnDetailsLimitRecord txnRec = txnDetailsTable.read(recordId);
             if (txnRec == null) {
-                LogUtil.detail(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
+                LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
                 return null;
             }
-            LogUtil.detail(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
+            LogUtil.info(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
                     + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue());
             return txnRec;
         } catch (Exception e) {
             if (isRecordNotFound(e)) {
                 // normal: first input of the activity (no earlier input to take back)
-                LogUtil.detail(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
+                LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
             } else {
                 // Table.read may word "not found" differently from DataAccess: logged (INFO), not an alert.
                 LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT READ", Constants.TXN_DETAILS_TABLE + ">" + recordId
@@ -280,7 +271,7 @@ public class CustomerLimitRepository {
             LogUtil.info(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FOUND", result.size() + " records");
             return result;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FAILED", Constants.TXN_DETAILS_TABLE, e);
+            LogUtil.info(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FAILED", Constants.TXN_DETAILS_TABLE, e);
             return List.of();
         }
     }
@@ -293,13 +284,12 @@ public class CustomerLimitRepository {
 
     /** Writes EB.ALBE.TXN.DETAILS.LIMIT <id>. */
     public boolean writeTxnDetails(String recordId, EbAlbeTxnDetailsLimitRecord txnRec) {
-        LogUtil.detail(CLASS_NAME, "writeTxnDetails", "WRITE", Constants.TXN_DETAILS_TABLE + ">" + recordId);
         try {
             txnDetailsTable.write(recordId, txnRec);
             LogUtil.info(CLASS_NAME, "writeTxnDetails", "WRITTEN", Constants.TXN_DETAILS_TABLE + ">" + recordId);
             return true;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "writeTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            LogUtil.info(CLASS_NAME, "writeTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
             saveFailed = true;
             return false;
         }
@@ -307,13 +297,12 @@ public class CustomerLimitRepository {
 
     /** Deletes EB.ALBE.TXN.DETAILS.LIMIT <id>. */
     public boolean deleteTxnDetails(String recordId) {
-        LogUtil.detail(CLASS_NAME, "deleteTxnDetails", "DELETE", Constants.TXN_DETAILS_TABLE + ">" + recordId);
         try {
             txnDetailsTable.delete(recordId);
             LogUtil.info(CLASS_NAME, "deleteTxnDetails", "DELETED", Constants.TXN_DETAILS_TABLE + ">" + recordId);
             return true;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "deleteTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+            LogUtil.info(CLASS_NAME, "deleteTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
             saveFailed = true;
             return false;
         }
@@ -329,17 +318,15 @@ public class CustomerLimitRepository {
      * @return the rate, or null if the table is not configured or no rate is found
      */
     public java.math.BigDecimal readExchangeRate(String fromCcy, String toCcy) {
-        LogUtil.detail(CLASS_NAME, "readExchangeRate", "READ", Constants.EXCH_RATE_TABLE + " field="
-                + Constants.EXCH_RATE_FIELD + " from=" + fromCcy + " to=" + toCcy);
         if (Constants.EXCH_RATE_TABLE.isEmpty() || Constants.EXCH_RATE_FIELD.isEmpty()) {
-            LogUtil.error(CLASS_NAME, "readExchangeRate", "NOT CONFIGURED", "set Constants.EXCH_RATE_TABLE and "
+            LogUtil.info(CLASS_NAME, "readExchangeRate", "NOT CONFIGURED", "set Constants.EXCH_RATE_TABLE and "
                     + "EXCH_RATE_FIELD and read the rate here (from=" + fromCcy + " to=" + toCcy + ")");
             return null;
         }
         // To be completed when the exchange rate table is confirmed: read the record for
         // fromCcy / toCcy with daObj.getRecord(Constants.EXCH_RATE_TABLE, <record id>),
         // wrap it in the table's generated record class, and return the EXCH_RATE_FIELD value.
-        LogUtil.error(CLASS_NAME, "readExchangeRate", "NOT CONFIGURED", "table " + Constants.EXCH_RATE_TABLE
+        LogUtil.info(CLASS_NAME, "readExchangeRate", "NOT CONFIGURED", "table " + Constants.EXCH_RATE_TABLE
                 + " configured but the read is not implemented yet");
         return null;
     }
@@ -360,7 +347,7 @@ public class CustomerLimitRepository {
                     + "=" + today);
             return date;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getT24Today", "FAILED", Constants.T24_TODAY_VARIABLE, e);
+            LogUtil.info(CLASS_NAME, "getT24Today", "FAILED", Constants.T24_TODAY_VARIABLE, e);
             return null;
         }
     }
@@ -372,7 +359,7 @@ public class CustomerLimitRepository {
             LogUtil.info(CLASS_NAME, "getLocalCurrency", "FOUND", "lcy=" + lcy);
             return lcy == null ? "" : lcy.trim();
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getLocalCurrency", "FAILED", "local currency", e);
+            LogUtil.info(CLASS_NAME, "getLocalCurrency", "FAILED", "local currency", e);
             return "";
         }
     }
@@ -386,14 +373,13 @@ public class CustomerLimitRepository {
         String companyId = "";
         try {
             companyId = ssObj.getCompanyId();
-            LogUtil.detail(CLASS_NAME, "getFinancialMnemonic", "READ", Constants.COMPANY_TABLE + ">" + companyId);
             CompanyRecord companyRec = new CompanyRecord(daObj.getRecord(Constants.COMPANY_TABLE, companyId));
             String finMnemonic = companyRec.getFinancialMne().getValue();
             LogUtil.info(CLASS_NAME, "getFinancialMnemonic", "FOUND", "company=" + companyId + " mnemonic="
                     + finMnemonic);
             return finMnemonic;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getFinancialMnemonic", "FAILED", "company=" + companyId, e);
+            LogUtil.info(CLASS_NAME, "getFinancialMnemonic", "FAILED", "company=" + companyId, e);
             return "";
         }
     }
@@ -403,7 +389,6 @@ public class CustomerLimitRepository {
      * missing or empty (the max CIF check then blocks the transaction - no SELECT fallback).
      */
     public List<String> getCustomerAccountIds(String finMnemonic, String customerId) {
-        LogUtil.detail(CLASS_NAME, "getCustomerAccountIds", "READ", Constants.CUSTOMER_ACCOUNT_FILE + ">" + customerId);
         try {
             List<String> accountIds = daObj.getConcatValues(Constants.CUSTOMER_ACCOUNT_FILE, customerId);
             if (accountIds != null && !accountIds.isEmpty()) {
@@ -422,17 +407,15 @@ public class CustomerLimitRepository {
 
     /** Reads ACCOUNT <id> in the given company; null if it cannot be read. */
     public AccountRecord readAccount(String finMnemonic, String accountId) {
-        LogUtil.detail(CLASS_NAME, "readAccount", "READ", Constants.ACCOUNT_TABLE + ">" + accountId + " mnemonic="
-                + finMnemonic);
         try {
             AccountRecord accountRec = new AccountRecord(daObj.getRecord(finMnemonic, Constants.ACCOUNT_TABLE, "",
                     accountId));
-            LogUtil.detail(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId
+            LogUtil.info(CLASS_NAME, "readAccount", "FOUND", Constants.ACCOUNT_TABLE + ">" + accountId
                     + " workingBalance="
                     + accountRec.getWorkingBalance().getValue());
             return accountRec;
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "readAccount", "NOT FOUND", Constants.ACCOUNT_TABLE + ">" + accountId, e);
+            LogUtil.info(CLASS_NAME, "readAccount", "NOT FOUND", Constants.ACCOUNT_TABLE + ">" + accountId, e);
             return null;
         }
     }

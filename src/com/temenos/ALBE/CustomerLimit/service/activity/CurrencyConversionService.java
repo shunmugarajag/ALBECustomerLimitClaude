@@ -48,15 +48,15 @@ public class CurrencyConversionService {
     public BigDecimal getRate(String fromCcy, String toCcy) {
         if (ValidationUtil.isBlank(fromCcy) || ValidationUtil.isBlank(toCcy) || ValidationUtil.sameCurrency(fromCcy,
                 toCcy)) {
-            LogUtil.detail(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " same currency, rate=1");
+            LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " same currency, rate=1");
             return Constants.SAME_CURRENCY_RATE;
         }
         BigDecimal rate = repository.readExchangeRate(fromCcy.trim(), toCcy.trim());
         if (rate == null || rate.signum() <= 0) {
-            LogUtil.error(CLASS_NAME, METHOD_GET_RATE, "NO RATE", LABEL_FROM + fromCcy + " to=" + toCcy + " NO RATE");
+            LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "NO RATE", LABEL_FROM + fromCcy + " to=" + toCcy + " NO RATE");
             return null;
         }
-        LogUtil.detail(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " rate=" + rate);
+        LogUtil.info(CLASS_NAME, METHOD_GET_RATE, "CALC", LABEL_FROM + fromCcy + " to=" + toCcy + " rate=" + rate);
         return rate;
     }
 
@@ -67,7 +67,7 @@ public class CurrencyConversionService {
             return null;
         }
         BigDecimal converted = amount.multiply(rate).setScale(Constants.AMOUNT_SCALE, RoundingMode.HALF_UP);
-        LogUtil.detail(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " "
+        LogUtil.info(CLASS_NAME, "convert", "CALC", amount + " " + fromCcy + " x " + rate + " = " + converted + " "
                 + toCcy);
         return converted;
     }
@@ -94,14 +94,14 @@ public class CurrencyConversionService {
             } else {
                 request.setDebitAmount(same);
             }
-            LogUtil.detail(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", request.logKey() + " same currency " + txnCcy);
+            LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", request.logKey() + " same currency " + txnCcy);
             return true;
         }
 
         String lcy = repository.getLocalCurrency();
         if (ValidationUtil.isBlank(lcy)) {
             // Technical failure (local currency not readable): logged, not blocked - check skipped.
-            LogUtil.error(CLASS_NAME, METHOD_CONVERT_REQUEST, "NO LCY", request.logKey()
+            LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "NO LCY", request.logKey()
                     + " local currency not readable - check skipped, not blocked");
             request.addNote("local currency not readable -> " + txnCcy + " amount not converted, not checked");
             request.setRateMissing(txnCcy);
@@ -133,14 +133,14 @@ public class CurrencyConversionService {
         }
         request.addNote("converted " + ValidationUtil.formatAmount(amount) + " " + txnCcy + " -> "
                 + ValidationUtil.formatAmount(converted) + " " + limitCcy + " (" + source + ")");
-        LogUtil.detail(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount
+        LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "CALC", "customer=" + request.getCustomerId() + " " + amount
                 + " " + txnCcy + " = " + converted + " " + limitCcy + " (" + source + ")");
         return true;
     }
 
     /** D44: the transaction amount cannot be converted - ERROR, the transaction is blocked. */
     private boolean block(CustomerLimitDTO request, String reason) {
-        LogUtil.error(CLASS_NAME, METHOD_CONVERT_REQUEST, "BLOCKED", request.logKey() + " "
+        LogUtil.info(CLASS_NAME, METHOD_CONVERT_REQUEST, "BLOCKED", request.logKey() + " "
                 + request.getTransactionCurrency() + " -> " + request.getLimitCurrency() + ": " + reason
                 + ", raising " + Constants.ERR_EXCH_RATE_MISSING);
         request.addNote("BLOCKED: " + request.getTransactionCurrency() + " -> " + request.getLimitCurrency()

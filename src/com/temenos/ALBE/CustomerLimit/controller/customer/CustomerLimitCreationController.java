@@ -54,7 +54,7 @@ public class CustomerLimitCreationController extends RecordLifecycle {
                     + " elapsedMs=" + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "postUpdateRequest", "ERROR", "customer=" + currentRecordId, e);
+            LogUtil.info(CLASS_NAME, "postUpdateRequest", "ERROR", "customer=" + currentRecordId, e);
         }
     }
 }

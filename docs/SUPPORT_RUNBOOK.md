@@ -9,9 +9,8 @@ For production support and business-user questions after go-live. How the module
 | When | Routine | What it does | What you see |
 |---|---|---|---|
 | Customer authorised (CUSTOMER,ALBE.CORP) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
-| Credit / debit activity input | ALBE.CL.DAILY.MONTHLY | checks daily / monthly, counts the amount | overrides; UTILISED.LIMIT and TXN.DETAILS records |
-| Credit activity input | ALBE.CL.MAX.CIF | checks total balance against MAX.CIF.BALANCE | override |
-| Activity deleted (unauthorised) / reversed | ALBE.CL.DAILY.MONTHLY | subtracts the amount from the original day and month; deletes the TXN.DETAILS record | totals go down |
+| Credit / debit activity input | ALBE.CL.ACTIVITY.LIMIT | checks daily / monthly (+ max CIF for a credit), counts the amount | overrides / errors; UTILISED.LIMIT and TXN.DETAILS records |
+| Activity deleted (unauthorised) / reversed | ALBE.CL.ACTIVITY.LIMIT | takes back what was counted, from the day and month it was counted on; deletes the TXN.DETAILS record | totals go down |
 
 Records: daily `EB.ALBE.UTILISED.LIMIT <cust>-YYYYMMDD`, monthly `<cust>-YYYYMM`, per transaction `EB.ALBE.TXN.DETAILS.LIMIT <cust>-<YYYYMMDD>-<root ref>-<arrangement>`.
 
@@ -19,13 +18,12 @@ Records: daily `EB.ALBE.UTILISED.LIMIT <cust>-YYYYMMDD`, monthly `<cust>-YYYYMM`
 
 | Check | How | Action |
 |---|---|---|
-| Technical errors | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED) \|" <tafj log>` | any line → section 4. A failure **does not block** the transaction, so this is the only signal that a check or update was skipped |
+| Technical errors | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (FAILED\|BLOCKED) \|" <tafj log>` | any line → section 4. A technical failure **does not block** the transaction (except a failed save), so this is the only signal that a check was skipped. All lines are INFO (DIAGNOSTIC.API must be at INFO) |
 | Missing rates | `grep "ALBE.CUSTOMER.LIMIT.*\| NO RATE \|"` | report the currency pair to treasury / dev (E1 in GAPS.md) |
-| Customers over a limit | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY OVER.LIMIT EQ Y` | business follow-up |
-| Overridden transactions | `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ <yesterday> OVERRIDDEN EQ Y` | compliance review |
+| Overridden transactions | `grep "ALBE.CUSTOMER.LIMIT.*\| OVERRIDE \|"` (the reports were removed, 26-Nov) | compliance review |
 | Customers without limits | log lines `getCustomerLimits \| NOT FOUND` | create the limit record (3.3) |
 
-Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in plain words:** `grep "ALBE.CUSTOMER.LIMIT" api.log | grep <FT or AAA id> | grep -E "\| (ACTION|ACTIVITY|RESULT|OVERRIDE) \|"` – with the single routine (D44) the **ACTION** line says what happened first: INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT; – the RESULT lines show used + this = total vs limit, the overrides / errors raised and what was counted (needs DIAGNOSTIC.API at INFO).
+Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in plain words:** `grep "ALBE.CUSTOMER.LIMIT" api.log | grep <FT or AAA id> | grep -E "\| (ACTION|ACTIVITY|RESULT|OVERRIDE) \|"` – the **ACTION** line says what happened first: INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT; – the RESULT lines show used + this = total vs limit, the overrides / errors raised and what was counted (needs DIAGNOSTIC.API at INFO).
 
 ## 3. Common cases
 
@@ -37,8 +35,8 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in 
 
 ### 3.2 "The customer gets 'Daily/Monthly … exceed' but has not used that much"
 
-1. Run `ENQ ALBE.CUSTOMER.LIMIT.TXN CUSTOMER EQ <id>` – lists every counted transaction with its counted date.
-2. Compare with `ENQ ALBE.CUSTOMER.LIMIT.PERIOD CUSTOMER EQ <id> DATE.FROM EQ <date>`.
+1. List EB.ALBE.TXN.DETAILS.LIMIT records `<id>-<date>-...` – every counted transaction with its counted date and amount (the reports were removed, 26-Nov).
+2. Compare with EB.ALBE.UTILISED.LIMIT `<id>-<date>` / `<id>-<month>`.
 3. Unauthorised transactions **count** (by design); deleted / reversed ones should not be listed.
 4. A listed transaction that was deleted or reversed → 3.5.
 5. Monthly: the used amount includes UTILISED.MIGRATED.* (loaded at migration).
@@ -56,7 +54,7 @@ EB.ALBE.CIF.LIMITS,AMEND → amend → authorise. Effective for the next transac
 Possible causes: a write failed (G3), parallel inputs (G2) – see [GAPS.md](GAPS.md).
 
 1. Find the log lines for the customer and day: `grep "ALBE.CUSTOMER.LIMIT.*customer=<id>"` (and `record=<id>-<date>`).
-2. List what should be counted: `ENQ ALBE.CUSTOMER.LIMIT.TXN CUSTOMER EQ <id> DATE.FROM EQ <date> DATE.TO EQ <date>` and check each AAA's status (live, unauthorised, deleted, reversed).
+2. List what should be counted: EB.ALBE.TXN.DETAILS.LIMIT records `<id>-<date>-...` and check each FT's status (live, unauthorised, deleted, reversed).
 3. Correct total = sum of TXN.AMOUNT of the counted, not-reversed transactions of that day (month: of that month + migrated).
 4. Correct the record (only with change approval): EB.ALBE.UTILISED.LIMIT `<cust>-<date>` / `<cust>-<month>` → UTILISED.CREDIT.LIMIT / UTILISED.DEBIT.LIMIT. Never change the MIGRATED fields.
 5. Remove a TXN.DETAILS record that belongs to a deleted / reversed transaction (so it is not reversed again or listed).
@@ -83,11 +81,11 @@ Error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked): the max CIF check 
 
 | Log line contains | Meaning | Action |
 |---|---|---|
-| `writeUtilisedLimit \| FAILED` / `addToRecord \| FAILED` | a utilisation total was not written | 3.5 for that customer / day |
-| `writeTxnDetails \| FAILED` / `record \| FAILED` | the transaction was counted but not recorded → it cannot be reversed automatically | 3.5; remember to subtract it manually if the transaction is later deleted / reversed |
+| `writeUtilisedLimit \| FAILED` / `add \| FAILED` | a utilisation total was not written – the transaction was blocked (EB-ALBE.LIMIT.UPDATE.FAILED) | check the cause; normally nothing to correct (T24 rolled back) |
+| `writeTxnDetails \| FAILED` / `record \| FAILED` / `deleteTxnDetails \| FAILED` | a TXN.DETAILS save failed – the transaction was blocked (EB-ALBE.LIMIT.UPDATE.FAILED) | check the cause; normally nothing to correct (T24 rolled back) |
 | `cifLimitExists \| FAILED` | creation skipped because the read failed | 3.3; if it repeats, the "not found" text is unknown → dev adds it to `RECORD_NOT_FOUND_MARKERS` |
 | `getFinancialMnemonic \| FAILED` | company not read → maximum CIF could not total the accounts | dev |
-| `validateRecord \| ERROR` / `postCoreTableUpdate \| ERROR` (with the single routine also `ACTION \| … technical error`) | unexpected exception in a routine (type, message and code line in the line) | dev; the transaction went through without the check / update |
+| `validateRecord \| ERROR` and `ACTION \| … technical error` | unexpected exception in a routine (type, message and code line in the line) | dev; the transaction went through without the check / update |
 | `readExchangeRate \| NOT CONFIGURED` | rate source not configured | E1 |
 
 ## 5. FAQ for business users

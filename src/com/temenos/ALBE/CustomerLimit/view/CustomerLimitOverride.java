@@ -41,7 +41,6 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
- * 22-Nov-2026   Development      texts(): overrides as a list
  * 22-Nov-2026   Development      Blank limit CCY: error EB-ALBE.CIF.LIMIT.CCY.MISSING (blocks)
  * 25-Nov-2026   Development      ids() for the RESULT log line
  * 26-Nov-2026   Development      D43: text [ID,p1,p2]; one override per AAA field (DEV: only the
@@ -49,6 +48,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 26-Nov-2026   Development      D44: amount not convertible -> ERROR EB-ALBE.EXCH.RATE.MISSING
  * 26-Nov-2026   Development      No CUSTOMER.ACCOUNT (max CIF) -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING
  * 26-Nov-2026   Development      D46: one parameter per message; debit / credit override ids
+ * 26-Nov-2026   Development      Clean rewrite (D47): texts() removed (ids() is the log form)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -94,8 +94,6 @@ public class CustomerLimitOverride {
             raise(fieldFor(activity, breach.getOverrideId()), breach.getOverrideId(), customerBy(request, breach));
             raised++;
         }
-        LogUtil.detail(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
-                + raised);
         return raised;
     }
 
@@ -115,48 +113,6 @@ public class CustomerLimitOverride {
             return activity.getEffectiveDate();
         }
         return activity.getTxnAmount();   // daily limit and anything else
-    }
-
-    /**
-     * Every override the validation produced for this request, as override texts
-     * ([ID,param]): "limit not defined" once, "no exchange rate", then one per
-     * breached limit (same order as raiseFor).
-     */
-    public static List<String> texts(CustomerLimitDTO request) {
-        List<String> texts = new ArrayList<>();
-        if (request.isLimitCcyMissing()) {
-            LogUtil.error(CLASS_NAME, "texts", "NO CCY", "customer=" + request.getCustomerId()
-                    + " limit currency blank - returned as " + Constants.ERR_LIMIT_CCY_MISSING);
-            texts.add(build(Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId()));
-            return texts;
-        }
-        if (request.isRateBlocked()) {
-            texts.add(build(Constants.ERR_EXCH_RATE_MISSING, fromTo(request)));
-            return texts;
-        }
-        if (request.isCustomerAccountMissing()) {
-            texts.add(build(Constants.ERR_CUSTOMER_ACCOUNT_MISSING, request.getCustomerId()));
-            return texts;
-        }
-        if (request.isLimitMissing() || request.isLimitNotDefined()) {
-            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
-                    + " limit not defined"
-                    + (request.isLimitMissing() ? " (no EB.ALBE.CIF.LIMITS record)"
-                            : " (blank " + request.getUndefinedLimits() + ")"));
-            texts.add(build(Constants.OVR_LIMIT_NOT_DEFINED, request.getCustomerId()));
-        }
-        if (request.isRateMissing()) {
-            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
-                    + " no exchange rate from " + request.getRateMissingCurrency() + " to "
-                    + request.getLimitCurrency());
-            texts.add(build(Constants.OVR_EXCH_RATE_MISSING, fromTo(request)));
-        }
-        for (LimitBreach breach : request.getBreaches()) {
-            LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId() + " breach "
-                    + breach.getMessage());
-            texts.add(build(breach.getOverrideId(), customerBy(request, breach)));
-        }
-        return texts;
     }
 
     /** The one parameter of a limit-exceeded override: "<customer> by <amount over>" (D46). */
