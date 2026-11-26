@@ -17,8 +17,6 @@ import com.temenos.t24.api.records.aaaccountdetails.AaAccountDetailsRecord;
 import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
-import com.temenos.t24.api.records.account.AccountRecord;
-import com.temenos.t24.api.records.company.CompanyRecord;
 import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
@@ -31,7 +29,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
 
 /*-----------------------------------------------------------------------------
  * Attached as : ACTIVITY.API - Post Routine (one per mapped activity), method validateRecord
- * EB.API      : ALBE.CL.ACTIVITY.SIMPLE
+ * EB.API      : ALBE.CL.ACTIVITY.SIMPLE (credits also get ALBE.CL.MAX.CIF.SIMPLE as Post Routine 2)
  * Attached to : every activity mapped CREDIT / DEBIT in EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY
  *               (e.g. ACCOUNTS-TRANSFERIN-ARRANGEMENT, ACCOUNTS-TRANSFEROUT-ARRANGEMENT)
  * Description : Customer limit check, HLSD 7.2.1 (simple one-class version of the MVC routine
@@ -44,8 +42,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *     3. earlier input of this FT: EB.ALBE.TXN.DETAILS.LIMIT <cust>-<date>-<FT>-<arrangement>
  *     4. daily   : used today - earlier + this            > DAILY.<CR|DR>.LIMIT   -> override
  *        monthly : migrated + used month - earlier + this  > MONTHLY.<CR|DR>.LIMIT -> override
- *        credit  : WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this > MAX -> override
- *                  no CUSTOMER.ACCOUNT -> ERROR, not counted
+ *        (maximum CIF balance: separate routine CustomerLimitMaxCif, 2nd Post Routine on credits)
  *     5. count   : daily / monthly = used - earlier + this; TXN.DETAILS written
  *   DELETE / AUTH-REV : take back what TXN.DETAILS shows was counted, from the counted day
  *   AUTH / REVERSE    : nothing
@@ -56,6 +53,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 26-Nov-2026   Development      Initial Version (simple 2-class version)
+ * 26-Nov-2026   Development      Max CIF moved to its own routine CustomerLimitMaxCif (user)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitActivity extends ActivityLifecycle {
@@ -196,7 +194,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         }
         BigDecimal earlier = credit ? earlierCr : earlierDr;
 
-        // 4. daily, monthly, max CIF
+        // 4. daily and monthly (max CIF: routine CustomerLimitMaxCif)
         EbAlbeUtilisedLimitTable utilTable = new EbAlbeUtilisedLimitTable(this);
         String dailyId = customer + CustomerLimitConstants.ID_SEPARATOR + date.format(CustomerLimitConstants.DAY_FORMAT);
         String monthlyId = customer + CustomerLimitConstants.ID_SEPARATOR + date.format(CustomerLimitConstants.MONTH_FORMAT);
@@ -217,24 +215,6 @@ public class CustomerLimitActivity extends ActivityLifecycle {
                     credit ? limits.getMonthlyCreditLimit().getValue() : limits.getMonthlyDebitLimit().getValue(),
                     credit ? CustomerLimitConstants.OVR_MONTHLY_CREDIT : CustomerLimitConstants.OVR_MONTHLY_DEBIT,
                     "TXN.AMOUNT.LCY");
-            if (credit) {
-                String maxText = limits.getMaximumOverallCifAmount().getValue();
-                if (isBlank(maxText)) {
-                    notDefined = true;
-                    result.append(" | max CIF: ").append(CustomerLimitConstants.FIELD_MAX_CIF).append(" blank");
-                } else {
-                    BigDecimal balance = totalBalance(da, ss, customer, limitCcy, result, overrides);
-                    if (balance == null && result.indexOf("NO ACCOUNTS") >= 0) {
-                        aaaRec.getTxnAmount().setError(text(CustomerLimitConstants.ERR_NO_ACCOUNTS, customer));
-                        log("RESULT", result + " | BLOCKED: no CUSTOMER.ACCOUNT, not counted");
-                        return;
-                    }
-                    if (balance != null) {
-                        check(result, overrides, "max CIF (balance of all accounts)", customer, balance, amount,
-                                maxText, CustomerLimitConstants.OVR_MAX_CIF, "ORIG.TXN.AMT");
-                    }
-                }
-            }
         }
         if (notDefined) {
             overrides.add(new String[] { CustomerLimitConstants.OVR_NOT_DEFINED, customer, "CURRENCY" });
@@ -278,55 +258,6 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             result.append(" <= ").append(limit).append(" OK");
         }
         return false;
-    }
-
-    /**
-     * WORKING.BALANCE of every account in CUSTOMER.ACCOUNT <customer>, in the limit currency.
-     * null when there is no account ("NO ACCOUNTS" in result) or an account is in another currency
-     * (no rate source yet -> rate override, max CIF not checked).
-     */
-    private BigDecimal totalBalance(DataAccess da, Session ss, String customer, String limitCcy, StringBuilder result,
-            List<String[]> overrides) {
-        List<String> accounts = null;
-        try {
-            accounts = da.getConcatValues(CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE, customer);
-        } catch (Exception e) {
-            log("NOT FOUND", CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE + ">" + customer + " " + e);
-        }
-        if (accounts == null || accounts.isEmpty()) {
-            result.append(" | max CIF: NO ACCOUNTS in ").append(CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE);
-            return null;
-        }
-        String mnemonic = "";
-        try {
-            CompanyRecord company = new CompanyRecord(da.getRecord(CustomerLimitConstants.COMPANY_TABLE,
-                    ss.getCompanyId()));
-            mnemonic = company.getFinancialMne().getValue();
-        } catch (Exception e) {
-            log("FAILED", "company mnemonic " + e);
-        }
-        BigDecimal total = BigDecimal.ZERO;
-        for (String accountId : accounts) {
-            try {
-                AccountRecord account = new AccountRecord(da.getRecord(mnemonic, CustomerLimitConstants.ACCOUNT_TABLE,
-                        "", accountId));
-                String ccy = nvl(account.getCurrency().getValue()).trim();
-                BigDecimal balance = toAmount(account.getWorkingBalance().getValue());
-                log("FOUND", CustomerLimitConstants.ACCOUNT_TABLE + ">" + accountId + " workingBalance=" + balance
-                        + " " + ccy);
-                if (!ccy.isEmpty() && !ccy.equalsIgnoreCase(limitCcy)) {
-                    String fromTo = CustomerLimitConstants.FROM + ccy + CustomerLimitConstants.TO + limitCcy;
-                    overrides.add(new String[] { CustomerLimitConstants.OVR_RATE_MISSING, fromTo, "EFFECTIVE.DATE" });
-                    result.append(" | max CIF: account ").append(accountId).append(" in ").append(ccy)
-                            .append(", no rate -> not checked");
-                    return null;
-                }
-                total = total.add(balance);
-            } catch (Exception e) {
-                log("NOT FOUND", CustomerLimitConstants.ACCOUNT_TABLE + ">" + accountId + " balance 0 " + e);
-            }
-        }
-        return total;
     }
 
     // =========================================================================

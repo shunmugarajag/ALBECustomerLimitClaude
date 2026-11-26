@@ -54,11 +54,12 @@ The count is written in the same commit as the FT, so a rejected override or a c
 
 ## Simple version (package `CustomerLimitSimple`, 26-Nov)
 
-The same logic in **2 routine classes + constants**, in the style of the team's core Java routines (DataAccess / Session / generated tables used directly, one logger), next to the MVC version - the MVC code is not changed:
+The same logic in **3 routine classes + constants**, in the style of the team's core Java routines (DataAccess / Session / generated tables used directly, one logger), next to the MVC version - the MVC code is not changed:
 
 | Class | EB.API (suggested) | Attach as |
 |---|---|---|
-| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitActivity` | `ALBE.CL.ACTIVITY.SIMPLE` | ACTIVITY.API Post Routine, `validateRecord` (input check + overrides + count, DELETE / AUTH-REV take back) |
+| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitActivity` | `ALBE.CL.ACTIVITY.SIMPLE` | ACTIVITY.API Post Routine 1 on every mapped activity, `validateRecord` (daily / monthly check + overrides + count, DELETE / AUTH-REV take back) |
+| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitMaxCif` | `ALBE.CL.MAX.CIF.SIMPLE` | ACTIVITY.API Post Routine 2 on **credit** activities only, `validateRecord` (maximum CIF balance at input; no CUSTOMER.ACCOUNT -> error; counts nothing) |
 | `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitCreation` | `ALBE.CL.LIMIT.CREATE.SIMPLE` | VERSION CUSTOMER,ALBE.CORP Auth routine, `postUpdateRequest` |
 | `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitConstants` | - | all literals |
 

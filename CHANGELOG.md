@@ -4,6 +4,12 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – simple version: max CIF as its own routine (26-Nov-2026, D49)
+- New `CustomerLimitMaxCif` (EB.API e.g. `ALBE.CL.MAX.CIF.SIMPLE`): the maximum CIF balance check is now a separate routine, attached as **Post Routine 2 on credit activities** after `ALBE.CL.ACTIVITY.SIMPLE`. `CustomerLimitActivity` checks daily and monthly only.
+- Same rules as before: WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit above MAXIMUM.OVERALL.CIF.AMOUNT -> override; no CUSTOMER.ACCOUNT -> error (stops the whole FT, so T24 also undoes the count of routine 1); blank maximum -> "not defined" override; account in another currency -> rate override, not checked.
+- If routine 2 is not attached to an activity, max CIF is simply not checked there.
+- Checked outside T24: 37 cases pass; 0 compile errors against R25.
+
 ### Added – simple 2-class version (26-Nov-2026, D48)
 - New package `com.temenos.ALBE.CustomerLimitSimple`: `CustomerLimitActivity` (ACTIVITY.API Post Routine) and `CustomerLimitCreation` (customer Auth routine) plus `CustomerLimitConstants` - the whole logic in two plain routine classes, written like the team's core Java routines. Same behaviour as the MVC version (D47); the MVC code is unchanged.
 - To use it: create EB.API records for the two classes (e.g. `ALBE.CL.ACTIVITY.SIMPLE`, `ALBE.CL.LIMIT.CREATE.SIMPLE`) and attach them **instead of** the MVC routines - never both on the same activity.
