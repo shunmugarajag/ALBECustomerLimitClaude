@@ -8,6 +8,7 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.model.CustomerLimitDTO;
 import com.temenos.ALBE.CustomerLimit.model.Limits;
+import com.temenos.ALBE.CustomerLimit.model.UtilisationRecords;
 import com.temenos.ALBE.CustomerLimit.repository.CustomerLimitRepository;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitUtilizationUpdater;
 import com.temenos.ALBE.CustomerLimit.service.CustomerLimitReader;
@@ -37,6 +38,8 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  * 25-Nov-2026   Development      plain-language notes for the RESULT log line (used + this = total vs limit)
+ * 26-Nov-2026   Development      Single routine: validate / count with the limits and records read once
+ *                                (UtilisationRecords); D44 conversion -> blocked instead of 'no rate'
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitService {
@@ -67,9 +70,17 @@ public class DailyMonthlyLimitService {
      * one positive credit or debit amount).
      */
     public void validate(CustomerLimitDTO request) {
+        validate(request, limitReader.getCustomerLimits(request.getCustomerId()), null);
+    }
+
+    /**
+     * Same check with the customer's limits already read (null = no EB.ALBE.CIF.LIMITS record).
+     * @param records when not null, filled with the utilisation records and earlier input read
+     *                here, so the count in the same call does not read them again
+     */
+    public void validate(CustomerLimitDTO request, Limits limits, UtilisationRecords records) {
         LogUtil.detail(CLASS_NAME, "validate", "START", request);
 
-        Limits limits = limitReader.getCustomerLimits(request.getCustomerId());
         if (limits == null) {
             LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
                     + " no EB.ALBE.CIF.LIMITS record, checks not possible");
@@ -90,32 +101,37 @@ public class DailyMonthlyLimitService {
         // Compare in the limit currency: convert the transaction amount if its currency differs.
         if (!currencyService.convertRequest(request, limits.ccy)) {
             LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + request.getCustomerId()
-                    + " no exchange rate, checks not possible");
-            request.addNote("no exchange rate " + request.getTransactionCurrency() + " -> " + limits.ccy
-                    + " -> daily / monthly not checked");
+                    + " amount cannot be converted, transaction blocked (D44)");
             return;
         }
 
         // On re-input of an amended transaction its earlier input is already in utilisation;
         // leave it out so the transaction is not checked against itself.
         List<CustomerLimitDTO> earlierInputs = recorder.findOriginal(request);
+        if (records != null) {
+            records.setEarlierInputs(earlierInputs);
+        }
         LogUtil.detail(CLASS_NAME, "validate", "CALC", "earlierInputs=" + earlierInputs.size()
                 + (earlierInputs.isEmpty() ? " (first input)" : " (re-input of an amended transaction)"));
 
         if (!earlierInputs.isEmpty()) {
             request.addNote("re-input: the earlier input of this transaction is left out of 'used'");
         }
-        validateDailyLimit(request, limits, earlierInputs);
-        validateMonthlyLimit(request, limits, earlierInputs);
+        validateDailyLimit(request, limits, earlierInputs, records);
+        validateMonthlyLimit(request, limits, earlierInputs, records);
 
         LogUtil.detail(CLASS_NAME, "validate", "END", request + " blankLimits=" + request.getUndefinedLimits());
     }
 
     /** Daily: today's utilised credit (or debit) + txn amount against the daily limit. */
-    private void validateDailyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs) {
+    private void validateDailyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs,
+            UtilisationRecords records) {
         boolean credit = request.isCredit();
         String dailyId = CustomerLimitUtilizationUpdater.dailyRecordId(request);
         EbAlbeUtilisedLimitRecord dailyRec = repository.readUtilisedLimit(dailyId);
+        if (records != null) {
+            records.setDaily(dailyId, dailyRec);
+        }
 
         BigDecimal utilised = CustomerLimitUtilizationUpdater.utilisedAmount(dailyRec, credit)
                 .subtract(earlierAmount(request, earlierInputs, credit, false))
@@ -132,10 +148,14 @@ public class DailyMonthlyLimitService {
     }
 
     /** Monthly: migrated + this month's utilised credit (or debit) + txn amount against the monthly limit. */
-    private void validateMonthlyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs) {
+    private void validateMonthlyLimit(CustomerLimitDTO request, Limits limits, List<CustomerLimitDTO> earlierInputs,
+            UtilisationRecords records) {
         boolean credit = request.isCredit();
         String monthlyId = CustomerLimitUtilizationUpdater.monthlyRecordId(request);
         EbAlbeUtilisedLimitRecord monthlyRec = repository.readUtilisedLimit(monthlyId);
+        if (records != null) {
+            records.setMonthly(monthlyId, monthlyRec);
+        }
 
         BigDecimal migrated = CustomerLimitUtilizationUpdater.migratedAmount(monthlyRec, credit);
         BigDecimal utilised = CustomerLimitUtilizationUpdater.utilisedAmount(monthlyRec, credit)
@@ -225,6 +245,19 @@ public class DailyMonthlyLimitService {
     }
 
     /**
+     * Single routine: counts a first input with the records the check in the same call already
+     * read (no second read). The request is the CHECKED one - its amount is already in the limit
+     * currency. Caller makes sure records.isUsableForCount().
+     */
+    public void countChecked(CustomerLimitDTO checkedRequest, UtilisationRecords records, String accountNo,
+            String effectiveDate) {
+        LogUtil.detail(CLASS_NAME, "countChecked", "START", checkedRequest.logKey() + " account=" + accountNo);
+        updater.update(checkedRequest, records.getDailyRecord(), records.getMonthlyRecord());
+        recorder.record(checkedRequest, accountNo, effectiveDate);
+        LogUtil.detail(CLASS_NAME, "countChecked", "END", checkedRequest.logKey());
+    }
+
+    /**
      * Rejected input (DELETE) or reversal (AUTH-REV): removes what was counted for the AAA
      * from its original day and month.
      * @param fallbackToToday true for a reversal: if nothing was recorded (counted before go-live),
@@ -234,8 +267,16 @@ public class DailyMonthlyLimitService {
      * @return number of amounts reversed
      */
     public int reverse(CustomerLimitDTO request, boolean fallbackToToday) {
+        return reverse(request, fallbackToToday, null);
+    }
+
+    /**
+     * Same, with what was recorded for the transaction already found by the caller (null = look it up),
+     * so EB.ALBE.TXN.DETAILS.LIMIT is not read twice.
+     */
+    public int reverse(CustomerLimitDTO request, boolean fallbackToToday, List<CustomerLimitDTO> recorded) {
         LogUtil.detail(CLASS_NAME, "reverse", "START", request + " fallbackToToday=" + fallbackToToday);
-        int reversed = reverseCounted(request);
+        int reversed = reverseCounted(request, recorded);
         if (reversed == 0 && fallbackToToday) {
             LogUtil.info(CLASS_NAME, "reverse", "NOT FOUND", "no EB.ALBE.TXN.DETAILS.LIMIT for aaa="
                     + request.getTransactionId()
@@ -258,7 +299,12 @@ public class DailyMonthlyLimitService {
      * EB.ALBE.TXN.DETAILS.LIMIT) on its original day and month, and deletes those records.
      */
     private int reverseCounted(CustomerLimitDTO request) {
-        List<CustomerLimitDTO> originals = recorder.findOriginal(request);
+        return reverseCounted(request, null);
+    }
+
+    /** Same, with the recorded entries already found (null = look them up). */
+    private int reverseCounted(CustomerLimitDTO request, List<CustomerLimitDTO> recorded) {
+        List<CustomerLimitDTO> originals = recorded != null ? recorded : recorder.findOriginal(request);
         LogUtil.detail(CLASS_NAME, "reverseCounted", "CALC", request.logKey() + " found=" + originals.size());
         for (CustomerLimitDTO original : originals) {
             LogUtil.detail(CLASS_NAME, "reverseCounted", "CALC", "originalDate=" + original.getTransactionDate()
@@ -288,9 +334,9 @@ public class DailyMonthlyLimitService {
             return;
         }
         if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.error(CLASS_NAME, "toLimitCurrency", "NO RATE", "no rate from " + request.getTransactionCurrency()
-                    + " to "
-                    + limits.ccy + ", amount counted unconverted for aaa=" + request.getTransactionId());
+            LogUtil.error(CLASS_NAME, "toLimitCurrency", "NO RATE", "cannot convert " + request.getTransactionCurrency()
+                    + " to " + limits.ccy + ", amount counted unconverted for aaa=" + request.getTransactionId()
+                    + " (the check blocks such a transaction, D44)");
         }
     }
 

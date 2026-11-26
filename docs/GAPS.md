@@ -14,7 +14,7 @@ All queries and gaps in one register (raised / solved): [QUERIES_AND_GAPS.md](QU
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
-| E1 | Exchange rate lookup not connected | Medium (was High) | bank answers (section E1) | **partly solved** – LCY limits use TXN.AMOUNT.LCY; foreign-CCY limits and max CIF accounts still pending |
+| E1 | Exchange rate lookup not connected | Low (was High) | bank answers (section E1) | **narrowed (D44, 26-Nov)** – transaction amount from the activity (LCY amount, else TXN.EXCH.RATE, else blocked; non-LCY limit blocked); only max CIF accounts in other currencies still need a rate (parked) |
 
 Already fine (checked): no shared state between calls (no static data, session per call); reversals use the stored amount (no new conversion); totals never below 0; validation and counting use the same REMARKS date even across midnight; enquiries never write.
 

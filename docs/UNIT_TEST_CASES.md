@@ -18,7 +18,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Maximum CIF balance | UT-X01 … X04 | 4 | 4 | – |
 | Limit not defined | UT-L01 … L03 | 3 | 3 | – |
 | Utilisation (count / reverse) | UT-U01 … U07 | 7 | 7 | – |
-| Currency conversion | UT-F01 … F08 | 8 | 8 | – |
+| Currency conversion | UT-F01 … F10 | 10 | 10 | – |
 | Limit creation | UT-C01 … C03 | 3 | 3 | – |
 | Counted date (REMARKS – removed, D42) | UT-R01 … R08 | 8 | 8 | – |
 | Request validation | UT-V01 … V06 | 6 | 6 | – |
@@ -33,8 +33,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
 | Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
 | Override text and fields (D43) | UT-W01 … W08 | 8 | 8 | – |
-| Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **139** | **130** | **9** |
+| Single routine (D44) | UT-S01 … S15 | 15 | 15 | – |
+| Controllers in T24 | UT-T01 … T10 | 10 | – | 10 |
+| **Total** | | **157** | **147** | **10** |
 
 ---
 
@@ -106,9 +107,11 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | UT-F03 | USD input counted | rejected | 4850 EGP reversed (stored amount, no re-conversion) | Pass |
 | UT-F04 | no EUR rate | credit 100 EUR | EB-ABLE.EXCH.RATE.MISSING "from EUR to EGP"; check skipped | Pass |
 | UT-F05 | limit EGP = LCY, TXN.AMOUNT.LCY 4850 | credit 100 USD | 4850.00 EGP, rate 48.5, **no rate lookup** | Pass |
-| UT-F06 | limit USD (not LCY) | credit 100 EGP | rate lookup → missing | Pass |
-| UT-F07 | no LCY amount on the activity | credit 100 USD | rate lookup | Pass |
+| UT-F06 | limit USD (not LCY) | credit 100 EGP | **blocked** (D44), no lookup | Pass |
+| UT-F07 | no LCY amount, no TXN.EXCH.RATE | credit 100 USD | **blocked** (D44), no lookup | Pass |
 | UT-F08 | same currency | credit 300 EGP | 300.00, no lookup | Pass |
+| UT-F09 | no LCY amount, TXN.EXCH.RATE 48.75 | debit 100 USD | 4875.00 EGP (D44) | Pass |
+| UT-F10 | LCY amount and TXN.EXCH.RATE both given | debit 100 USD, LCY 4850 | 4850.00 – LCY amount wins | Pass |
 
 ## Limit creation
 
@@ -240,6 +243,26 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-W07 | nothing breached | 0 overrides | Pass |
 | UT-W08 | blank limit CCY | error `[EB-ALBE.CIF.LIMIT.CCY.MISSING,<cust>]` on TXN.AMOUNT | Pass |
 
+## Single routine (D44) – 26-Nov-2026
+
+| Id | Case | Expected | Result |
+|---|---|---|---|
+| UT-S01 | status → action | UNAUTH INPUT, DELETE DELETE, AUTH-REV REVERSAL, AUTH AUTHORISE, REVERSE REVERSAL INPUT | Pass |
+| UT-S02 | credit 1000 within limits | no override, daily + monthly 1000.00, TXN.DETAILS written | Pass |
+| UT-S03 | reads for one input | CIF.LIMITS 1, UTILISED 2, TXN.DETAILS 1 | Pass |
+| UT-S04 | credit 4500, daily used 1000, limit 5000 | breach by 500.00, counted 5500.00 | Pass |
+| UT-S05 | override text | `[EB-ABLE.DAILY.LIMIT.EXCEED,100,500.00]` on TXN.AMOUNT | Pass |
+| UT-S06 | same FT called again (after "Accept Overrides" / re-input) | still 5500.00, one record, same breach | Pass |
+| UT-S07 | debit 300 | counted, reads 1 / 2 / 1 | Pass |
+| UT-S08 | credit with daily + max CIF breach | both breaches in one result | Pass |
+| UT-S09 | max CIF in the same call | CIF.LIMITS read once | Pass |
+| UT-S10 | USD, no LCY amount, no rate | ERROR `[EB-ALBE.EXCH.RATE.MISSING,USD,EGP]`, not counted | Pass |
+| UT-S11 | USD 10, TXN.EXCH.RATE 48.5 | 485.00 counted and stored | Pass |
+| UT-S12 | blank limit CCY | blocked, not counted | Pass |
+| UT-S13 | no CIF.LIMITS record | not-defined override, counted as is | Pass |
+| UT-S14 | take back (DELETE / AUTH-REV) | 5500 → 1000, record deleted, TXN.DETAILS read once | Pass |
+| UT-S15 | take back again | nothing | Pass |
+
 ## Block on save failure (D37) – 23-Nov-2026
 
 | Id | Given | Expected | Result |
@@ -278,6 +301,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 |---|---|---|
 | UT-T01 | `defaultFieldValues` writes the tag to the AAA REMARKS and it is kept for DELETE / AUTH-REV | T24_CONFIGURATION §13 #3, #9 |
 | UT-T02 | `validateRecord` as Post Routine raises the overrides on the FT screen, both `&` filled, daily **and** monthly shown (D43, TQ12 / TQ19) | §13 #4 |
+| UT-T10 | single routine called for DELETE and AUTH-REV (ACTION DELETE / REVERSAL in api.log), take-back done (D44, TQ20) | §8 |
 | UT-T03 | `postCoreTableUpdate` fires for UNAUTH, DELETE and AUTH-REV | §13 #5, #6, #9 |
 | UT-T04 | Auth routine on CUSTOMER,ALBE.CORP creates the record; "record not found" text recognised | §13 #1, #2 |
 | UT-T05 | Enquiry `setIds` lines shown in the right columns; EB.ERROR messages | §14.4 |

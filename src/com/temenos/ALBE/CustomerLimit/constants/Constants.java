@@ -107,6 +107,7 @@ public final class Constants {
     public static final String STATUS_AUTH = "AUTH";
     public static final String STATUS_DELETE = "DELETE";
     public static final String STATUS_AUTH_REV = "AUTH-REV";
+    public static final String STATUS_REVERSE = "REVERSE";
 
     // -------------------------------------------------------------------------
     // Which activities are counted (the routines can be attached to any activity)
@@ -173,8 +174,9 @@ public final class Constants {
     // -------------------------------------------------------------------------
     /**
      * Exchange rate table and field - TO BE CONFIGURED.
-     * While EXCH_RATE_TABLE is blank, only same-currency transactions can be checked;
-     * a different currency raises OVR_EXCH_RATE_MISSING.
+     * Used only for the maximum CIF sum (other accounts' balances, parked - OVR_EXCH_RATE_MISSING).
+     * The transaction amount is converted from the activity (D44): LCY amount, else TXN.EXCH.RATE,
+     * else ERR_EXCH_RATE_MISSING.
      */
     public static final String EXCH_RATE_TABLE = "";
     /** Field of EXCH_RATE_TABLE holding the rate - TO BE CONFIGURED. */
@@ -217,6 +219,22 @@ public final class Constants {
      * (decision D37: block, so utilisation never silently misses a transaction).
      */
     public static final String ERR_LIMIT_UPDATE_FAILED = "EB-ALBE.LIMIT.UPDATE.FAILED";
+    /**
+     * ERROR (blocks the transaction, D44): Exchange rate not available from & to &, transaction not
+     * allowed - transaction currency differs from the limit currency and the activity has neither an
+     * LCY amount nor TXN.EXCH.RATE, or the limit is not in the local currency. EB.ERROR record.
+     */
+    public static final String ERR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
+
+    // -------------------------------------------------------------------------
+    // Activity status -> action shown in the ACTION log line (single routine)
+    // -------------------------------------------------------------------------
+    public static final String ACTION_INPUT = "INPUT";
+    public static final String ACTION_DELETE = "DELETE";
+    public static final String ACTION_REVERSAL = "REVERSAL";
+    public static final String ACTION_AUTHORISE = "AUTHORISE";
+    public static final String ACTION_REVERSAL_INPUT = "REVERSAL INPUT";
+    public static final String LOG_EVENT_ACTION = "ACTION";
 
     /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
     public static final String OVERRIDE_ID_PREFIX = "EB-ABLE.";

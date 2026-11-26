@@ -28,6 +28,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 25-Nov-2026   Development      notes (used before -> after) for the RESULT log line
+ * 26-Nov-2026   Development      update with records already read in the same call (single routine)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitUtilizationUpdater {
@@ -84,6 +85,22 @@ public class CustomerLimitUtilizationUpdater {
         apply(request, "update", request.getCreditAmount(), request.getDebitAmount());
     }
 
+    /**
+     * Adds the transaction amounts using the daily / monthly records the check in the same call
+     * already read (null = no record yet, a new one is created) - no second read.
+     */
+    public void update(CustomerLimitDTO request, EbAlbeUtilisedLimitRecord dailyRecord,
+            EbAlbeUtilisedLimitRecord monthlyRecord) {
+        String dailyId = dailyRecordId(request);
+        String monthlyId = monthlyRecordId(request);
+        LogUtil.detail(CLASS_NAME, "update", "START", request.logKey() + " (records already read)");
+        addToRecord(request, "daily", dailyId, request.getCreditAmount(), request.getDebitAmount(),
+                dailyRecord != null ? dailyRecord : newRecord(dailyId));
+        addToRecord(request, "monthly", monthlyId, request.getCreditAmount(), request.getDebitAmount(),
+                monthlyRecord != null ? monthlyRecord : newRecord(monthlyId));
+        LogUtil.detail(CLASS_NAME, "update", "END", request.logKey() + " daily=" + dailyId + " monthly=" + monthlyId);
+    }
+
     /** Subtracts the original transaction amounts from the daily and monthly utilisation. */
     public void reverse(CustomerLimitDTO originalTransaction) {
         apply(originalTransaction, "reverse", originalTransaction.getCreditAmount().negate(),
@@ -107,8 +124,22 @@ public class CustomerLimitUtilizationUpdater {
      */
     private void addToRecord(CustomerLimitDTO request, String period, String recordId, BigDecimal credit,
             BigDecimal debit) {
+        EbAlbeUtilisedLimitRecord utilRec;
         try {
-            EbAlbeUtilisedLimitRecord utilRec = readOrCreate(recordId);
+            utilRec = readOrCreate(recordId);
+        } catch (Exception e) {
+            LogUtil.error(CLASS_NAME, "addToRecord", "FAILED", LABEL_RECORD + recordId, e);
+            request.addNote(period + " " + recordId + " SAVE FAILED");
+            repository.markSaveFailed(CLASS_NAME, "addToRecord " + recordId);
+            return;
+        }
+        addToRecord(request, period, recordId, credit, debit, utilRec);
+    }
+
+    /** Adds credit / debit to the given (already read or new) record and writes it. */
+    private void addToRecord(CustomerLimitDTO request, String period, String recordId, BigDecimal credit,
+            BigDecimal debit, EbAlbeUtilisedLimitRecord utilRec) {
+        try {
             String oldCredit = utilRec.getUtilisedCreditLimit().getValue();
             String oldDebit = utilRec.getUtilisedDebitLimit().getValue();
             String newCredit = addAmount(oldCredit, credit);
@@ -138,7 +169,12 @@ public class CustomerLimitUtilizationUpdater {
             LogUtil.detail(CLASS_NAME, "readOrCreate", "FOUND", LABEL_RECORD + recordId);
             return utilRec;
         }
-        LogUtil.info(CLASS_NAME, "readOrCreate", "NEW", LABEL_RECORD + recordId);
+        return newRecord(recordId);
+    }
+
+    /** New empty record for the first transaction of the day / month. */
+    private EbAlbeUtilisedLimitRecord newRecord(String recordId) {
+        LogUtil.info(CLASS_NAME, "newRecord", "NEW", LABEL_RECORD + recordId);
         return repository.newUtilisedLimitRecord();
     }
 

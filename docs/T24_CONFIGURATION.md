@@ -161,7 +161,7 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer id, amount over |
 | EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
 | EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency – **max CIF only** (another account of the customer in a foreign currency, parked until E1) |
 
 **EB.ERROR** (blocks the transaction):
 
@@ -170,6 +170,7 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
+| **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | Exchange rate not available from & to &, transaction not allowed | the transaction currency differs from the limit currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE – or the customer's limit is not in the local currency. & = transaction currency, limit currency |
 
 The routine sends `[ID,param1,param2]` (D43, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with the other parts. The old `ID FM p1 VM p2` text was shown raw on the FT screen (DEV 26-Nov).
 Each override goes on its **own AAA field** – a field keeps only one override (DEV 26-Nov: daily + monthly on TXN.AMOUNT showed only the monthly one):
@@ -223,6 +224,7 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` | `postUpdateRequest` |
 | ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller.activity` | `MaximumCifLimitController` | `validateRecord` |
+| **ALBE.CL.ACTIVITY.LIMIT** *(single routine, D44)* | `com.temenos.ALBE.CustomerLimit.controller.activity` | `CustomerLimitActivityController` | `validateRecord` |
 | ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `setIds` |
 | ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitTxnEnquiryController` | `setIds` |
@@ -231,6 +233,7 @@ Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METH
 If your release needs one EB.API record per hook method, create two for `DailyMonthlyLimitController`
 (`ALBE.CL.DAILY.MONTHLY.VAL` → `validateRecord`, `ALBE.CL.DAILY.MONTHLY.UPD` → `postCoreTableUpdate`).
 **`ALBE.CL.DAILY.MONTHLY.DEF` (`defaultFieldValues`) is no longer used (D42, 26-Nov)** – remove it from Record Rtn in ACTIVITY.API.
+**`ALBE.CL.ACTIVITY.LIMIT`** (D44) replaces VAL + MAX.CIF + UPD with one routine; easiest: copy `ALBE.CL.DAILY.MONTHLY.VAL` and change the Java class to `CustomerLimitActivityController` (method stays `validateRecord`). The old three stay until after SIT (rollback by configuration).
 
 ---
 
@@ -260,6 +263,26 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 Same pattern for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT).
 Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**.
+
+**Single routine (D44, 26-Nov) – target set-up.** One Post Routine does everything:
+
+| Activity Id | Property Class | Pc Action | Post Routine.1 | Other routine fields |
+|---|---|---|---|---|
+| ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
+| ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
+
+| Status | api.log `ACTION` line | What it does |
+|---|---|---|
+| UNAUTH | `INPUT` | daily / monthly check, max CIF (credit), overrides, then count (not when blocked) |
+| DELETE | `DELETE` | take back |
+| AUTH-REV | `REVERSAL` | take back |
+| AUTH | `AUTHORISE` | nothing, no read |
+| REVERSE | `REVERSAL INPUT` | nothing, no read (taken back at AUTH-REV) |
+
+- **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `CustomerLimitActivityController.validateRecord | ACTION | DELETE …` / `REVERSAL …`. If those lines never come, go back to VAL + MAX.CIF + UPD (above).
+- Reads per call (no cache, each record once): debit about 4 (mapping, CIF.LIMITS, daily + monthly UTILISED, TXN.DETAILS); credit the same + the customer's accounts when MAX.CIF is filled.
+- Save failure → `setError EB-ALBE.LIMIT.UPDATE.FAILED` (blocks; DEV test TQ18).
+- **Rollback:** put VAL / MAX.CIF / UPD back in the Post Routines, proof and publish – no redeploy.
 
 - **Why Post Routine:** for FT-created activities T24 calls **only the Post Routine** – Pre, Record and Validate routines are never called (DEV 25/26-Nov). A `validateRecord` routine (VAL, MAX.CIF) attached as a Post Routine runs there and its override **is shown on the FT screen** (DEV 26-Nov, FT26093GZC6N). Record Rtn / Pre Validate Rtn reject a `validateRecord` routine ("Method does not implement a hook interface").
 - **Order matters:** the checks (VAL, MAX.CIF) **before** UPD – they compare "used so far + this transaction" with the limit; UPD then counts the transaction.
@@ -339,9 +362,19 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 
 Needed only when the transaction (or an account) currency differs from the customer's limit currency.
 
+**Transaction amount (D44, 26-Nov) – no rate table needed:** taken from the activity only:
+
+| Case | Amount used |
+|---|---|
+| same currency | the amount |
+| limit in LCY (EGP), LCY amount on the activity | TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY |
+| limit in LCY, no LCY amount, TXN.EXCH.RATE filled | amount × TXN.EXCH.RATE (check in DEV: 1 transaction currency = rate LCY) |
+| no LCY amount and no TXN.EXCH.RATE, or limit **not** in LCY | **EB.ERROR EB-ALBE.EXCH.RATE.MISSING – transaction blocked** |
+
+**Max CIF – other accounts in another currency (parked):**
 1. Bank to confirm the exchange-rate table, record id and rate field (rate for 1 unit of *from* currency in *to* currency).
 2. Developer sets `Constants.EXCH_RATE_TABLE`, `Constants.EXCH_RATE_FIELD` and completes `CustomerLimitRepository.readExchangeRate(fromCcy, toCcy)`.
-3. Until then: same-currency transactions are checked normally; other currencies get the **EB-ABLE.EXCH.RATE.MISSING** override and the limit check is skipped.
+3. Until then: the **EB-ABLE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
 
 ---
 

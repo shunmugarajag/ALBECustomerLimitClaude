@@ -19,6 +19,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      limitCcyMissing (blank CIF.LIMIT CCY = error); copyTransaction
+ * 26-Nov-2026   Development      txnExchangeRate, rateBlocked (D44)
  * 25-Nov-2026   Development      activity, notes and describe() for the RESULT log line
  *-----------------------------------------------------------------------------
  */
@@ -58,6 +59,13 @@ public class CustomerLimitDTO {
      * used instead of a rate lookup when the limit currency is the local currency. 0 if not given.
      */
     private BigDecimal amountLcy = BigDecimal.ZERO;
+    /** Activity TXN.EXCH.RATE (1 transaction currency = rate LCY); 0 if not given (D44). */
+    private BigDecimal txnExchangeRate = BigDecimal.ZERO;
+    /**
+     * True when the transaction amount cannot be converted to the limit currency (D44: no LCY amount
+     * and no TXN.EXCH.RATE, or a limit not in the local currency) - error, the transaction is blocked.
+     */
+    private boolean rateBlocked = false;
     /** True when no exchange rate was found between the two currencies. */
     private boolean rateMissing = false;
     /** Currency that has no rate to the limit currency (transaction or account currency). */
@@ -141,12 +149,28 @@ public class CustomerLimitDTO {
         copy.setCreditAmount(creditAmount);
         copy.setDebitAmount(debitAmount);
         copy.setAmountLcy(amountLcy);
+        copy.setTxnExchangeRate(txnExchangeRate);
         copy.setActivity(activity);
         return copy;
     }
 
     public BigDecimal getAmountLcy() { return amountLcy; }
     public void setAmountLcy(BigDecimal amountLcy) { this.amountLcy = amountLcy == null ? BigDecimal.ZERO : amountLcy; }
+
+    public BigDecimal getTxnExchangeRate() { return txnExchangeRate; }
+    public void setTxnExchangeRate(BigDecimal txnExchangeRate) {
+        this.txnExchangeRate = txnExchangeRate == null ? BigDecimal.ZERO : txnExchangeRate;
+    }
+
+    /** True when the transaction amount cannot be converted (D44) - error, transaction blocked. */
+    public boolean isRateBlocked() { return rateBlocked; }
+
+    /** Records that the transaction currency cannot be converted to the limit currency (D44). */
+    public void setRateBlocked(String fromCurrency) {
+        this.rateBlocked = true;
+        this.rateMissingCurrency = fromCurrency;
+        valid = false;
+    }
 
     /** True when no exchange rate was found from a currency to the limit currency. */
     public boolean isRateMissing() { return rateMissing; }
@@ -212,6 +236,7 @@ public class CustomerLimitDTO {
         return "CustomerLimitDTO[customer=" + customerId + ", txn=" + transactionId + ", arrangement=" + arrangementId + ", date=" + transactionDate
                 + ", credit=" + creditAmount + ", debit=" + debitAmount + ", txnCcy=" + transactionCurrency
                 + ", limitCcy=" + limitCurrency + ", rate=" + exchangeRate + ", originalAmount=" + originalAmount + ", amountLcy=" + amountLcy
+                + ", txnExchRate=" + txnExchangeRate + ", rateBlocked=" + rateBlocked
                 + ", rateMissing=" + rateMissing + ", valid=" + valid
                 + ", limitMissing=" + limitMissing + ", limitCcyMissing=" + limitCcyMissing + ", undefinedLimits=" + undefinedLimits
                 + ", breaches=" + breaches.size() + "]";

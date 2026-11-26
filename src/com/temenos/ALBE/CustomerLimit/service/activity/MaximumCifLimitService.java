@@ -28,6 +28,7 @@ import com.temenos.t24.api.records.account.AccountRecord;
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  * 25-Nov-2026   Development      plain-language notes for the RESULT log line
+ * 26-Nov-2026   Development      validate with the limits already read (single routine); D44 blocked conversion
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitService {
@@ -48,11 +49,15 @@ public class MaximumCifLimitService {
      * The request has been checked by CustomerLimitRequestValidator (customer, credit > 0).
      */
     public void validate(CustomerLimitDTO request) {
+        validate(request, limitReader.getCustomerLimits(request.getCustomerId()));
+    }
+
+    /** Same check with the customer's limits already read (null = no EB.ALBE.CIF.LIMITS record). */
+    public void validate(CustomerLimitDTO request, Limits limits) {
         String customerId = request.getCustomerId();
         LogUtil.detail(CLASS_NAME, "validate", "START", request);
 
         // Step 1: customer's maximum balance limit.
-        Limits limits = limitReader.getCustomerLimits(customerId);
         if (limits == null) {
             LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no EB.ALBE.CIF.LIMITS record");
             request.addNote("no EB.ALBE.CIF.LIMITS record for customer " + customerId + " -> max CIF not checked");
@@ -76,9 +81,8 @@ public class MaximumCifLimitService {
 
         // Credit amount in the limit currency.
         if (!currencyService.convertRequest(request, limits.ccy)) {
-            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no exchange rate for the credit");
-            request.addNote("no exchange rate " + request.getTransactionCurrency() + " -> " + limits.ccy
-                    + " -> max CIF not checked");
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId
+                    + " credit cannot be converted, transaction blocked (D44)");
             return;
         }
         BigDecimal transactionAmount = request.getCreditAmount();

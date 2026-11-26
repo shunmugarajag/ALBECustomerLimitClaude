@@ -35,8 +35,8 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                 EB-ABLE.MONTHLY.LIMIT.EXCEED  TXN.AMOUNT.LCY
  *                 EB-ABLE.MAX.CIF.BAL.EXCEED    ORIG.TXN.AMT
  *                 EB-ABLE.CIF.LIMIT.NOT.DEFINED CURRENCY
- *                 EB-ABLE.EXCH.RATE.MISSING     EFFECTIVE.DATE
- *                 errors (EB-ALBE.*)            TXN.AMOUNT
+ *                 EB-ABLE.EXCH.RATE.MISSING     EFFECTIVE.DATE   (max CIF account currency only)
+ *                 errors (EB-ALBE.*)            TXN.AMOUNT       (incl. EB-ALBE.EXCH.RATE.MISSING, D44)
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -46,6 +46,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 25-Nov-2026   Development      ids() for the RESULT log line
  * 26-Nov-2026   Development      D43: text [ID,p1,p2]; one override per AAA field (DEV: only the
  *                                last override per field was kept, & not filled)
+ * 26-Nov-2026   Development      D44: amount not convertible -> ERROR EB-ALBE.EXCH.RATE.MISSING
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -64,6 +65,12 @@ public class CustomerLimitOverride {
         if (request.isLimitCcyMissing()) {
             // Blank limit currency: an error, not an override - the transaction cannot be committed.
             raiseError(activity.getTxnAmount(), Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId());
+            return 1;
+        }
+        if (request.isRateBlocked()) {
+            // D44: the amount cannot be converted to the limit currency - error, transaction blocked.
+            raiseError(activity.getTxnAmount(), Constants.ERR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
+                    request.getLimitCurrency());
             return 1;
         }
         int raised = 0;
@@ -117,6 +124,11 @@ public class CustomerLimitOverride {
             texts.add(build(Constants.ERR_LIMIT_CCY_MISSING, request.getCustomerId()));
             return texts;
         }
+        if (request.isRateBlocked()) {
+            texts.add(build(Constants.ERR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
+                    request.getLimitCurrency()));
+            return texts;
+        }
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " limit not defined"
@@ -144,6 +156,9 @@ public class CustomerLimitOverride {
     public static String ids(CustomerLimitDTO request) {
         if (request.isLimitCcyMissing()) {
             return "ERROR " + Constants.ERR_LIMIT_CCY_MISSING + " (input blocked)";
+        }
+        if (request.isRateBlocked()) {
+            return "ERROR " + Constants.ERR_EXCH_RATE_MISSING + " (input blocked)";
         }
         List<String> ids = new ArrayList<>();
         if (request.isLimitMissing() || request.isLimitNotDefined()) {

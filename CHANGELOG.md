@@ -4,6 +4,13 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – single routine and conversion from the activity (26-Nov-2026, D44)
+- New `CustomerLimitActivityController` (EB.API `ALBE.CL.ACTIVITY.LIMIT`, one **Post Routine**, method `validateRecord`) does the whole flow in one call: input = daily / monthly check, max CIF check for credits, overrides, then count; delete and authorised reversal = take back; authorise and reversal input = nothing.
+- New **ACTION** log line per call in plain words: INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT.
+- Fewer reads, no cache: each record (activity mapping, CIF.LIMITS, daily + monthly UTILISED.LIMIT, TXN.DETAILS) is read once and passed along – about 4 reads for a debit instead of about 10.
+- Transaction in another currency: the amount comes only from the activity – LCY amount, else amount × TXN.EXCH.RATE; if neither, or the customer's limit is not in EGP, the transaction is **blocked** with the new error **EB-ALBE.EXCH.RATE.MISSING** (EB.ERROR to create). Max CIF accounts in other currencies: unchanged (override, parked).
+- The old VAL / MAX.CIF / UPD routines stay for rollback by configuration until after SIT. DEV prerequisite: the Post Routine must also be called for DELETE and AUTH-REV (TQ20).
+
 ### Changed – overrides on the FT screen: checks as Post Routine, new override text (26-Nov-2026, D43)
 - DEV: for FT-created activities T24 calls only the **Post Routine**. The checks (`ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.MAX.CIF`) are now attached as **Post Routines before** `ALBE.CL.DAILY.MONTHLY.UPD` – the override is shown on the FT screen (FT26093GZC6N). Configuration only; see T24_CONFIGURATION §8.
 - Override / error text is now `[ID,param1,param2]` – the format R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` read. The old `ID FM p1 VM p2` was shown raw and the `&` were not filled.

@@ -44,6 +44,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 25-Nov-2026   Development      activity name on the request (RESULT log line)
  * 25-Nov-2026   Development      logActivity: one ACTIVITY line with the key activity fields (all hooks)
  * 26-Nov-2026   Development      counted date only from the activity ORG.SYSTEM.DATE / T24 TODAY; dateFromRemarks removed (D42)
+ * 26-Nov-2026   Development      build with the direction already read; TXN.EXCH.RATE on the request (D44)
  *-----------------------------------------------------------------------------
  */
 public class ActivityRequestBuilder {
@@ -59,11 +60,16 @@ public class ActivityRequestBuilder {
      */
     public static CustomerLimitDTO build(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord,
             String aaaId, CustomerLimitRepository repository) {
+        return build(aaaRec, arrangementRecord, aaaId, getDirection(aaaRec, repository), repository);
+    }
+
+    /** Same, with the CREDIT / DEBIT direction already read by the caller (no second GEN.PARAM read). */
+    public static CustomerLimitDTO build(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord,
+            String aaaId, String direction, CustomerLimitRepository repository) {
 
         String activity = aaaRec.getActivity().getValue();
         String activityClass = aaaRec.getActivityClass().getValue();
         String initiationType = getInitiationType(aaaRec);
-        String direction = getDirection(aaaRec, repository);
         if (!isCountedActivity(direction, initiationType, activity)) {
             return null;
         }
@@ -89,6 +95,7 @@ public class ActivityRequestBuilder {
         request.setTransactionDate(getCountedDate(aaaRec, repository));
         request.setTransactionCurrency(getCurrency(aaaRec, arrangementRecord));
         request.setAmountLcy(getAmountLcy(aaaRec, useOriginal));
+        request.setTxnExchangeRate(ValidationUtil.toAmount(aaaRec.getTxnExchRate().getValue()));
         if (credit) {
             request.setCreditAmount(amount);
         } else {
@@ -202,6 +209,7 @@ public class ActivityRequestBuilder {
                     .append(" txnAmount=").append(aaaRec.getTxnAmount().getValue())
                     .append(" origTxnAmt=").append(aaaRec.getOrigTxnAmt().getValue())
                     .append(" txnAmountLcy=").append(aaaRec.getTxnAmountLcy().getValue())
+                    .append(" txnExchRate=").append(aaaRec.getTxnExchRate().getValue())
                     .append(" currency=").append(aaaRec.getCurrency().getValue())
                     .append(" effectiveDate=").append(aaaRec.getEffectiveDate().getValue())
                     .append(" orgSystemDate=").append(aaaRec.getOrgSystemDate().getValue())
