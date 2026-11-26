@@ -52,6 +52,18 @@ One Post Routine, `ALBE.CL.ACTIVITY.LIMIT` (`CustomerLimitActivityController.val
 
 The count is written in the same commit as the FT, so a rejected override or a cancelled FT is undone by T24 (TQ22).
 
+## Simple version (package `CustomerLimitSimple`, 26-Nov)
+
+The same logic in **2 routine classes + constants**, in the style of the team's core Java routines (DataAccess / Session / generated tables used directly, one logger), next to the MVC version - the MVC code is not changed:
+
+| Class | EB.API (suggested) | Attach as |
+|---|---|---|
+| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitActivity` | `ALBE.CL.ACTIVITY.SIMPLE` | ACTIVITY.API Post Routine, `validateRecord` (input check + overrides + count, DELETE / AUTH-REV take back) |
+| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitCreation` | `ALBE.CL.LIMIT.CREATE.SIMPLE` | VERSION CUSTOMER,ALBE.CORP Auth routine, `postUpdateRequest` |
+| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitConstants` | - | all literals |
+
+Same rules, tables, override / error ids and log tag (`ALBE.CUSTOMER.LIMIT |`, one ACTION + one RESULT line per call). Both versions are in the same JAR: attach **either** the simple **or** the MVC routine to an activity / version, never both (double count).
+
 ## Code structure (MVC)
 
 ```

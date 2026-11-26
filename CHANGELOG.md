@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – simple 2-class version (26-Nov-2026, D48)
+- New package `com.temenos.ALBE.CustomerLimitSimple`: `CustomerLimitActivity` (ACTIVITY.API Post Routine) and `CustomerLimitCreation` (customer Auth routine) plus `CustomerLimitConstants` - the whole logic in two plain routine classes, written like the team's core Java routines. Same behaviour as the MVC version (D47); the MVC code is unchanged.
+- To use it: create EB.API records for the two classes (e.g. `ALBE.CL.ACTIVITY.SIMPLE`, `ALBE.CL.LIMIT.CREATE.SIMPLE`) and attach them **instead of** the MVC routines - never both on the same activity.
+- Checked outside T24 through the real routine methods: T01-T26 + 8 more cases, all pass; compiles with 0 errors against the R25 libraries.
+
 ### Changed – clean rewrite: one routine, one flow (26-Nov-2026, D47)
 - Only **one** activity routine is left: `ALBE.CL.ACTIVITY.LIMIT` (`CustomerLimitActivityController`). The old routines (`ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF`, `ALBE.CL.MAX.CIF`) and their classes are removed – take them out of ACTIVITY.API and remove their EB.API records.
 - The engine has two simple paths. **Input:** read the limits, convert the amount, find the earlier input of the same FT, read the day and month records once, check, check max CIF for a credit, then count – each record is written once as "used − earlier input + new amount". **Take back:** take off exactly what TXN.DETAILS shows was counted, from the day it was counted on.
