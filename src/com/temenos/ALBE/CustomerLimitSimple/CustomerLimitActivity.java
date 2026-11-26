@@ -74,7 +74,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             String ft = rootReference(aaaRec.getTxnContractId().getValue());
             String key = ft.isEmpty() ? nvl(arrangementContext.getArrangementActivityId()).trim() : ft;
             String arrangement = nvl(aaaRec.getArrangement().getValue()).trim();
-            log("ACTION", actionOf(status) + " " + key + " (" + activity + ") arrangement " + arrangement
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " ACTION | " +
+                    actionOf(status) + " " + key + " (" + activity + ") arrangement " + arrangement
                     + " status " + status);
 
             if (!CustomerLimitConstants.STATUS_UNAUTH.equals(status)
@@ -89,7 +90,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             // credit or debit from the mapping; not mapped -> error at input
             String direction = readDirection(da, activity);
             if (direction == null) {
-                log("NOT MAPPED", activity + " not in " + CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID);
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT MAPPED | " +
+                        activity + " not in " + CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID);
                 if (CustomerLimitConstants.STATUS_UNAUTH.equals(status)) {
                     aaaRec.getTxnAmount().setError(text(CustomerLimitConstants.ERR_NOT_MAPPED, activity));
                 }
@@ -97,7 +99,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             }
             String initiation = initiationType(aaaRec);
             if (!initiation.isEmpty() && !CustomerLimitConstants.COUNTED_INITIATION_TYPES.contains(initiation)) {
-                log("SKIP", key + " initiation type " + initiation + " not counted");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+                        key + " initiation type " + initiation + " not counted");
                 return aaaRec.getValidationResponse();
             }
 
@@ -105,7 +108,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             boolean useOrig = toAmount(aaaRec.getOrigTxnAmt().getValue()).signum() > 0;
             BigDecimal amount = toAmount(useOrig ? aaaRec.getOrigTxnAmt().getValue() : aaaRec.getTxnAmount().getValue());
             if (amount.signum() <= 0) {
-                log("SKIP", key + " no amount");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " + key + " no amount");
                 return aaaRec.getValidationResponse();
             }
             boolean credit = CustomerLimitConstants.CREDIT.equals(direction);
@@ -120,11 +123,12 @@ public class CustomerLimitActivity extends ActivityLifecycle {
                 takeBack(da, customer, key, arrangement, date, status, saveFailed);
             }
             if (saveFailed[0]) {
-                log("BLOCKED", key + " save failed, raising " + CustomerLimitConstants.ERR_UPDATE_FAILED);
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " BLOCKED | " +
+                        key + " save failed, raising " + CustomerLimitConstants.ERR_UPDATE_FAILED);
                 aaaRec.getTxnAmount().setError(CustomerLimitConstants.ERR_UPDATE_FAILED);
             }
         } catch (Exception e) {
-            log("ERROR", "status " + status + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " ERROR | status " + status + " " + e);
         }
         return aaaRec.getValidationResponse();
     }
@@ -146,7 +150,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         String limitCcy = limits == null ? "" : nvl(limits.getCurrency().getValue()).trim();
         if (limits != null && limitCcy.isEmpty()) {
             aaaRec.getTxnAmount().setError(text(CustomerLimitConstants.ERR_CCY_MISSING, customer));
-            log("RESULT", result + " | BLOCKED: limit CURRENCY blank, not counted");
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
+                    result + " | BLOCKED: limit CURRENCY blank, not counted");
             return;
         }
 
@@ -161,7 +166,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             String lcy = nvl(ss.getLocalCurrency()).trim();
             if (lcy.isEmpty()) {
                 aaaRec.getEffectiveDate().setOverride(text(CustomerLimitConstants.OVR_RATE_MISSING, fromTo));
-                log("RESULT", result + " | local currency not readable -> not checked, not counted");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
+                        result + " | local currency not readable -> not checked, not counted");
                 return;
             }
             BigDecimal lcyAmount = toAmount(useOrig ? aaaRec.getOrigTxnAmtLcy().getValue()
@@ -169,7 +175,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             BigDecimal rate = toAmount(aaaRec.getTxnExchRate().getValue());
             if (!limitCcy.equalsIgnoreCase(lcy) || (lcyAmount.signum() <= 0 && rate.signum() <= 0)) {
                 aaaRec.getTxnAmount().setError(text(CustomerLimitConstants.ERR_RATE_MISSING, fromTo));
-                log("RESULT", result + " | BLOCKED: cannot convert " + fromTo + ", not counted");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
+                        result + " | BLOCKED: cannot convert " + fromTo + ", not counted");
                 return;
             }
             amount = (lcyAmount.signum() > 0 ? lcyAmount : txnAmount.multiply(rate))
@@ -233,7 +240,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             fieldFor(aaaRec, o[2]).setOverride(text(o[0], o[1]));
             result.append(" | raised ").append(o[0]);
         }
-        log("RESULT", result + " | count kept only if the transaction is committed");
+        logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
+                result + " | count kept only if the transaction is committed");
     }
 
     /**
@@ -279,7 +287,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
             }
         }
         if (counted == null) {
-            log("RESULT", "NOTHING TAKEN BACK " + key + " customer " + customer + " (nothing counted for it)");
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | NOTHING TAKEN BACK " + key + " customer " + customer + " (nothing counted for it)");
             return;
         }
         BigDecimal amount = toAmount(counted.getTxnAmount().getValue());
@@ -300,9 +308,9 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         } catch (Exception e) {
             saveFailed[0] = true;
             result.append(" | DELETE FAILED ").append(txnId);
-            log("FAILED", "delete " + txnId + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | delete " + txnId + " " + e);
         }
-        log("RESULT", result.toString());
+        logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " + result.toString());
     }
 
     /** Day the transaction was counted on, from its TXN.DETAILS id (any date); null if none. */
@@ -311,7 +319,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         String selection = "WITH @ID LIKE " + customer + sep + "..." + sep + key + sep + arrangement;
         try {
             List<String> ids = da.selectRecords("", CustomerLimitConstants.TXN_DETAILS_TABLE, "", selection);
-            log("SELECT", CustomerLimitConstants.TXN_DETAILS_TABLE + " [" + selection + "] found "
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SELECT | " +
+                    CustomerLimitConstants.TXN_DETAILS_TABLE + " [" + selection + "] found "
                     + (ids == null ? 0 : ids.size()));
             if (ids != null) {
                 for (String id : ids) {
@@ -323,7 +332,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
                 }
             }
         } catch (Exception e) {
-            log("FAILED", "select " + CustomerLimitConstants.TXN_DETAILS_TABLE + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | select " + CustomerLimitConstants.TXN_DETAILS_TABLE + " " + e);
         }
         return null;
     }
@@ -345,7 +354,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
                 }
             }
         } catch (Exception e) {
-            log("NOT FOUND", CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                    CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID
                     + " " + e);
         }
         return null;
@@ -358,7 +368,8 @@ public class CustomerLimitActivity extends ActivityLifecycle {
                     customer));
             return rec.toString().isEmpty() ? null : rec;
         } catch (Exception e) {
-            log("NOT FOUND", CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                    CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer);
             return null;
         }
     }
@@ -405,7 +416,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         } catch (Exception e) {
             saveFailed[0] = true;
             result.append(" | ").append(id).append(" SAVE FAILED");
-            log("FAILED", "write " + id + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | write " + id + " " + e);
         }
     }
 
@@ -423,7 +434,7 @@ public class CustomerLimitActivity extends ActivityLifecycle {
         } catch (Exception e) {
             saveFailed[0] = true;
             result.append(" | ").append(id).append(" SAVE FAILED");
-            log("FAILED", "write " + id + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | write " + id + " " + e);
         }
     }
 
@@ -550,14 +561,5 @@ public class CustomerLimitActivity extends ActivityLifecycle {
 
     private static String nvl(String value) {
         return value == null ? "" : value;
-    }
-
-    /** One INFO line: ALBE.CUSTOMER.LIMIT | CustomerLimitActivity: EVENT | details. Never throws. */
-    private static void log(String event, String details) {
-        try {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " " + event + " | " + details);
-        } catch (Exception e) {
-            // logging must never stop the transaction
-        }
     }
 }

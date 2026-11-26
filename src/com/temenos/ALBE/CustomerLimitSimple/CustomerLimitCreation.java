@@ -41,7 +41,7 @@ public class CustomerLimitCreation extends RecordLifecycle {
         String customer = currentRecordId == null ? "" : currentRecordId.trim();
         try {
             if (customer.isEmpty()) {
-                log("SKIP", "customer id missing");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | customer id missing");
                 return;
             }
             DataAccess da = new DataAccess(this);
@@ -49,12 +49,14 @@ public class CustomerLimitCreation extends RecordLifecycle {
             // never overwrite: create only when T24 says "no record"
             Boolean exists = cifLimitExists(da, customer);
             if (exists == null) {
-                log("SKIP", customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+                        customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE
                         + " read failed - not created, so an existing record is not overwritten");
                 return;
             }
             if (exists) {
-                log("SKIP", customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE + " already exists, limits kept");
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+                        customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE + " already exists, limits kept");
                 return;
             }
 
@@ -63,7 +65,8 @@ public class CustomerLimitCreation extends RecordLifecycle {
                 param = new EbAlbeGenParamRecord(da.getRecord(CustomerLimitConstants.GEN_PARAM_TABLE,
                         CustomerLimitConstants.GEN_PARAM_LIMIT_ID));
             } catch (Exception e) {
-                log("NOT FOUND", CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_LIMIT_ID
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                        CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_LIMIT_ID
                         + " - limit not created for " + customer);
                 return;
             }
@@ -97,15 +100,17 @@ public class CustomerLimitCreation extends RecordLifecycle {
                 }
             }
             if (!found) {
-                log("NOT FOUND", CustomerLimitConstants.GEN_PARAM_LIMIT_ID + " has no keys - limit not created for "
+                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                        CustomerLimitConstants.GEN_PARAM_LIMIT_ID + " has no keys - limit not created for "
                         + customer);
                 return;
             }
             new EbAlbeCifLimitsTable(this).write(customer, limits);
-            log("CREATED", CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " from "
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " CREATED | " +
+                    CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " from "
                     + CustomerLimitConstants.GEN_PARAM_LIMIT_ID);
         } catch (Exception e) {
-            log("ERROR", "customer " + customer + " " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " ERROR | customer " + customer + " " + e);
         }
     }
 
@@ -122,17 +127,9 @@ public class CustomerLimitCreation extends RecordLifecycle {
                     return Boolean.FALSE;
                 }
             }
-            log("FAILED", CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " existence unknown " + e);
+            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | " +
+                    CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " existence unknown " + e);
             return null;
-        }
-    }
-
-    /** One INFO line: ALBE.CUSTOMER.LIMIT | CustomerLimitCreation: EVENT | details. Never throws. */
-    private static void log(String event, String details) {
-        try {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " " + event + " | " + details);
-        } catch (Exception e) {
-            // logging must never stop the transaction
         }
     }
 }
