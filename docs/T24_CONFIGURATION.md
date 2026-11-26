@@ -171,7 +171,17 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
 
-The routine sends `ID FM param1 VM param2` – check in DEV that both `&` are filled in the override text **(confirm)**.
+The routine sends `[ID,param1,param2]` (D43, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with the other parts. The old `ID FM p1 VM p2` text was shown raw on the FT screen (DEV 26-Nov).
+Each override goes on its **own AAA field** – a field keeps only one override (DEV 26-Nov: daily + monthly on TXN.AMOUNT showed only the monthly one):
+
+| Override | AAA field |
+|---|---|
+| EB-ABLE.DAILY.LIMIT.EXCEED | TXN.AMOUNT |
+| EB-ABLE.MONTHLY.LIMIT.EXCEED | TXN.AMOUNT.LCY |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
+| EB-ABLE.CIF.LIMIT.NOT.DEFINED | CURRENCY |
+| EB-ABLE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
+| errors (EB-ALBE.*) | TXN.AMOUNT |
 
 ---
 
@@ -241,18 +251,20 @@ Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMI
 
 Attach on the **ACTIVITY.API** property condition of every AA product that needs the validation (HLSD: "products for which user wants to have this validation").
 
-| Activity | Routine | Hook | Must run for |
-|---|---|---|---|
-| ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
-| ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
-| ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `validateRecord` | input (UNAUTH) |
-| ACCOUNTS-DEBIT-ARRANGEMENT | ALBE.CL.DAILY.MONTHLY | `postCoreTableUpdate` | **UNAUTH, DELETE and AUTH-REV** |
-| ACCOUNTS-CREDIT-ARRANGEMENT | ALBE.CL.MAX.CIF | `validateRecord` | input (UNAUTH) |
-| ACCOUNTS-TRANSFERIN-ARRANGEMENT | same 3 hooks as CREDIT + ALBE.CL.MAX.CIF | as above | mapped CREDIT in GEN.PARAM |
-| ACCOUNTS-TRANSFEROUT-ARRANGEMENT | same 3 hooks as DEBIT | as above | mapped DEBIT in GEN.PARAM |
+**Set-up proven in DEV (26-Nov-2026, D43)** – AA.PRD.DES.ACTIVITY.API, one set per activity, **all routines in Post Routine**, in this order:
 
-- Use the same ACTIVITY.API slots (validation / post-update routine fields) your team uses for other `ActivityLifecycle` routines **(confirm)**.
-- **No Record Rtn (DEF) any more** (D42): REMARKS is not touched. DEV 25-Nov: for FT-created activities (ACCOUNT / CR.MOVEMENT, DR.MOVEMENT) T24 calls **only the Post Routine** – Record and Validate routines are never called.
+| Activity Id | Property Class | Pc Action | Post Routine.1 | Post Routine.2 | Post Routine.3 |
+|---|---|---|---|---|---|
+| ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | ALBE.CL.DAILY.MONTHLY.VAL | ALBE.CL.MAX.CIF | ALBE.CL.DAILY.MONTHLY.UPD |
+| ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | ALBE.CL.DAILY.MONTHLY.VAL | ALBE.CL.DAILY.MONTHLY.UPD | |
+
+Same pattern for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT).
+Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**.
+
+- **Why Post Routine:** for FT-created activities T24 calls **only the Post Routine** – Pre, Record and Validate routines are never called (DEV 25/26-Nov). A `validateRecord` routine (VAL, MAX.CIF) attached as a Post Routine runs there and its override **is shown on the FT screen** (DEV 26-Nov, FT26093GZC6N). Record Rtn / Pre Validate Rtn reject a `validateRecord` routine ("Method does not implement a hook interface").
+- **Order matters:** the checks (VAL, MAX.CIF) **before** UPD – they compare "used so far + this transaction" with the limit; UPD then counts the transaction.
+- **No Record Rtn (DEF) any more** (D42): REMARKS is not touched.
+- Only `validateRecord` can raise an **override** (R25 invokers: only the validate invoker handles overrides; `postCoreTableUpdate` / `defaultFieldValues` / VERSION `postUpdateRequest` can only stop the transaction with an error).
 - **The routines can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routines here (no code change).
 - **Date:** the activity's **ORG.SYSTEM.DATE** (T24 date), else T24 TODAY (server clock only as a logged last resort). Not DATE.TIME – that is the server clock.
 - **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again; the REMARKS tag, if kept, keeps the original day).
@@ -269,7 +281,7 @@ An FT, a teller transaction or any other posting on an **AA account** makes T24 
 - The activity of an FT carries TXN.CONTRACT.ID = the FT id, so each activity of an FT is counted under `<customer>-<date>-<FT id>-<arrangement id>`.
 - **Own-account transfer** (same customer on both sides): two arrangements, two records – the debit and the credit are **both checked and counted** (D39), including the max CIF check on the credit.
 - There are no non-AA (classic) accounts (D34).
-- **To test in DEV:** activity created at FT **input** (not only at authorisation); activity overrides shown on the FT screen; FT delete / reversal reach the activity as DELETE / AUTH-REV.
+- **DEV 25/26-Nov:** activity created at FT **input** ✔; activity overrides shown on the FT screen ✔ (routines as Post Routine, step 8); FT reversal input reaches the activity as REVERSE; its authorisation is expected as AUTH-REV (take-back still to see in DEV); FT delete → DELETE (to test).
 
 ---
 

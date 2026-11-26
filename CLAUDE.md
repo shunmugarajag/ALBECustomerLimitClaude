@@ -27,7 +27,7 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | Logging only through `util/LogUtil` (standard format) | `ALBE.CUSTOMER.LIMIT \| Class.method \| EVENT \| details` |
 | **T24 date** for counting (not the server clock) | activity **ORG.SYSTEM.DATE** → T24 TODAY (D42; REMARKS tag removed 26-Nov) |
 | Don't critique the user's **sample** routines | user said "ignore gaps in the sample" |
-| Keep `'\u00FE'` / `'\u00FD'` as **ASCII escapes** | file tools turn them into raw bytes – check with `LC_ALL=C grep -P '[^\x00-\x7F]' -r src` (must print nothing) |
+| Source files **ASCII only** | check with `LC_ALL=C grep -P '[^\x00-\x7F]' -r src` (must print nothing); FM/VM constants removed 26-Nov (D43) |
 | **JAR name = `ALBE_CustomerLimit.jar`** (25-Nov) | JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name – a missing/renamed JAR takes down all T24 deployments (DEV outage 25-Nov) |
 | **T24 server: change no file except the JAR deploy** (25-Nov) | never edit server config (e.g. `TAFJTrace.properties`) or leave files there; the restart script is streamed over SSH (`bash -s`), not saved |
 | Commit + push to `main` when work is done | end commit messages with the attribution lines the session provides |
@@ -48,10 +48,10 @@ Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t2
 | Function | Hook (EB.API) | Flow |
 |---|---|---|
 | **Limit creation** | `CustomerLimitCreationController` – VERSION CUSTOMER,ALBE.CORP **Auth routine**, `postUpdateRequest` | at customer authorisation: if `cifLimitExists` = FALSE copy GEN.PARAM `CUSTOMER.LIMIT` → CIF.LIMIT. TRUE (amendment) or null (read failed) → **never overwrite**. No delete flow. |
-| **Daily / monthly** | `DailyMonthlyLimitController` – ACTIVITY.API, **any activity** (normally ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT); mapping in `ActivityRequestBuilder` | `defaultFieldValues` (UNAUTH, counted activities only): append `ALBE.LIMIT.DATE=<T24 date>` to AAA **REMARKS** (first input only). `validateRecord` (UNAUTH): check + overrides. `postCoreTableUpdate`: UNAUTH count (earlier input of same AAA reversed first), DELETE reverse, AUTH nothing, AUTH-REV reverse (fallback: today if no record). |
+| **Daily / monthly** | `DailyMonthlyLimitController` – ACTIVITY.API, **any activity** (normally ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT); mapping in `ActivityRequestBuilder` | **ACTIVITY.API set-up (D43): all routines as Post Routine – VAL (+ MAX.CIF for credit) first, then UPD** (FT activities call only the Post Routine; the override still shows on the FT screen). `validateRecord` (UNAUTH): check + overrides (no `defaultFieldValues` since D42). `postCoreTableUpdate`: UNAUTH count (earlier input of same AAA reversed first), DELETE reverse, AUTH nothing, AUTH-REV reverse (fallback: today if no record). |
 | **FT / TT / other** | no routine – FT, TT and other postings on AA accounts arrive as ACCOUNTS-CREDIT/DEBIT activities (ACTIVITY.API) | key = FT behind the activity (TXN.CONTRACT.ID root) + arrangement; own transfer counted on both sides (D39); no non-AA accounts (D34) |
-| **Maximum CIF** | `MaximumCifLimitController` – ACTIVITY.API, credit only, `validateRecord` | sum of WORKING.BALANCE of all customer accounts (converted) + credit vs MAX.CIF.BALANCE |
-| **Overrides** | `view/CustomerLimitOverride.raiseFor` on TXN.AMOUNT | `id FM p1 VM p2`; acceptable overrides (not errors) |
+| **Maximum CIF** | `MaximumCifLimitController` – ACTIVITY.API (as Post Routine, before UPD), credit only, `validateRecord` | sum of WORKING.BALANCE of all customer accounts (converted) + credit vs MAX.CIF.BALANCE |
+| **Overrides** | `view/CustomerLimitOverride.raiseFor(activity, request)` | text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate EFFECTIVE.DATE; errors TXN.AMOUNT) – D43; acceptable overrides (not errors) |
 | **Reports** | `CustomerLimitSummary/Period/TxnEnquiryController` – NOFILE `Enquiry.setIds` | return `List<String>` of `*`-separated lines (T24 requires strings; model rows used inside, view formats at the end) |
 
 Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + **ACTIVITY mapped CREDIT/DEBIT in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`** (not mapped → ERROR `EB-ALBE.ACTIVITY.NOT.MAPPED`, blocks; D41) + INITIATION.TYPE in list (all); date for every step = activity ORG.SYSTEM.DATE → T24 TODAY (D42) (clock only logged last resort); limit CCY = LCY → AAA TXN.AMOUNT.LCY used (no rate); limit check is **above** limit only; utilised minus own earlier input on re-input; monthly = migrated + utilised; totals floored at 0; amounts in **limit currency** (converted, 2 dp, stored converted – reversals never reconvert); missing CIF.LIMIT record or blank limit → `EB-ABLE.CIF.LIMIT.NOT.DEFINED` once; **blank CIF.LIMIT CCY → ERROR `EB-ALBE.CIF.LIMIT.CCY.MISSING` (blocks)**; technical failure → logged, transaction **not** blocked – **except a failed utilisation save → ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (blocks, D37)**.
@@ -101,6 +101,7 @@ constants/    Constants (the only final class)
 | **ACTIVITY.API only** – FT / TELLER / ACCOUNT.PARAMETER routines built then **removed** (22-Nov); one engine; key = root ref | user 22-Nov: "FT will trigger activity" → remove the others (Git history has them) |
 | T24 date instead of server clock | DEV: ORG.SYSTEM.DATE 01 APR 2026 vs clock 29 OCT 26 |
 | **Direction from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`** (D41, 25-Nov): KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT; replaces the ACTIVITY.CLASS action (`CREDIT_ACTIONS/DEBIT_ACTIONS` removed); unmapped activity → EB.ERROR | user 25-Nov: "mapping table"; chose GEN.PARAM record (no new table), key ACTIVITY, unmapped → error |
+| **Checks as Post Routine; override text `[ID,p1,p2]`; one override per AAA field** (D43, 26-Nov) | DEV: Validate / Pre / Record Rtn never called for FT activities; VAL as Post Routine (before UPD) showed the override on the FT screen (FT26093GZC6N). R25 EB.HANDLE.OVERRIDES reads `[ID,p1,p2]` (old `ID FM p1 VM p2` shown raw); `TField.setOverride` replaces – only the last override per field survived (daily lost). Only `validateRecord` can raise overrides (R25 invokers). Post-routine-only check controller (parked, not committed) and FT/TT version routine not needed |
 | Bank decides where the routines are attached; code generic; direction = ACTIVITY.CLASS action **for now** | user 21-Nov; FT/TT source/destination account reading discussed, not chosen; other actions (APPLYPAYMENT…) and deposit payouts: decide later (GAPS A7/A8) |
 
 HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM instead of EB.ALBE.GEN.CIF.LIMIT, counted date in REMARKS, currency conversion.
@@ -119,6 +120,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - To compile against the real libs in a sandbox: javac needs `-sourcepath <empty dir> -implicit:none` (the T24 JARs also contain `.java` sources); `org.json` from `TAFJ/ext/json.jar` is required.
 - Pending from the bank: one-off CIF.LIMIT load for existing customers; HLSD update; TXN.DETAILS housekeeping.
 - **FT / TELLER / ACCOUNT.PARAMETER routines removed (22-Nov-2026)** – ACTIVITY.API covers FT/TT on AA accounts. DEV: activity created at FT input; activity overrides on the FT screen; FT delete/reversal → DELETE/AUTH-REV. No non-AA accounts exist (D34). Own transfers: both sides checked and counted (D39).
+- **D43 retest in DEV (TQ12 / TQ19):** deploy the new JAR, FT breaching daily + monthly → both overrides with `&` filled; "by" amount = used + this − limit (FT26093GZC6N showed 13,000 for an expected 12,750 – log not yet seen); debit FT; MAX.CIF as Post Routine 2 for credit. Still to see: AUTH-REV take-back (FT26093BG24V reversal), DELETE (FT26093RL3T1).
 - **Open questions** live only in `docs/QUERIES_AND_GAPS.md` (FQ/TQ); the old Q1–Q13 list in GAPS.md was removed as a duplicate (22-Nov).
 - No remaining small code gap (G5 closed 26-Nov). (`\<mnemonic>` strip done via root reference.) (Outdated `<AAA id>` comments fixed 22-Nov.)
 
@@ -140,7 +142,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
 | `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ18 (bank/BA), technical queries TQ1–TQ18 (DEV), decisions D1–D42, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
-| `docs/UNIT_TEST_CASES.md` | 131 cases (122 pass outside T24, 9 DEV only) – add a case for every new behaviour |
+| `docs/UNIT_TEST_CASES.md` | 139 cases (130 pass outside T24, 9 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |

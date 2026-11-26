@@ -271,8 +271,11 @@ public final class Constants {
     public static final String ERR_RANGE_TOO_LONG = "EB-ALBE.ENQ.RANGE.TOO.LONG";
 
     // -------------------------------------------------------------------------
-    // T24 dynamic array marks (override id FM param1 VM param2)
+    // Override / error text sent to T24: [ID,param1,param2]
+    // (R25 EB.HANDLE.OVERRIDES / EB.HANDLE.ERRORS: text starting with "[" -> part 1 = id,
+    //  the other comma parts fill the & of the message; anything else is used as it is)
     // -------------------------------------------------------------------------
-    public static final char FM = '\u00FE';
-    public static final char VM = '\u00FD';
+    public static final String MESSAGE_TEXT_START = "[";
+    public static final String MESSAGE_TEXT_END = "]";
+    public static final String MESSAGE_TEXT_SEPARATOR = ",";
 }

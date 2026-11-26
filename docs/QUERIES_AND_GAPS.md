@@ -32,21 +32,22 @@ Details: [GAPS.md](GAPS.md)
 |---|---|---|
 | TQ1 | Generate ALBE table JAR | 🟢 generated (lib/l3-tables); code compiles with 0 errors against it + R25 libs, 23-Nov |
 | TQ2 | Table read locks the record? If not: lock or rebuild job (bank decides) | 🔴 |
-| TQ3 | Activity created at FT input? | 🔴 |
-| TQ4 | Activity overrides shown on FT? | 🔴 |
-| TQ5 | FT delete / reversal reach the activity? | 🔴 |
+| TQ3 | Activity created at FT input? | 🟢 yes – DEV 25-Nov (status UNAUTH at FT input) |
+| TQ4 | Activity overrides shown on FT? | 🟢 yes – only when the `validateRecord` routine is attached as a **Post Routine** (Validate / Pre / Record Rtn not called for FT activities), DEV 26-Nov FT26093GZC6N (D43) |
+| TQ5 | FT delete / reversal reach the activity? | 🟡 reversal input → REVERSE seen (25-Nov); AUTH-REV and DELETE still to see |
 | TQ6 | AAA fields filled at input | 🔴 |
 | TQ7 | ORG.SYSTEM.DATE stable on change / reversal? | 🔴 |
 | TQ8 | REMARKS kept + max length | ✅ not needed (D42) |
 | TQ9 | `!TODAY` = T24 date | 🔴 |
 | TQ10 | COB UNAUTH.PROCESS setting | 🔴 |
 | TQ11 | Reverse and replay – new AAA ids? | 🔴 |
-| TQ12 | Override text fills both `&` | 🔴 |
+| TQ12 | Override text fills both `&` | 🟡 `ID FM p1 VM p2` shown raw (26-Nov); changed to `[ID,p1,p2]` (D43, R25 EB.HANDLE.OVERRIDES) – retest |
 | TQ13 | "Record not found" text | 🟢 R25: T24CoreException EB-INTERNAL.ERROR "…Record does not exist" – added to RECORD_NOT_FOUND_MARKERS (24-Nov) |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
 | TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
 | TQ18 | Force a save failure (e.g. lock the UTILISED.LIMIT record): the transaction must be cancelled with EB-ALBE.LIMIT.UPDATE.FAILED and nothing posted | 🔴 |
+| TQ19 | Daily + monthly breach on one FT: both overrides shown (one AAA field each, D43)? "by" amount = used + this − limit (FT26093GZC6N showed 13,000 for an expected 12,750 – check the log) | 🔴 |
 | TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 
 ## 3. Decisions
@@ -94,6 +95,7 @@ Details: [GAPS.md](GAPS.md)
 | D40 | EB.OVERRIDE ids are EB-ABLE.* as created in DEV (code follows T24); EB.ERROR ids EB-ALBE.* |
 | D41 | Credit / debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT) instead of the ACTIVITY.CLASS action; activity not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED (25-Nov); separate table (key = activity) considered 25-Nov – approval available, **not chosen** (30–40 activities = no performance impact) |
 | D42 | Counted date from the activity's ORG.SYSTEM.DATE only (else T24 TODAY); REMARKS tag + DEF routine (`defaultFieldValues`) removed – DEV 25-Nov: Record Rtn never called for FT activities, `orgSystemDate=20260403` on every hook (user approved 26-Nov) |
+| D43 | **Checks as Post Routine** (VAL, MAX.CIF before UPD) – the only stage called for FT activities, and the override still reaches the FT screen (DEV 26-Nov). Override / error text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES / ERRORS); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE) – a field keeps only one override. Post-routine-only check controller and FT/TT version routine not needed (user approved 26-Nov) |
 | D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
 
 ## 4. Gaps

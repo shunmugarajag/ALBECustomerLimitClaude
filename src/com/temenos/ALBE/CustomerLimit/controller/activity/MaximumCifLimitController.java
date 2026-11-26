@@ -33,6 +33,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 22-Nov-2026   Development      Check through CustomerLimitEngine
  * 25-Nov-2026   Development      Activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY -> error EB-ALBE.ACTIVITY.NOT.MAPPED (D41)
  * 25-Nov-2026   Development      ACTIVITY line and RESULT line (max CIF numbers, overrides / errors)
+ * 26-Nov-2026   Development      Overrides on their own AAA fields, text [ID,p1,p2] (D43)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitController extends ActivityLifecycle {
@@ -91,7 +92,7 @@ public class MaximumCifLimitController extends ActivityLifecycle {
             // Engine (transaction info + customer limit info) + view
             CustomerLimitDTO result = new CustomerLimitEngine(repository).checkMaxCif(request);
             int raised = result == null ? 0
-                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
+                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord, result);
             LogUtil.result(CLASS_NAME, "validateRecord", "CHECK max CIF " + (result == null
                     ? request.describe() + " | transaction info not valid -> no check"
                     : result.describe() + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))

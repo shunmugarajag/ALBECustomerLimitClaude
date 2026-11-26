@@ -30,7 +30,10 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  *               and lets the view (CustomerLimitOverride) raise the overrides.
  *               No business rules and no DB access here.
  *
- *   validateRecord      UNAUTH   : service.validate, then overrides on TXN.AMOUNT
+ *   validateRecord      UNAUTH   : service.validate, then overrides (one AAA field each, see view)
+ *                       DEV (26-Nov): attach EB.API ALBE.CL.DAILY.MONTHLY.VAL as a POST Routine,
+ *                       before ALBE.CL.DAILY.MONTHLY.UPD - Validate / Pre / Record Rtn are not
+ *                       called for FT-created activities; the override still reaches the FT screen.
  *   postCoreTableUpdate UNAUTH   : service.countAtInput  (utilisation counted at input)
  *   Counted date = the activity's ORG.SYSTEM.DATE (else T24 TODAY), see ActivityRequestBuilder.
  *                       DELETE   : service.reverse       (unauthorised input rejected)
@@ -49,6 +52,7 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * 25-Nov-2026   Development      Credit / debit from GEN.PARAM CUSTOMER.LIMIT.ACTIVITY; not mapped -> error (D41)
  * 25-Nov-2026   Development      ACTIVITY line per hook; RESULT lines (check numbers, overrides / errors, counted / taken back)
  * 26-Nov-2026   Development      defaultFieldValues removed (D42): date from the activity ORG.SYSTEM.DATE, no REMARKS tag
+ * 26-Nov-2026   Development      Overrides on their own AAA fields, text [ID,p1,p2] (D43)
  *-----------------------------------------------------------------------------
  */
 public class DailyMonthlyLimitController extends ActivityLifecycle {
@@ -92,7 +96,7 @@ public class DailyMonthlyLimitController extends ActivityLifecycle {
             // Engine (transaction info + customer limit info) + view
             CustomerLimitDTO result = new CustomerLimitEngine(repository).checkDailyMonthly(request);
             int raised = result == null ? 0
-                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord.getTxnAmount(), result);
+                    : CustomerLimitOverride.raiseFor(arrangementActivityRecord, result);
             logCheckResult("validateRecord", "CHECK daily/monthly ", request, result);
 
             LogUtil.detail(CLASS_NAME, "validateRecord", "END", request.logKey() + " overridesRaised=" + raised

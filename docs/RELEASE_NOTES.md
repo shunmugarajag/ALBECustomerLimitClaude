@@ -45,7 +45,7 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **true** for SIT, **false** for 
 | 5 | EB.API | ALBE.CL.LIMIT.CREATE, ALBE.CL.DAILY.MONTHLY (or .VAL/.UPD; .DEF not used since D42), ALBE.CL.MAX.CIF, ALBE.E.CUSTOMER.LIMIT.SUMMARY, ALBE.E.CUSTOMER.LIMIT.PERIOD, ALBE.E.CUSTOMER.LIMIT.TXN | new | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
-| 8 | ACTIVITY.API product condition | per product: ACCOUNTS-CREDIT-ARRANGEMENT (daily/monthly: defaultFieldValues, validateRecord, postCoreTableUpdate; max CIF: validateRecord), ACCOUNTS-DEBIT-ARRANGEMENT (daily/monthly) | **changed** | 8 |
+| 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – **all as Post Routine**: `ALBE.CL.DAILY.MONTHLY.VAL`, (credit) `ALBE.CL.MAX.CIF`, then `ALBE.CL.DAILY.MONTHLY.UPD` (D43) | **changed** | 8 |
 | 9 | STANDARD.SELECTION | NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY, .PERIOD, .TXN | new | 14.1 |
 | 10 | ENQUIRY | ALBE.CUSTOMER.LIMIT.SUMMARY, ALBE.CUSTOMER.LIMIT.PERIOD, ALBE.CUSTOMER.LIMIT.TXN | new | 14.2 |
 | 11 | Menu | Customer Limits sub-menu (maintain + reports) | new / changed | 15.1 |

@@ -171,7 +171,9 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 
-`view.CustomerLimitOverride` raises them on TXN.AMOUNT as `<id> FM <customer> VM <difference>`. Verify this parameter format on your TAFJ release before SIT.
+`view.CustomerLimitOverride` raises them as `[ID,customer,difference]` (the format R25 `EB.HANDLE.OVERRIDES` reads), **each on its own AAA field** because a field keeps only one override: daily → TXN.AMOUNT, monthly → TXN.AMOUNT.LCY, max CIF → ORIG.TXN.AMT, not defined → CURRENCY, rate missing → EFFECTIVE.DATE; errors on TXN.AMOUNT (D43).
+
+In ACTIVITY.API the checks (`ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.MAX.CIF`) are attached as **Post Routines before** `ALBE.CL.DAILY.MONTHLY.UPD` – for FT-created activities only the Post Routine is called, and the override still shows on the FT screen (DEV 26-Nov). See `docs/T24_CONFIGURATION.md` §8.
 
 ## Logging standard
 

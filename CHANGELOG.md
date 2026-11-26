@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – overrides on the FT screen: checks as Post Routine, new override text (26-Nov-2026, D43)
+- DEV: for FT-created activities T24 calls only the **Post Routine**. The checks (`ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.MAX.CIF`) are now attached as **Post Routines before** `ALBE.CL.DAILY.MONTHLY.UPD` – the override is shown on the FT screen (FT26093GZC6N). Configuration only; see T24_CONFIGURATION §8.
+- Override / error text is now `[ID,param1,param2]` – the format R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` read. The old `ID FM p1 VM p2` was shown raw and the `&` were not filled.
+- A T24 field keeps only **one** override, so each override goes on its own AAA field: daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, limit not defined CURRENCY, rate missing EFFECTIVE.DATE (DEV: daily + monthly on one field showed only the monthly one).
+
 ### Changed – counted date from the activity, default routine removed (26-Nov-2026, D42)
 - The counted date is the activity's own **ORG.SYSTEM.DATE** (T24 date; else T24 TODAY). The REMARKS tag `ALBE.LIMIT.DATE=…` and the defaulting routine (`defaultFieldValues`, EB.API `ALBE.CL.DAILY.MONTHLY.DEF`) are removed: DEV showed T24 never calls Record / Validate routines for FT-created activities, and ORG.SYSTEM.DATE is filled on every step. Gaps G4 / G5 closed. Product: remove `ALBE.CL.DAILY.MONTHLY.DEF` from Record Rtn in ACTIVITY.API.
 

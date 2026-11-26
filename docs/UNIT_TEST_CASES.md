@@ -32,8 +32,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
 | Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
 | Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
+| Override text and fields (D43) | UT-W01 … W08 | 8 | 8 | – |
 | Controllers in T24 | UT-T01 … T09 | 9 | – | 9 |
-| **Total** | | **131** | **122** | **9** |
+| **Total** | | **139** | **130** | **9** |
 
 ---
 
@@ -226,6 +227,19 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-O06 | not-mapped activity in the request builder | not counted | Pass |
 | UT-O07 | mapping record missing | null → error | Pass |
 
+## Override text and fields (D43) – 26-Nov-2026
+
+| Id | Case | Expected | Result |
+|---|---|---|---|
+| UT-W01 | build id + 2 params | `[EB-ABLE.MONTHLY.LIMIT.EXCEED,100199,12750.00]` | Pass |
+| UT-W02 | build without params | id only | Pass |
+| UT-W03 | params with `,` `[` `]` (e.g. `1,000.00`) | removed: `[EB-X,1000.00,a]` | Pass |
+| UT-W04 | null param | empty part `[EB-X,100,]` | Pass |
+| UT-W05 | daily + monthly breach | 2 overrides: daily on TXN.AMOUNT, monthly on TXN.AMOUNT.LCY | Pass |
+| UT-W06 | max CIF + limit missing + rate missing | max CIF on ORIG.TXN.AMT, not defined on CURRENCY, rate on EFFECTIVE.DATE, TXN.AMOUNT untouched | Pass |
+| UT-W07 | nothing breached | 0 overrides | Pass |
+| UT-W08 | blank limit CCY | error `[EB-ALBE.CIF.LIMIT.CCY.MISSING,<cust>]` on TXN.AMOUNT | Pass |
+
 ## Block on save failure (D37) – 23-Nov-2026
 
 | Id | Given | Expected | Result |
@@ -263,7 +277,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | Id | What | Where tested |
 |---|---|---|
 | UT-T01 | `defaultFieldValues` writes the tag to the AAA REMARKS and it is kept for DELETE / AUTH-REV | T24_CONFIGURATION §13 #3, #9 |
-| UT-T02 | `validateRecord` raises the overrides on TXN.AMOUNT (`id FM p1 VM p2` filled into `&`) | §13 #4 |
+| UT-T02 | `validateRecord` as Post Routine raises the overrides on the FT screen, both `&` filled, daily **and** monthly shown (D43, TQ12 / TQ19) | §13 #4 |
 | UT-T03 | `postCoreTableUpdate` fires for UNAUTH, DELETE and AUTH-REV | §13 #5, #6, #9 |
 | UT-T04 | Auth routine on CUSTOMER,ALBE.CORP creates the record; "record not found" text recognised | §13 #1, #2 |
 | UT-T05 | Enquiry `setIds` lines shown in the right columns; EB.ERROR messages | §14.4 |
