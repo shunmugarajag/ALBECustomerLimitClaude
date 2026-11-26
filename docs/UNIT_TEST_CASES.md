@@ -77,6 +77,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 
 ## DEV only
 
+DEV run of 26/27-Nov-2026 (29 cases, 16 pass, 0 fail, 13 pending) with data and evidence: [DEV_TEST_RESULTS.xlsx](DEV_TEST_RESULTS.xlsx).
+
+
 | Id | What | Where tested |
 |---|---|---|
 | UT-DEV1 | Post Routine overrides shown on the FT screen, `&` = "<customer> by <amount>" | T24_CONFIGURATION §13 #4 |

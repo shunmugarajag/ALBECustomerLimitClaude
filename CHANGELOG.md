@@ -4,6 +4,12 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Added – DEV test results workbook (27-Nov-2026)
+- `docs/DEV_TEST_RESULTS.xlsx`: first DEV run of the new JAR (OFS source GCS, T24 date 03-APR-2026). **16 passed, 0 failed, 13 pending.**
+- Passed: limit creation for 5 new customers; credit / debit counting; daily and monthly breach (credit and debit) with the right "by" amounts; max CIF OK and breach; two overrides on one FT; rollback when T24 rejects the FT; delete take-back; authorise (no double count); amendment (T24 sends DELETE + INPUT); override accepted.
+- Pending: AUTH-REV take-back (reversal blocked by 100128 "Post No Credits"), override declined, own transfer, debit breach on a new customer, limit not defined, blank currency, activity not mapped, foreign currency, amendment of an existing customer, COB.
+- Sheets: Summary (counts by formula), Test Cases, Test Data (customers / accounts / limits), FTs, Messages.
+
 ### Changed – override ids EB-ALBE.*, T24 set-up aligned with DEV (27-Nov-2026, D51)
 - All 7 override ids in `AlbeClConstants` are now **`EB-ALBE.*`** (were the misspelt `EB-ABLE.*`). The matching OVERRIDE and EB.ERROR records were created in DEV by OFS with one `&` each, and the `EB-ABLE.*` records reversed. **Deploy this JAR** – the JAR in DEV still raises the reversed `EB-ABLE.*` ids.
 - Docs: application name **OVERRIDE** (not EB.OVERRIDE); version **CUSTOMER,ALBE.CORP.INPUT** (CUSTOMER,ALBE.CORP does not exist); DEV state of EB.API and ACTIVITY.API recorded in T24_CONFIGURATION §4, §6–8.
