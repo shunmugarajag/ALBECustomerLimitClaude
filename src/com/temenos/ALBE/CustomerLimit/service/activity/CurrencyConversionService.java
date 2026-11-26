@@ -25,7 +25,8 @@ import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
  * 20-Nov-2026   Development      Initial Version
  * 21-Nov-2026   Development      LCY amount from the activity when the limit CCY is the LCY (E1)
  * 26-Nov-2026   Development      D44: transaction amount only from the activity (LCY amount, else
- *                                TXN.EXCH.RATE, else blocked); limit not in LCY -> blocked
+ *                                TXN.EXCH.RATE, else blocked); limit not in LCY -> blocked;
+ *                                LCY not readable -> override, not blocked (technical failure)
  *-----------------------------------------------------------------------------
  */
 public class CurrencyConversionService {
@@ -98,6 +99,14 @@ public class CurrencyConversionService {
         }
 
         String lcy = repository.getLocalCurrency();
+        if (ValidationUtil.isBlank(lcy)) {
+            // Technical failure (local currency not readable): logged, not blocked - check skipped.
+            LogUtil.error(CLASS_NAME, METHOD_CONVERT_REQUEST, "NO LCY", request.logKey()
+                    + " local currency not readable - check skipped, not blocked");
+            request.addNote("local currency not readable -> " + txnCcy + " amount not converted, not checked");
+            request.setRateMissing(txnCcy);
+            return false;
+        }
         if (!ValidationUtil.sameCurrency(limitCcy, lcy)) {
             return block(request, "limit currency " + limitCcy + " is not the local currency " + lcy);
         }

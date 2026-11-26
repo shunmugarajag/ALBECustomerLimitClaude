@@ -102,7 +102,7 @@ public class CustomerLimitEngine {
         dailyMonthlyService.validate(result, limits, records);
 
         // 2. maximum CIF (credits only) - same limits, no second read
-        if (transaction.isCredit() && limits != null && !result.isLimitCcyMissing() && !result.isRateBlocked()
+        if (transaction.isCredit() && limits != null && !result.isBlocked()
                 && CustomerLimitRequestValidator.isValidForMaxCif(transaction)) {
             CustomerLimitDTO maxCif = transaction.copyTransaction();
             new MaximumCifLimitService(repository).validate(maxCif, limits);
@@ -110,7 +110,7 @@ public class CustomerLimitEngine {
         }
 
         // 3. count - not when the transaction is blocked (it will not be committed)
-        if (result.isLimitCcyMissing() || result.isRateBlocked()) {
+        if (result.isBlocked()) {
             result.addNote("not counted: the transaction is blocked");
             LogUtil.detail(CLASS_NAME, "processInput", "SKIP", result.logKey() + " blocked, not counted");
             return result;
@@ -137,6 +137,9 @@ public class CustomerLimitEngine {
         }
         for (String field : maxCif.getUndefinedLimits()) {
             result.addUndefinedLimit(field);
+        }
+        if (maxCif.isCustomerAccountMissing()) {
+            result.setCustomerAccountMissing(true);
         }
         if (maxCif.isRateMissing() && !result.isRateMissing()) {
             result.setRateMissing(maxCif.getRateMissingCurrency());

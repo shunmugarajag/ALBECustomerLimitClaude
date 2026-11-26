@@ -32,9 +32,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
 | Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
 | Override text and fields (D43) | UT-W01 … W08 | 8 | 8 | – |
-| Single routine (D44) | UT-S01 … S15 | 15 | 15 | – |
+| Single routine (D44 / D45) | UT-S01 … S19 | 19 | 19 | – |
 | Controllers in T24 | UT-T01 … T10 (no T05/T06) | 8 | – | 8 |
-| **Total** | | **137** | **129** | **8** |
+| **Total** | | **141** | **133** | **8** |
 
 ---
 
@@ -260,6 +260,10 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-S13 | no CIF.LIMITS record | not-defined override, counted as is | Pass |
 | UT-S14 | take back (DELETE / AUTH-REV) | 5500 → 1000, record deleted, TXN.DETAILS read once | Pass |
 | UT-S15 | take back again | nothing | Pass |
+| UT-S16 | AUTH-REV called twice (review fix) | first takes back 700, second nothing; the other FT keeps 1000 | Pass |
+| UT-S17 | credit, CUSTOMER.ACCOUNT empty | ERROR `[EB-ALBE.CUSTOMER.ACCOUNT.MISSING,500]`, not counted | Pass |
+| UT-S18 | debit, CUSTOMER.ACCOUNT empty | not affected, counted | Pass |
+| UT-S19 | LCY not readable, USD transaction | rate-missing override, not blocked | Pass |
 
 ## Block on save failure (D37) – 23-Nov-2026
 

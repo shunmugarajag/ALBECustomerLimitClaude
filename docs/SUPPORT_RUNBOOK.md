@@ -64,11 +64,16 @@ Possible causes: a write failed (G3), parallel inputs (G2) – see [GAPS.md](GAP
 
 ### 3.6 Reversal subtracted from the wrong day
 
-The day comes from the activity's ORG.SYSTEM.DATE (D42). Previously: REMARKS tag; if the tag was removed or edited, the activity's ORG.SYSTEM.DATE (T24 date of the activity) was used, else T24 TODAY. Check the AAA REMARKS; correct the two days as in 3.5. Ask users not to edit the tag.
+The day comes from the activity's ORG.SYSTEM.DATE (D42), else T24 TODAY. The reversal looks up the TXN.DETAILS record by customer + FT + arrangement, so it takes back from the day it was counted on. If nothing was found (`NOTHING TAKEN BACK` in the RESULT line) nothing is changed – check whether the transaction was ever counted; correct as in 3.5.
 
 ### 3.7 "Exchange rate not available from X to Y"
 
-The rate between the two currencies is missing in the rate source (or the rate source is not configured yet – E1). The limit check was skipped for that transaction; the amount is counted unconverted. Report the pair.
+- **Error** (EB-ALBE.EXCH.RATE.MISSING, transaction blocked, D44): the transaction is in another currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE, or the customer's limit is not in EGP. Check the customer's CIF.LIMITS CURRENCY and the FT; nothing was counted.
+- **Override** (EB-ABLE.EXCH.RATE.MISSING): max CIF only – another account of the customer is in a currency with no rate (E1, parked); the max CIF check was skipped. Report the pair.
+
+### 3.8 "No accounts found in CUSTOMER.ACCOUNT for Customer X"
+
+Error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked): the max CIF check (credit, max CIF limit filled) found no CUSTOMER.ACCOUNT record for the customer. Data problem – check CUSTOMER.ACCOUNT `<customer>` (e.g. after a migration); nothing was counted.
 
 ## 4. Error lines and what to do
 
@@ -78,7 +83,7 @@ The rate between the two currencies is missing in the rate source (or the rate s
 | `writeTxnDetails \| FAILED` / `record \| FAILED` | the transaction was counted but not recorded → it cannot be reversed automatically | 3.5; remember to subtract it manually if the transaction is later deleted / reversed |
 | `cifLimitExists \| FAILED` | creation skipped because the read failed | 3.3; if it repeats, the "not found" text is unknown → dev adds it to `RECORD_NOT_FOUND_MARKERS` |
 | `getFinancialMnemonic \| FAILED` | company not read → maximum CIF could not total the accounts | dev |
-| `validateRecord \| ERROR` / `postCoreTableUpdate \| ERROR` | unexpected exception in a routine (type, message and code line in the line) | dev; the transaction went through without the check / update |
+| `validateRecord \| ERROR` / `postCoreTableUpdate \| ERROR` (with the single routine also `ACTION \| … technical error`) | unexpected exception in a routine (type, message and code line in the line) | dev; the transaction went through without the check / update |
 | `readExchangeRate \| NOT CONFIGURED` | rate source not configured | E1 |
 
 ## 5. FAQ for business users
@@ -87,7 +92,7 @@ The rate between the two currencies is missing in the rate source (or the rate s
 |---|---|
 | Can I continue after a limit override? | Yes – all limit messages are acceptable overrides. The transaction is counted. |
 | Does an unauthorised transaction use the limit? | Yes, from input. If it is deleted, it is given back. |
-| A transaction from last week was reversed today – which day is given back? | The original day and month (from the activity REMARKS). |
+| A transaction from last week was reversed today – which day is given back? | The original day and month (from its EB.ALBE.TXN.DETAILS.LIMIT record). |
 | What is `ALBE.LIMIT.DATE=…` in the remarks of older activities? | The counted date written by an earlier version (until 26-Nov-2026). Not used any more – it can stay. |
 | I changed the generic limits – why did a customer not change? | Generic limits are copied only when a new customer is authorised. Amend the customer's own record. |
 | Which currency are limits in? | The CCY of the customer's limit record (normally local currency); other currencies are converted. |

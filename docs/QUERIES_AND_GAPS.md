@@ -49,6 +49,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ18 | Force a save failure (e.g. lock the UTILISED.LIMIT record): the transaction must be cancelled with EB-ALBE.LIMIT.UPDATE.FAILED and nothing posted | 🔴 |
 | TQ20 | Single routine (D44): is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? (log `CustomerLimitActivityController.validateRecord \| ACTION \| DELETE / REVERSAL`) – if not, keep VAL + UPD | 🔴 |
 | TQ21 | TXN.EXCH.RATE meaning on a USD FT: 1 USD = rate EGP (multiply)? | 🔴 |
+| TQ22 | Single routine counts inside validateRecord: user declines the override / cancels, or T24 stops the FT later (e.g. insufficient funds) – are the UTILISED.LIMIT / TXN.DETAILS writes rolled back? (check UTILISED.LIMIT unchanged) – if not, keep VAL + UPD | 🔴 |
 | TQ19 | Daily + monthly breach on one FT: both overrides shown (one AAA field each, D43)? "by" amount = used + this − limit (FT26093GZC6N showed 13,000 for an expected 12,750 – check the log) | 🔴 |
 | TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 
@@ -99,6 +100,7 @@ Details: [GAPS.md](GAPS.md)
 | D42 | Counted date from the activity's ORG.SYSTEM.DATE only (else T24 TODAY); REMARKS tag + DEF routine (`defaultFieldValues`) removed – DEV 25-Nov: Record Rtn never called for FT activities, `orgSystemDate=20260403` on every hook (user approved 26-Nov) |
 | D43 | **Checks as Post Routine** (VAL, MAX.CIF before UPD) – the only stage called for FT activities, and the override still reaches the FT screen (DEV 26-Nov). Override / error text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES / ERRORS); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE) – a field keeps only one override. Post-routine-only check controller and FT/TT version routine not needed (user approved 26-Nov) |
 | D44 | **Single routine** `CustomerLimitActivityController` (EB.API `ALBE.CL.ACTIVITY.LIMIT`, one Post Routine, `validateRecord`): INPUT = check + max CIF + overrides + count, DELETE / AUTH-REV = take back, AUTH / REVERSE = nothing; ACTION log line; each record read once per call, **no cache**; save failure → setError. **Conversion of the transaction amount only from the activity:** LCY amount, else TXN.EXCH.RATE, else **EB.ERROR EB-ALBE.EXCH.RATE.MISSING (blocks)**; limit not in LCY → blocked; max CIF other-currency accounts parked (override as before). Old VAL / MAX.CIF / UPD kept until after SIT (user approved 26-Nov) |
+| D45 | Review fixes (26-Nov): single routine never uses the "take back from today" fallback (a second AUTH-REV call took back another FT's amount); LCY not readable = technical failure (override, not blocked). **Max CIF: CUSTOMER.ACCOUNT empty → EB.ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING (blocks), ACCOUNT SELECT fallback removed** (user) |
 | D28 | Reports parked for the first DEV set-up (23-Nov) – **removed from the code 26-Nov** (user) |
 
 ## 4. Gaps

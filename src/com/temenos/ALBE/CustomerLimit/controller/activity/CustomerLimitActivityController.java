@@ -49,6 +49,8 @@ import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 26-Nov-2026   Development      Initial Version (D44)
+ * 26-Nov-2026   Development      Review: no take-back fallback (second AUTH-REV call), NOTHING TAKEN BACK /
+ *                                SAVE FAILED in the RESULT line, ACTION line on a technical error
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitActivityController extends ActivityLifecycle {
@@ -95,19 +97,25 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
             CustomerLimitEngine engine = new CustomerLimitEngine(repository);
             if (Constants.STATUS_UNAUTH.equals(status)) {
                 logAction(action, request.describe(), status, "check + count");
-                input(engine, request, arrangementActivityRecord, arrangementRecord);
+                input(engine, repository, request, arrangementActivityRecord, arrangementRecord);
             } else {
                 logAction(action, request.describe(), status, "take back");
-                engine.reverse(request, Constants.STATUS_AUTH_REV.equals(status));
-                LogUtil.result(CLASS_NAME, HOOK, (Constants.STATUS_DELETE.equals(status) ? "TAKEN BACK (input rejected) "
+                // No "take back from today" fallback: validateRecord can be called more than once, and a
+                // second call must not take back another transaction's amount (review 26-Nov).
+                int takenBack = engine.reverse(request, false);
+                LogUtil.result(CLASS_NAME, HOOK, (takenBack == 0 ? "NOTHING TAKEN BACK (nothing counted for it) "
+                        : Constants.STATUS_DELETE.equals(status) ? "TAKEN BACK (input rejected) "
                         : "TAKEN BACK (reversal) ") + request.describe()
-                        + (request.getNotes().isEmpty() ? "" : " | " + String.join(" | ", request.getNotes())));
+                        + (request.getNotes().isEmpty() ? "" : " | " + String.join(" | ", request.getNotes()))
+                        + saveFailedText(repository));
             }
             LogUtil.detail(CLASS_NAME, HOOK, "END", "status=" + status + " " + request.logKey() + " elapsedMs="
                     + (System.currentTimeMillis() - startTime));
 
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, HOOK, "ERROR", "status=" + status, e);
+            LogUtil.info(CLASS_NAME, HOOK, Constants.LOG_EVENT_ACTION, actionOf(status) + " (status " + status
+                    + ") -> technical error, not checked / not counted / nothing taken back (see the ERROR line)");
         }
 
         // D37: a failed utilisation / TXN.DETAILS save blocks the transaction.
@@ -120,7 +128,7 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
     }
 
     /** INPUT: check + overrides + count in one engine call; RESULT line with every number. */
-    private void input(CustomerLimitEngine engine, CustomerLimitDTO request,
+    private void input(CustomerLimitEngine engine, CustomerLimitRepository engineRepository, CustomerLimitDTO request,
             AaArrangementActivityRecord arrangementActivityRecord, AaArrangementRecord arrangementRecord) {
         CustomerLimitDTO result = engine.processInput(request, getAccountNo(arrangementRecord),
                 arrangementActivityRecord.getEffectiveDate().getValue());
@@ -132,7 +140,13 @@ public class CustomerLimitActivityController extends ActivityLifecycle {
         CustomerLimitOverride.raiseFor(arrangementActivityRecord, result);
         LogUtil.result(CLASS_NAME, HOOK, "INPUT " + result.describe()
                 + (result.getNotes().isEmpty() ? "" : " | " + String.join(" | ", result.getNotes()))
-                + " | raised: " + CustomerLimitOverride.ids(result));
+                + " | raised: " + CustomerLimitOverride.ids(result) + saveFailedText(engineRepository));
+    }
+
+    /** " | SAVE FAILED ..." when a utilisation / TXN.DETAILS save failed, else "". */
+    private String saveFailedText(CustomerLimitRepository repository) {
+        return repository != null && repository.isSaveFailed() ? " | SAVE FAILED -> ERROR "
+                + Constants.ERR_LIMIT_UPDATE_FAILED + " (transaction blocked)" : "";
     }
 
     /** Activity not in GEN.PARAM CUSTOMER.LIMIT.ACTIVITY: error at input (D41), logged otherwise. */

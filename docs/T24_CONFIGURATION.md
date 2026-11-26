@@ -170,6 +170,7 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
+| **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed | max CIF check (credit, MAXIMUM.OVERALL.CIF.AMOUNT filled) and CUSTOMER.ACCOUNT `<customer>` is empty / missing – & = customer id |
 | **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | Exchange rate not available from & to &, transaction not allowed | the transaction currency differs from the limit currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE – or the customer's limit is not in the local currency. & = transaction currency, limit currency |
 
 The routine sends `[ID,param1,param2]` (D43, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with the other parts. The old `ID FM p1 VM p2` text was shown raw on the FT screen (DEV 26-Nov).
@@ -277,7 +278,9 @@ Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**.
 | REVERSE | `REVERSAL INPUT` | nothing, no read (taken back at AUTH-REV) |
 
 - **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `CustomerLimitActivityController.validateRecord | ACTION | DELETE …` / `REVERSAL …`. If those lines never come, go back to VAL + MAX.CIF + UPD (above).
-- Reads per call (no cache, each record once): debit about 4 (mapping, CIF.LIMITS, daily + monthly UTILISED, TXN.DETAILS); credit the same + the customer's accounts when MAX.CIF is filled.
+- Reads per call (no cache, each record once) **on a first input**: debit about 4 (mapping, CIF.LIMITS, daily + monthly UTILISED, TXN.DETAILS); credit the same + CUSTOMER.ACCOUNT and the customer's accounts when MAX.CIF is filled. A re-input / second call of the same FT reads again (the earlier count is taken back first).
+- Take-back (DELETE / AUTH-REV) only takes back what TXN.DETAILS shows was counted – a second call finds nothing and changes nothing (`NOTHING TAKEN BACK`).
+- **TQ22 (DEV):** override declined / FT cancelled after our Post Routine – UTILISED.LIMIT must be unchanged.
 - Save failure → `setError EB-ALBE.LIMIT.UPDATE.FAILED` (blocks; DEV test TQ18).
 - **Rollback:** put VAL / MAX.CIF / UPD back in the Post Routines, proof and publish – no redeploy.
 

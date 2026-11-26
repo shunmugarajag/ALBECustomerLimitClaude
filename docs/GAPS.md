@@ -7,12 +7,12 @@ All queries and gaps in one register (raised / solved): [QUERIES_AND_GAPS.md](QU
 |---|---|---|---|---|
 | G1 | Counted date follows the JVM clock, not the T24 date | High – seen in DEV | code only | **fixed 21-Nov-2026** (T24 date) |
 | G2 | Parallel inputs for the same customer can lose an update | High | lock API (confirm) | open – team decision |
-| G3 | Partial update when one of the three writes fails | High | behaviour decision | open – team decision |
+| G3 | Partial update when one of the three writes fails | High | behaviour decision | **fixed (23-Nov, D37)** – save failure blocks the transaction (EB-ALBE.LIMIT.UPDATE.FAILED) |
 | G4 | REMARKS date tag can be removed on re-input | – | – | **closed** (D42, 26-Nov: no REMARKS tag) |
 | G5 | REMARKS can exceed its maximum length | – | – | **closed** (D42, 26-Nov: no REMARKS tag) |
 | G6 | Blank CCY on EB.ALBE.CIF.LIMITS skips conversion | Medium | code only | **fixed 22-Nov-2026** – error, transaction blocked |
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
-| G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | open |
+| G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | **closed (26-Nov)** – SELECT removed; CUSTOMER.ACCOUNT empty → error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (user) |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
 | E1 | Exchange rate lookup not connected | Low (was High) | bank answers (section E1) | **narrowed (D44, 26-Nov)** – transaction amount from the activity (LCY amount, else TXN.EXCH.RATE, else blocked; non-LCY limit blocked); only max CIF accounts in other currencies still need a rate (parked) |
 

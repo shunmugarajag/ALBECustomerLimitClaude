@@ -18,7 +18,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
 
 /*-----------------------------------------------------------------------------
  * Description : Business rules for the daily and monthly limits (HLSD 7.2.1 - 2).
- *               Called by DailyMonthlyLimitController; all DB access goes through
+ *               Called by CustomerLimitEngine (single routine and the old controllers); all DB access goes through
  *               CustomerLimitRepository.
  *
  *   All amounts are compared and counted in the limit currency (EB.ALBE.CIF.LIMITS CCY):
@@ -262,7 +262,7 @@ public class DailyMonthlyLimitService {
      * from its original day and month.
      * @param fallbackToToday true for a reversal: if nothing was recorded (counted before go-live),
      *                        reverse the amount on today's records instead
-     * The original day / month is the counted date kept in the activity REMARKS; the record is
+     * The original day / month is the counted date in the EB.ALBE.TXN.DETAILS.LIMIT id; the record is
      * EB.ALBE.TXN.DETAILS.LIMIT <customer>-<date>-<transaction key>.
      * @return number of amounts reversed
      */

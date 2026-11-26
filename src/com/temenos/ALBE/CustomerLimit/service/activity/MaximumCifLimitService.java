@@ -29,6 +29,7 @@ import com.temenos.t24.api.records.account.AccountRecord;
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  * 25-Nov-2026   Development      plain-language notes for the RESULT log line
  * 26-Nov-2026   Development      validate with the limits already read (single routine); D44 blocked conversion
+ * 26-Nov-2026   Development      CUSTOMER.ACCOUNT empty -> error, transaction blocked (no SELECT fallback)
  *-----------------------------------------------------------------------------
  */
 public class MaximumCifLimitService {
@@ -90,6 +91,10 @@ public class MaximumCifLimitService {
         // Step 2: total working balance of all the customer's accounts.
         String finMnemonic = repository.getFinancialMnemonic();
         BigDecimal totalBalance = getTotalCifBalance(request, finMnemonic, limits.ccy);
+        if (totalBalance == null && request.isCustomerAccountMissing()) {
+            LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId + " no CUSTOMER.ACCOUNT, blocked");
+            return;
+        }
         if (totalBalance == null) {
             LogUtil.detail(CLASS_NAME, "validate", "END", "customer=" + customerId
                     + " no exchange rate for account currency "
@@ -132,6 +137,13 @@ public class MaximumCifLimitService {
         String customerId = request.getCustomerId();
         BigDecimal total = BigDecimal.ZERO;
         List<String> accountIds = repository.getCustomerAccountIds(finMnemonic, customerId);
+        if (accountIds.isEmpty()) {
+            LogUtil.error(CLASS_NAME, "getTotalCifBalance", "BLOCKED", "customer=" + customerId + " no accounts in "
+                    + Constants.CUSTOMER_ACCOUNT_FILE + ", raising " + Constants.ERR_CUSTOMER_ACCOUNT_MISSING);
+            request.addNote("BLOCKED: no accounts in " + Constants.CUSTOMER_ACCOUNT_FILE + " for customer " + customerId);
+            request.setCustomerAccountMissing(true);
+            return null;
+        }
         int index = 0;
         for (String accountId : accountIds) {
             index++;

@@ -13,6 +13,7 @@ import java.util.List;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 26-Nov-2026   Development      Report (enquiry) constants removed (reports dropped)
+ * 26-Nov-2026   Development      ERR_CUSTOMER_ACCOUNT_MISSING (max CIF, no CUSTOMER.ACCOUNT)
  *-----------------------------------------------------------------------------
  */
 public final class Constants {
@@ -218,6 +219,11 @@ public final class Constants {
      * LCY amount nor TXN.EXCH.RATE, or the limit is not in the local currency. EB.ERROR record.
      */
     public static final String ERR_EXCH_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
+    /**
+     * ERROR (blocks the transaction): No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction
+     * not allowed - raised by the max CIF check (credit, MAXIMUM.OVERALL.CIF.AMOUNT filled). EB.ERROR record.
+     */
+    public static final String ERR_CUSTOMER_ACCOUNT_MISSING = "EB-ALBE.CUSTOMER.ACCOUNT.MISSING";
 
     // -------------------------------------------------------------------------
     // Activity status -> action shown in the ACTION log line (single routine)

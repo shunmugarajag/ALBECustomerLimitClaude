@@ -4,6 +4,13 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Fixed – review findings; max CIF without CUSTOMER.ACCOUNT blocks (26-Nov-2026, D45)
+- Single routine: a reversal is only taken back when TXN.DETAILS shows it was counted. Before, a second AUTH-REV call could take the amount back again from another transaction's usage.
+- Clearer log: `NOTHING TAKEN BACK` when there was nothing to take back, `SAVE FAILED` on the INPUT line, an ACTION line when the routine hits a technical error.
+- Local currency not readable is a technical failure: override and check skipped, the transaction is not blocked.
+- Max CIF: if CUSTOMER.ACCOUNT has no accounts for the customer the transaction is **blocked** with the new error **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (EB.ERROR to create); the slow SELECT on ACCOUNT is removed.
+- Docs corrected (release notes logger / smoke test / rollback warning, support runbook, gaps G3 / G8) and the go-live checklist added (`docs/GO_LIVE_CHECKLIST.md`).
+
 ### Removed – reports (26-Nov-2026)
 - The three NOFILE reports (limit summary, period report, transaction report) are removed from the code with everything only they used: enquiry controllers, report service, report rows, report view and selection validator, report-only reads/selects in the repository, report constants and `docs/REPORTS.md`. T24 set-up §14 (STANDARD.SELECTION / ENQUIRY / report EB.API / report EB.ERRORs) is no longer needed; the menu keeps only the maintenance versions. Git history keeps the old code.
 

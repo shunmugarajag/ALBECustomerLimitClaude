@@ -47,6 +47,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * 26-Nov-2026   Development      D43: text [ID,p1,p2]; one override per AAA field (DEV: only the
  *                                last override per field was kept, & not filled)
  * 26-Nov-2026   Development      D44: amount not convertible -> ERROR EB-ALBE.EXCH.RATE.MISSING
+ * 26-Nov-2026   Development      No CUSTOMER.ACCOUNT (max CIF) -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -71,6 +72,11 @@ public class CustomerLimitOverride {
             // D44: the amount cannot be converted to the limit currency - error, transaction blocked.
             raiseError(activity.getTxnAmount(), Constants.ERR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
                     request.getLimitCurrency());
+            return 1;
+        }
+        if (request.isCustomerAccountMissing()) {
+            // Max CIF: no accounts in CUSTOMER.ACCOUNT - error, transaction blocked.
+            raiseError(activity.getTxnAmount(), Constants.ERR_CUSTOMER_ACCOUNT_MISSING, request.getCustomerId());
             return 1;
         }
         int raised = 0;
@@ -129,6 +135,10 @@ public class CustomerLimitOverride {
                     request.getLimitCurrency()));
             return texts;
         }
+        if (request.isCustomerAccountMissing()) {
+            texts.add(build(Constants.ERR_CUSTOMER_ACCOUNT_MISSING, request.getCustomerId()));
+            return texts;
+        }
         if (request.isLimitMissing() || request.isLimitNotDefined()) {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " limit not defined"
@@ -159,6 +169,9 @@ public class CustomerLimitOverride {
         }
         if (request.isRateBlocked()) {
             return "ERROR " + Constants.ERR_EXCH_RATE_MISSING + " (input blocked)";
+        }
+        if (request.isCustomerAccountMissing()) {
+            return "ERROR " + Constants.ERR_CUSTOMER_ACCOUNT_MISSING + " (input blocked)";
         }
         List<String> ids = new ArrayList<>();
         if (request.isLimitMissing() || request.isLimitNotDefined()) {

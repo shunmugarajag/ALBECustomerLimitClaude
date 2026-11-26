@@ -29,7 +29,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
  *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
- *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
+ *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read
  *                 Session                    T24 date (!TODAY), local currency
  *
  *               Read methods return null (or an empty list) when nothing is found;
@@ -43,6 +43,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 22-Nov-2026   Development      One constructor for every hook (T24Context)
  * 25-Nov-2026   Development      readTxnDetails: record not found logged as INFO (normal at first input), other errors ERROR
  * 26-Nov-2026   Development      Report (enquiry) reads and selects removed (reports dropped)
+ * 26-Nov-2026   Development      CUSTOMER.ACCOUNT only - ACCOUNT SELECT fallback removed (G8)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -387,8 +388,8 @@ public class CustomerLimitRepository {
     }
 
     /**
-     * Account ids of the customer: CUSTOMER.ACCOUNT concat file first, then a SELECT on
-     * ACCOUNT if the concat file gives nothing. Empty list if none.
+     * Account ids of the customer from CUSTOMER.ACCOUNT <customerId>; empty list when the record is
+     * missing or empty (the max CIF check then blocks the transaction - no SELECT fallback).
      */
     public List<String> getCustomerAccountIds(String finMnemonic, String customerId) {
         LogUtil.detail(CLASS_NAME, "getCustomerAccountIds", "READ", Constants.CUSTOMER_ACCOUNT_FILE + ">" + customerId);
@@ -405,20 +406,7 @@ public class CustomerLimitRepository {
             LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "NOT FOUND", "no " + Constants.CUSTOMER_ACCOUNT_FILE
                     + " entry for " + customerId);
         }
-
-        String selection = "WITH CUSTOMER EQ " + customerId;
-        LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "SELECT", "fallback SELECT " + Constants.ACCOUNT_TABLE
-                + " mnemonic=" + finMnemonic
-                + " [" + selection + "]");
-        try {
-            List<String> accountIds = daObj.selectRecords(finMnemonic, Constants.ACCOUNT_TABLE, "", selection);
-            List<String> result = accountIds == null ? List.of() : accountIds;
-            LogUtil.info(CLASS_NAME, "getCustomerAccountIds", "FOUND", "by SELECT " + result.size() + " " + result);
-            return result;
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "getCustomerAccountIds", "FAILED", "SELECT for " + customerId, e);
-            return List.of();
-        }
+        return List.of();
     }
 
     /** Reads ACCOUNT <id> in the given company; null if it cannot be read. */

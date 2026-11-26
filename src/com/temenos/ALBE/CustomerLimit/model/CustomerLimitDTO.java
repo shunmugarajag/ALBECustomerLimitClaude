@@ -19,7 +19,7 @@ import com.temenos.ALBE.CustomerLimit.constants.Constants;
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      limitCcyMissing (blank CIF.LIMIT CCY = error); copyTransaction
- * 26-Nov-2026   Development      txnExchangeRate, rateBlocked (D44)
+ * 26-Nov-2026   Development      txnExchangeRate, rateBlocked (D44); customerAccountMissing, isBlocked
  * 25-Nov-2026   Development      activity, notes and describe() for the RESULT log line
  *-----------------------------------------------------------------------------
  */
@@ -66,6 +66,8 @@ public class CustomerLimitDTO {
      * and no TXN.EXCH.RATE, or a limit not in the local currency) - error, the transaction is blocked.
      */
     private boolean rateBlocked = false;
+    /** True when CUSTOMER.ACCOUNT has no accounts for the max CIF check - error, transaction blocked. */
+    private boolean customerAccountMissing = false;
     /** True when no exchange rate was found between the two currencies. */
     private boolean rateMissing = false;
     /** Currency that has no rate to the limit currency (transaction or account currency). */
@@ -171,6 +173,18 @@ public class CustomerLimitDTO {
         this.rateMissingCurrency = fromCurrency;
         valid = false;
     }
+
+    /** True when CUSTOMER.ACCOUNT gave no accounts for the max CIF check (error, blocks). */
+    public boolean isCustomerAccountMissing() { return customerAccountMissing; }
+    public void setCustomerAccountMissing(boolean customerAccountMissing) {
+        this.customerAccountMissing = customerAccountMissing;
+        if (customerAccountMissing) {
+            valid = false;
+        }
+    }
+
+    /** True when the transaction is blocked by an error (not counted): blank CCY, not convertible, no accounts. */
+    public boolean isBlocked() { return limitCcyMissing || rateBlocked || customerAccountMissing; }
 
     /** True when no exchange rate was found from a currency to the limit currency. */
     public boolean isRateMissing() { return rateMissing; }
