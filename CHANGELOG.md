@@ -9,6 +9,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 - Passed: limit creation for 5 new customers; credit / debit counting; daily and monthly breach (credit and debit) with the right "by" amounts; max CIF OK and breach; two overrides on one FT; rollback when T24 rejects the FT; delete take-back; authorise (no double count); amendment (T24 sends DELETE + INPUT); override accepted.
 - Pending: AUTH-REV take-back (reversal blocked by 100128 "Post No Credits"), override declined, own transfer, debit breach on a new customer, limit not defined, blank currency, activity not mapped, foreign currency, amendment of an existing customer, COB.
 - Multi-currency cases DEV-30..42 added (USD credit / debit, daily and monthly breach after conversion, cross-currency FT, delete / reversal / amendment use the stored EGP amount, no conversion possible, limit not in local currency, max CIF with USD credit and with a USD account) – need USD accounts on ACCT.MAN.SAV.ACCOUNT.
+- T24 component list updated (RELEASE_NOTES 2.2 and sheet "T24 Components", 31 items with DEV status): OVERRIDE application name, new EB-ALBE ids, removed EB-ABLE ids and old EB.API, repointed EB.API, CUSTOMER,ALBE.CORP.INPUT, ACCT.MANDATE.API, product proof / publish.
 - Sheets: Summary (counts by formula), Test Cases, Test Data (customers / accounts / limits), FTs, Messages.
 
 ### Changed – override ids EB-ALBE.*, T24 set-up aligned with DEV (27-Nov-2026, D51)

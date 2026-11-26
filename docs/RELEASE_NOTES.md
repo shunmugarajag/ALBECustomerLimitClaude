@@ -38,13 +38,15 @@ Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any 
 | # | Application | Record(s) | New / changed | Step |
 |---|---|---|---|---|
 | 1 | EB.TABLE.DEFINITION | ALBE.CIF.LIMIT (new), ALBE.GEN.PARAM, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT (approved, unchanged) | new / existing | 1 |
-| 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
-| 3 | OVERRIDE | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED, EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ALBE.MAX.CIF.BAL.EXCEED, EB-ALBE.CIF.LIMIT.NOT.DEFINED, EB-ALBE.EXCH.RATE.MISSING | new | 4 |
-| 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks) | new | 14.3 |
-| 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT**, **ALBE.CL.MAX.CIF** – JAVA.PACKAGE `com.temenos.albe`, classes AlbeClActivityLimit / AlbeClMaxCif / AlbeClLimitCreate (D50); **remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF | new / removed | 6 |
-| 6 | VERSION | CUSTOMER,ALBE.CORP.INPUT – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
+| 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` (CURRENCY EGP, daily 10,000 / 10,000, monthly 100,000 / 100,000, max CIF 200,000 in DEV) and `CUSTOMER.LIMIT.ACTIVITY` (ACCOUNTS-CREDIT / -TRANSFERIN-ARRANGEMENT = CREDIT, ACCOUNTS-DEBIT / -TRANSFEROUT-ARRANGEMENT = DEBIT) | new | 3, 3a |
+| 3 | **OVERRIDE** (application name; not EB.OVERRIDE) | EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED, EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ALBE.MAX.CIF.BAL.EXCEED, EB-ALBE.CIF.LIMIT.NOT.DEFINED, EB-ALBE.EXCH.RATE.MISSING – TYPE Warning, one `&` (D51) | new | 4 |
+| 3a | OVERRIDE / EB.ERROR – **remove** | EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING, EB-ABLE.LIMIT.UPDATE.FAILED (misspelt; reversed in DEV 27-Nov); EB-ALBE.ENQ.INVALID.DATE (unused, optional) | removed | 4 |
+| 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING, EB-ALBE.ACTIVITY.NOT.MAPPED, EB-ALBE.EXCH.RATE.MISSING, EB-ALBE.CUSTOMER.ACCOUNT.MISSING, EB-ALBE.LIMIT.UPDATE.FAILED – all block the transaction, one `&` | new | 14.3 |
+| 5 | EB.API | ALBE.CL.ACTIVITY.LIMIT (`validateRecord`), ALBE.CL.MAX.CIF (`validateRecord`), ALBE.CL.LIMIT.CREATE (`postUpdateRequest`) – SOURCE.TYPE METHOD, JAVA.PACKAGE `com.temenos.albe`, JAVA.CLASS AlbeClActivityLimit / AlbeClMaxCif / AlbeClLimitCreate. T24 checks the class at input: **deploy the JAR first**. **Remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF | new / removed | 6 |
+| 6 | VERSION | **CUSTOMER,ALBE.CORP.INPUT** – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE (CUSTOMER,ALBE.CORP does not exist) | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
-| 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – Post Routine 1 `ALBE.CL.ACTIVITY.LIMIT`; credit activities also Post Routine 2 `ALBE.CL.MAX.CIF`; other routine fields blank (D50) | **changed** | 8 |
+| 8 | AA.PRD.DES.ACTIVITY.API | `ACCT.MANDATE.API-20260401`: TRANSFERIN Post Routine 1 ALBE.CL.ACTIVITY.LIMIT + 2 ALBE.CL.MAX.CIF; TRANSFEROUT Post Routine 1 ALBE.CL.ACTIVITY.LIMIT. Same pattern for every other product condition that needs the check. `ALBE.STMT.FEE.API-20260403` still holds the removed DAILY.MONTHLY routines (left as is, user 27-Nov) | **changed** | 8 |
+| 9 | AA.PRODUCT.DESIGNER | products using the condition (DEV: `ACCT.MAN.SAV.ACCOUNT`) – **proof and publish** after the condition change, so AA.PRD.CAT.ACTIVITY.API is updated | republished | 8 |
 | 11 | Menu | Customer Limits sub-menu (maintain) | new / changed | 15.1 |
 | 12 | Security | access of the roles in 15.2 | changed | 15.2 |
 
