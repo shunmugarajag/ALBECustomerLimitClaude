@@ -77,7 +77,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 
 ## DEV only
 
-DEV run of 26/27-Nov-2026 (29 cases, 16 pass, 0 fail, 13 pending) with data and evidence: [DEV_TEST_RESULTS.xlsx](DEV_TEST_RESULTS.xlsx).
+DEV run of 26/27-Nov-2026 (42 cases incl. 13 multi-currency, 16 pass, 0 fail, 26 pending) with data and evidence: [DEV_TEST_RESULTS.xlsx](DEV_TEST_RESULTS.xlsx).
 
 
 | Id | What | Where tested |
