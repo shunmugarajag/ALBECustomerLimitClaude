@@ -121,7 +121,7 @@ Core API JARs also needed (from the TAFJ installation): `com.temenos.api` (TFiel
 
 ## 3. Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT`
 
-Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to each new customer. The id is set in `Constants.GEN_PARAM_ID`.
+Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to each new customer. The id is set in `AlbeClConstants.GEN_PARAM_LIMIT_ID`.
 
 | KEY.NAME | KEY.VALUE (DEV, 23-Nov-2026) | Copied to CIF.LIMIT field |
 |---|---|---|
@@ -132,12 +132,12 @@ Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to
 | MONTHLY.DEBIT.LIMIT | 10000 | MONTHLY.DEBIT.LIMIT |
 | MAXIMUM.OVERALL.CIF.BALANCE | 10000 | MAX.CIF.BALANCE |
 
-The KEY.NAME values must be spelled exactly as above (`Constants.PARAM_KEY_*`). A misspelt CURRENCY gives new customers a blank CCY, and every transaction is then blocked (EB-ALBE.CIF.LIMIT.CCY.MISSING). Values are the DEV set-up – the bank provides the production ones.
+The KEY.NAME values must be spelled exactly as above (`AlbeClConstants.KEY_*`). A misspelt CURRENCY gives new customers a blank CCY, and every transaction is then blocked (EB-ALBE.CIF.LIMIT.CCY.MISSING). Values are the DEV set-up – the bank provides the production ones.
 Changing this record later does **not** change existing customers' EB.ALBE.CIF.LIMITS records.
 
 ### 3a. Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` – credit / debit mapping *(mandatory, D41)*
 
-Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME = the AAA **ACTIVITY** name, KEY.VALUE = `CREDIT` or `DEBIT`. Id in `Constants.GEN_PARAM_ACTIVITY_ID`.
+Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME = the AAA **ACTIVITY** name, KEY.VALUE = `CREDIT` or `DEBIT`. Id in `AlbeClConstants.GEN_PARAM_ACTIVITY_ID`.
 
 | KEY.NAME (ACTIVITY) | KEY.VALUE |
 |---|---|
@@ -224,12 +224,13 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 
 | EB.API id | Java package | Java class | Hook method |
 |---|---|---|---|
-| ALBE.CL.LIMIT.CREATE | `com.temenos.ALBE.CustomerLimit.controller.customer` | `CustomerLimitCreationController` | `postUpdateRequest` |
-| **ALBE.CL.ACTIVITY.LIMIT** | `com.temenos.ALBE.CustomerLimit.controller.activity` | `CustomerLimitActivityController` | `validateRecord` |
+| **ALBE.CL.ACTIVITY.LIMIT** | `com.temenos.albe` | `AlbeClActivityLimit` | `validateRecord` |
+| **ALBE.CL.MAX.CIF** | `com.temenos.albe` | `AlbeClMaxCif` | `validateRecord` |
+| **ALBE.CL.LIMIT.CREATE** | `com.temenos.albe` | `AlbeClLimitCreate` | `postUpdateRequest` |
 
 Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METHOD **(confirm)**.
 
-**Remove the old activity EB.APIs (D47, clean rewrite):** `ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.DAILY.MONTHLY.UPD`, `ALBE.CL.DAILY.MONTHLY.DEF`, `ALBE.CL.MAX.CIF` – their classes are no longer in the JAR. Take them out of every ACTIVITY.API first (an EB.API pointing to a missing class gives "ROUTINE DOES NOT EXIST"), then delete / reverse the EB.API records.
+**26-Nov (D50):** the existing EB.API records `ALBE.CL.ACTIVITY.LIMIT`, `ALBE.CL.MAX.CIF` and `ALBE.CL.LIMIT.CREATE` keep their ids – **change JAVA.PACKAGE to `com.temenos.albe` and JAVA.CLASS as above** (the old `com.temenos.ALBE.CustomerLimit…` classes are no longer in the JAR – an EB.API still pointing there gives "ROUTINE DOES NOT EXIST"). Remove `ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF` from every ACTIVITY.API and delete those EB.API records.
 
 ---
 
@@ -254,20 +255,20 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 
 | Activity Id | Property Class | Pc Action | Post Routine.1 | Other routine fields |
 |---|---|---|---|---|
-| ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
+| ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | Post Routine.2 = **ALBE.CL.MAX.CIF**; others blank |
 | ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
 
 Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT). Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**. **Never** leave an old VAL / UPD / MAX.CIF routine next to it (double count, DEV 26-Nov).
 
 | Status | api.log `ACTION` line | What it does |
 |---|---|---|
-| UNAUTH | `INPUT` | daily / monthly check, max CIF (credit), overrides, then count (not when blocked) |
+| UNAUTH | `INPUT` | daily / monthly check, overrides, then count (not when blocked); credits: then `AlbeClMaxCif` checks max CIF |
 | DELETE | `DELETE` | take back |
 | AUTH-REV | `REVERSAL` | take back |
 | AUTH | `AUTHORISE` | nothing, no read |
 | REVERSE | `REVERSAL INPUT` | nothing, no read (taken back at AUTH-REV) |
 
-- **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `CustomerLimitActivityController.validateRecord | ACTION | DELETE …` / `REVERSAL …`. If those lines never come, the take-back does not run – tell development (there is no second routine to fall back on since D47).
+- **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `AlbeClActivityLimit: ACTION | DELETE …` / `REVERSAL …`.
 - Reads per input (no cache, each record once): mapping, CIF.LIMITS, TXN.DETAILS (earlier input), daily + monthly UTILISED; credit with MAX.CIF filled also CUSTOMER.ACCOUNT and the customer's accounts. Writes: daily + monthly UTILISED once each, TXN.DETAILS once. A second call of the same FT with the same amount writes nothing to UTILISED (`unchanged`).
 - Re-input of an amended FT: each record = used − earlier input + new amount, in one write (no separate take-back).
 - Take-back (DELETE / AUTH-REV) only takes back what TXN.DETAILS shows was counted – a second call finds nothing and changes nothing (`NOTHING TAKEN BACK`).
@@ -276,7 +277,7 @@ Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-
 - **Rollback:** the previous JAR (with its own ACTIVITY.API set-up) – there is no configuration-only rollback any more.
 - **Why Post Routine:** for FT-created activities T24 calls **only the Post Routine** – Pre, Record and Validate routines are never called (DEV 25/26-Nov). A `validateRecord` routine attached as a Post Routine runs there and its override **is shown on the FT screen** (DEV 26-Nov, FT26093GZC6N). Record Rtn / Pre Validate Rtn reject a `validateRecord` routine ("Method does not implement a hook interface").
 - Only `validateRecord` can raise an **override** (R25 invokers: only the validate invoker handles overrides; `postCoreTableUpdate` / `defaultFieldValues` / VERSION `postUpdateRequest` can only stop the transaction with an error).
-- **The routine can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `Constants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routine here (no code change).
+- **The routine can be attached to any activity.** An activity is counted when (1) its **ACTIVITY** is mapped to `CREDIT` or `DEBIT` in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (step 3a, D41 – not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED); (2) it has an amount – ORIG.TXN.AMT if filled, else TXN.AMOUNT; (3) its INITIATION.TYPE is in `AlbeClConstants.COUNTED_INITIATION_TYPES` (all types today). Initiation type / amount missing → skipped. New activity = new line in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` + attach the routine here (no code change).
 - **Date:** the activity's **ORG.SYSTEM.DATE** (T24 date), else T24 TODAY (server clock only as a logged last resort). Not DATE.TIME – that is the server clock.
 - **COB (check):** AA.DECISION.PARAMETER UNAUTH.PROCESS. With `IGNORE.TRANSACTION.ACTIVITIES` unauthorised credits/debits stay over COB. With `DEFAULT` COB deletes them (our DELETE reverses) and re-initiates them after COB (counted again on the re-initiation date).
 - The maximum CIF check is for **credit** activities only.
@@ -313,7 +314,7 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 
 ## 10. Logging
 
-- The code logs through logger **`API`** (`Constants.LOGGER_NAME`). TAFJ maps it onto **`ALERT.API`** (errors) and **`DIAGNOSTIC.API`** (info / detail); both write to **`TAFJ/log/api.log`** on the **T24 server**.
+- The code logs through logger **`API`** (`AlbeClConstants.LOGGER_NAME`). TAFJ maps it onto **`ALERT.API`** (errors) and **`DIAGNOSTIC.API`** (info / detail); both write to **`TAFJ/log/api.log`** on the **T24 server**.
 - By default both are at **ERROR**, so only our ERROR / FAILED lines appear (seen in DEV 24-Nov-2026). To see the INFO lines (ACTIVITY, RESULT, OVERRIDE, UPDATED …) in DEV / SIT, set on the server, in `TAFJ/conf/TAFJTrace.properties`:
   ```
   logger.DIAGNOSTIC_API.level = INFO
@@ -361,7 +362,7 @@ Needed only when the transaction (or an account) currency differs from the custo
 
 **Max CIF – other accounts in another currency (parked):**
 1. Bank to confirm the exchange-rate table, record id and rate field (rate for 1 unit of *from* currency in *to* currency).
-2. Developer sets `Constants.EXCH_RATE_TABLE`, `Constants.EXCH_RATE_FIELD` and completes `CustomerLimitRepository.readExchangeRate(fromCcy, toCcy)`.
+2. Developer converts each account balance in `AlbeClMaxCif` (candidate: R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount`, EXCHRATE).
 3. Until then: the **EB-ABLE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
 
 ---
@@ -372,8 +373,8 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 
 | # | Test | Expected result | Log line to look for |
 |---|---|---|---|
-| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
-| 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
+| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `AlbeClLimitCreate: CREATED \| ... created=true` |
+| 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| ... already exists, limits kept` |
 | 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `RESULT \| INPUT ... -> OK`, `add \| UPDATED` |
 | 4 | Credit 4000 (input) | override EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `RESULT \| INPUT ... -> EXCEEDED by 2,000.00` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `RESULT \| INPUT ... used credit 3,000.00 -> 7,000.00` |
@@ -395,7 +396,7 @@ Also note in the DEV log (once):
 
 - the AAA id format (test 3) – the TXN.DETAILS id must fit;
 - the override text shows the `&` value "<customer> by <amount>" (test 4);
-- the T24 "record not found" text for a missing EB.ALBE.CIF.LIMITS (test 1). If you see `cifLimitExists | FAILED` instead of `NOT FOUND`, add the word from that log line to `Constants.RECORD_NOT_FOUND_MARKERS`.
+- the T24 "record not found" text for a missing EB.ALBE.CIF.LIMITS (test 1). If you see `AlbeClLimitCreate: FAILED | … existence unknown`, add the word from that log line to `AlbeClConstants.NOT_FOUND_MARKERS`.
 
 ---
 

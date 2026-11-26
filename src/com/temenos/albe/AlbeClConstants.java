@@ -1,21 +1,22 @@
-package com.temenos.ALBE.CustomerLimitSimple;
+package com.temenos.albe;
 
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.List;
 
 /*-----------------------------------------------------------------------------
- * Description : All literals of the simple customer limit routines (CustomerLimitActivity,
- *               CustomerLimitCreation). Same values as the MVC version (package CustomerLimit).
+ * Description : All literals of the customer limit routines (AlbeClActivityLimit, AlbeClMaxCif,
+ *               AlbeClLimitCreate).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
- * 26-Nov-2026   Development      Initial Version (simple 2-class version)
+ * 26-Nov-2026   Development      Initial Version
+ * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  *-----------------------------------------------------------------------------
  */
-public final class CustomerLimitConstants {
+public final class AlbeClConstants {
 
-    private CustomerLimitConstants() {
+    private AlbeClConstants() {
     }
 
     // Logging: logger API -> TAFJ/log/api.log; every line starts with LOG_TAG

@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimitSimple;
+package com.temenos.albe;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -23,9 +23,9 @@ import com.temenos.t24.api.system.DataAccess;
 import com.temenos.t24.api.system.Session;
 
 /*-----------------------------------------------------------------------------
- * Attached as : ACTIVITY.API - Post Routine 2 on CREDIT activities (after ALBE.CL.ACTIVITY.SIMPLE),
+ * Attached as : ACTIVITY.API - Post Routine 2 on CREDIT activities (after ALBE.CL.ACTIVITY.LIMIT),
  *               method validateRecord
- * EB.API      : ALBE.CL.MAX.CIF.SIMPLE
+ * EB.API      : ALBE.CL.MAX.CIF
  * Attached to : activities mapped CREDIT in EB.ALBE.GEN.PARAM CUSTOMER.LIMIT.ACTIVITY
  *               (e.g. ACCOUNTS-TRANSFERIN-ARRANGEMENT)
  * Description : Maximum overall CIF balance, HLSD 7.2.1 - 3 (input only, credits only):
@@ -37,20 +37,21 @@ import com.temenos.t24.api.system.Session;
  *   account in another currency       -> override EB-ABLE.EXCH.RATE.MISSING, not checked (no rate yet)
  *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> override EB-ABLE.CIF.LIMIT.NOT.DEFINED
  *   no limit record / blank CURRENCY / amount not convertible / debit / not mapped
- *                                     -> nothing here (CustomerLimitActivity raises those)
+ *                                     -> nothing here (AlbeClActivityLimit raises those)
  *
- *   Nothing is counted here: counting is done by CustomerLimitActivity. An ERROR here stops the
- *   whole transaction, so T24 also rolls back what CustomerLimitActivity counted.
+ *   Nothing is counted here: counting is done by AlbeClActivityLimit. An ERROR here stops the
+ *   whole transaction, so T24 also rolls back what AlbeClActivityLimit counted.
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
  * 26-Nov-2026   Development      Initial Version (max CIF as its own routine, user)
+ * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  *-----------------------------------------------------------------------------
  */
-public class CustomerLimitMaxCif extends ActivityLifecycle {
+public class AlbeClMaxCif extends ActivityLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(CustomerLimitConstants.LOGGER_NAME);
-    private static final String NAME = "CustomerLimitMaxCif:";
+    private static final Logger logger = LoggerFactory.getLogger(AlbeClConstants.LOGGER_NAME);
+    private static final String NAME = "AlbeClMaxCif:";
 
     @Override
     public TValidationResponse validateRecord(AaAccountDetailsRecord accountDetailRecord,
@@ -60,7 +61,7 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
 
         try {
             String status = nvl(arrangementContext.getActivityStatus()).trim().toUpperCase();
-            if (!CustomerLimitConstants.STATUS_UNAUTH.equals(status)) {
+            if (!AlbeClConstants.STATUS_UNAUTH.equals(status)) {
                 return aaaRec.getValidationResponse();
             }
             String activity = nvl(aaaRec.getActivity().getValue()).trim();
@@ -69,8 +70,8 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
 
             DataAccess da = new DataAccess(this);
             Session ss = new Session(this);
-            if (!CustomerLimitConstants.CREDIT.equals(readDirection(da, activity))) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+            if (!AlbeClConstants.CREDIT.equals(readDirection(da, activity))) {
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
                         key + " " + activity + " is not a mapped credit - max CIF not checked");
                 return aaaRec.getValidationResponse();
             }
@@ -81,27 +82,27 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
             }
             String customer = arrangementRecord.getCustomer().get(0).getCustomer().getValue();
 
-            // limit and its currency (missing / blank CURRENCY: raised by CustomerLimitActivity)
+            // limit and its currency (missing / blank CURRENCY: raised by AlbeClActivityLimit)
             EbAlbeCifLimitsRecord limits = readCifLimits(da, customer);
             String limitCcy = limits == null ? "" : nvl(limits.getCurrency().getValue()).trim();
             if (limits == null || limitCcy.isEmpty()) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
                         key + " customer " + customer + " no limit record / currency - max CIF not checked");
                 return aaaRec.getValidationResponse();
             }
             String maxText = limits.getMaximumOverallCifAmount().getValue();
             if (isBlank(maxText)) {
-                aaaRec.getCurrency().setOverride(text(CustomerLimitConstants.OVR_NOT_DEFINED, customer));
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | MAX CIF " + key + " customer " + customer + " | " +
-                        CustomerLimitConstants.FIELD_MAX_CIF
-                        + " blank -> not checked, raised " + CustomerLimitConstants.OVR_NOT_DEFINED);
+                aaaRec.getCurrency().setOverride(text(AlbeClConstants.OVR_NOT_DEFINED, customer));
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | MAX CIF " + key + " customer " + customer + " | " +
+                        AlbeClConstants.FIELD_MAX_CIF
+                        + " blank -> not checked, raised " + AlbeClConstants.OVR_NOT_DEFINED);
                 return aaaRec.getValidationResponse();
             }
 
-            // credit in the limit currency (not convertible: CustomerLimitActivity raises the error)
+            // credit in the limit currency (not convertible: AlbeClActivityLimit raises the error)
             BigDecimal amount = toLimitCurrency(aaaRec, arrangementRecord, ss, credit, useOrig, limitCcy);
             if (amount == null) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
                         key + " credit cannot be converted to " + limitCcy + " - max CIF not checked");
                 return aaaRec.getValidationResponse();
             }
@@ -112,15 +113,15 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
             // balance of all the customer's accounts
             List<String> accounts = null;
             try {
-                accounts = da.getConcatValues(CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE, customer);
+                accounts = da.getConcatValues(AlbeClConstants.CUSTOMER_ACCOUNT_FILE, customer);
             } catch (Exception e) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                        CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE + ">" + customer + " " + e);
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                        AlbeClConstants.CUSTOMER_ACCOUNT_FILE + ">" + customer + " " + e);
             }
             if (accounts == null || accounts.isEmpty()) {
-                aaaRec.getTxnAmount().setError(text(CustomerLimitConstants.ERR_NO_ACCOUNTS, customer));
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
-                        result + " | BLOCKED: no accounts in " + CustomerLimitConstants.CUSTOMER_ACCOUNT_FILE);
+                aaaRec.getTxnAmount().setError(text(AlbeClConstants.ERR_NO_ACCOUNTS, customer));
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " +
+                        result + " | BLOCKED: no accounts in " + AlbeClConstants.CUSTOMER_ACCOUNT_FILE);
                 return aaaRec.getValidationResponse();
             }
             String mnemonic = companyMnemonic(da, ss);
@@ -128,23 +129,23 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
             for (String accountId : accounts) {
                 try {
                     AccountRecord account = new AccountRecord(da.getRecord(mnemonic,
-                            CustomerLimitConstants.ACCOUNT_TABLE, "", accountId));
+                            AlbeClConstants.ACCOUNT_TABLE, "", accountId));
                     String ccy = nvl(account.getCurrency().getValue()).trim();
                     BigDecimal balance = toAmount(account.getWorkingBalance().getValue());
                     result.append(" | ").append(accountId).append(' ').append(balance).append(' ').append(ccy);
                     if (!ccy.isEmpty() && !ccy.equalsIgnoreCase(limitCcy)) {
-                        String fromTo = CustomerLimitConstants.FROM + ccy + CustomerLimitConstants.TO + limitCcy;
-                        aaaRec.getEffectiveDate().setOverride(text(CustomerLimitConstants.OVR_RATE_MISSING, fromTo));
-                        logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " +
+                        String fromTo = AlbeClConstants.FROM + ccy + AlbeClConstants.TO + limitCcy;
+                        aaaRec.getEffectiveDate().setOverride(text(AlbeClConstants.OVR_RATE_MISSING, fromTo));
+                        logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " +
                                 result + " | account in " + ccy + ", no rate -> not checked, raised "
-                                + CustomerLimitConstants.OVR_RATE_MISSING);
+                                + AlbeClConstants.OVR_RATE_MISSING);
                         return aaaRec.getValidationResponse();
                     }
                     total = total.add(balance);
                 } catch (Exception e) {
                     result.append(" | ").append(accountId).append(" not readable, 0");
-                    logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                            CustomerLimitConstants.ACCOUNT_TABLE + ">" + accountId + " " + e);
+                    logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                            AlbeClConstants.ACCOUNT_TABLE + ">" + accountId + " " + e);
                 }
             }
 
@@ -153,24 +154,24 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
             BigDecimal projected = total.add(amount);
             result.append(" | balance ").append(total).append(" + this ").append(amount).append(" = ").append(projected);
             if (projected.compareTo(maximum) > 0) {
-                BigDecimal excess = projected.subtract(maximum).setScale(CustomerLimitConstants.AMOUNT_SCALE,
+                BigDecimal excess = projected.subtract(maximum).setScale(AlbeClConstants.AMOUNT_SCALE,
                         RoundingMode.HALF_UP);
-                aaaRec.getOrigTxnAmt().setOverride(text(CustomerLimitConstants.OVR_MAX_CIF,
-                        customer + CustomerLimitConstants.BY + excess.toPlainString()));
+                aaaRec.getOrigTxnAmt().setOverride(text(AlbeClConstants.OVR_MAX_CIF,
+                        customer + AlbeClConstants.BY + excess.toPlainString()));
                 result.append(" > ").append(maximum).append(" EXCEEDED by ").append(excess).append(", raised ")
-                        .append(CustomerLimitConstants.OVR_MAX_CIF);
+                        .append(AlbeClConstants.OVR_MAX_CIF);
             } else {
                 result.append(" <= ").append(maximum).append(" OK");
             }
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " RESULT | " + result.toString());
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " + result.toString());
         } catch (Exception e) {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " ERROR | " + e.toString());
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " ERROR | " + e.toString());
         }
         return aaaRec.getValidationResponse();
     }
 
     /**
-     * Credit in the limit currency, the same way CustomerLimitActivity converts it: same currency
+     * Credit in the limit currency, the same way AlbeClActivityLimit converts it: same currency
      * unchanged; else (limit in LCY) the activity's LCY amount, else x TXN.EXCH.RATE; null otherwise.
      */
     private BigDecimal toLimitCurrency(AaArrangementActivityRecord aaaRec, AaArrangementRecord arrangementRecord,
@@ -180,7 +181,7 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
             txnCcy = nvl(arrangementRecord.getCurrency().getValue()).trim();
         }
         if (txnCcy.isEmpty() || txnCcy.equalsIgnoreCase(limitCcy)) {
-            return credit.setScale(CustomerLimitConstants.AMOUNT_SCALE, RoundingMode.HALF_UP);
+            return credit.setScale(AlbeClConstants.AMOUNT_SCALE, RoundingMode.HALF_UP);
         }
         String lcy = nvl(ss.getLocalCurrency()).trim();
         if (lcy.isEmpty() || !limitCcy.equalsIgnoreCase(lcy)) {
@@ -189,25 +190,25 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
         BigDecimal lcyAmount = toAmount(useOrig ? aaaRec.getOrigTxnAmtLcy().getValue()
                 : aaaRec.getTxnAmountLcy().getValue());
         if (lcyAmount.signum() > 0) {
-            return lcyAmount.setScale(CustomerLimitConstants.AMOUNT_SCALE, RoundingMode.HALF_UP);
+            return lcyAmount.setScale(AlbeClConstants.AMOUNT_SCALE, RoundingMode.HALF_UP);
         }
         BigDecimal rate = toAmount(aaaRec.getTxnExchRate().getValue());
-        return rate.signum() > 0 ? credit.multiply(rate).setScale(CustomerLimitConstants.AMOUNT_SCALE,
+        return rate.signum() > 0 ? credit.multiply(rate).setScale(AlbeClConstants.AMOUNT_SCALE,
                 RoundingMode.HALF_UP) : null;
     }
 
     private String readDirection(DataAccess da, String activity) {
         try {
-            EbAlbeGenParamRecord param = new EbAlbeGenParamRecord(da.getRecord(CustomerLimitConstants.GEN_PARAM_TABLE,
-                    CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID));
+            EbAlbeGenParamRecord param = new EbAlbeGenParamRecord(da.getRecord(AlbeClConstants.GEN_PARAM_TABLE,
+                    AlbeClConstants.GEN_PARAM_ACTIVITY_ID));
             for (KeyNameClass k : param.getKeyName()) {
                 if (activity.equals(nvl(k.getKeyName().getValue()).trim())) {
                     return nvl(k.getKeyValue().getValue()).trim().toUpperCase();
                 }
             }
         } catch (Exception e) {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                    CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_ACTIVITY_ID
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                    AlbeClConstants.GEN_PARAM_TABLE + ">" + AlbeClConstants.GEN_PARAM_ACTIVITY_ID
                     + " " + e);
         }
         return "";
@@ -215,7 +216,7 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
 
     private EbAlbeCifLimitsRecord readCifLimits(DataAccess da, String customer) {
         try {
-            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(CustomerLimitConstants.CIF_LIMIT_TABLE,
+            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
                     customer));
             return rec.toString().isEmpty() ? null : rec;
         } catch (Exception e) {
@@ -225,10 +226,10 @@ public class CustomerLimitMaxCif extends ActivityLifecycle {
 
     private String companyMnemonic(DataAccess da, Session ss) {
         try {
-            return new CompanyRecord(da.getRecord(CustomerLimitConstants.COMPANY_TABLE, ss.getCompanyId()))
+            return new CompanyRecord(da.getRecord(AlbeClConstants.COMPANY_TABLE, ss.getCompanyId()))
                     .getFinancialMne().getValue();
         } catch (Exception e) {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | company mnemonic " + e);
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | company mnemonic " + e);
             return "";
         }
     }

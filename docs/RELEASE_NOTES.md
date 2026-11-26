@@ -28,7 +28,7 @@ Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 
 | Object | Content |
 |---|---|
-| `ALBE_CustomerLimit.jar` | package `com.temenos.ALBE.CustomerLimit` – 19 classes (2 controllers + 1 request builder, 7 services, 1 repository, 3 models, 1 view, 1 validator, 2 utilities, Constants) |
+| `ALBE_CustomerLimit.jar` | package `com.temenos.albe` – 4 classes: `AlbeClActivityLimit`, `AlbeClMaxCif`, `AlbeClLimitCreate` (one per EB.API), `AlbeClConstants` |
 | Generated table JARs | Java API of EB.ALBE.CIF.LIMITS, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
 
 Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any line, including FAILED / BLOCKED.
@@ -40,11 +40,11 @@ Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any 
 | 1 | EB.TABLE.DEFINITION | ALBE.CIF.LIMIT (new), ALBE.GEN.PARAM, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT (approved, unchanged) | new / existing | 1 |
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
 | 3 | EB.OVERRIDE | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
-| 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks),  | new | 14.3 |
-| 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT** (the only activity routine, D47); **remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF and ALBE.CL.MAX.CIF (classes no longer in the JAR) | new / removed | 6 |
+| 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks) | new | 14.3 |
+| 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT**, **ALBE.CL.MAX.CIF** – JAVA.PACKAGE `com.temenos.albe`, classes AlbeClActivityLimit / AlbeClMaxCif / AlbeClLimitCreate (D50); **remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF | new / removed | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
-| 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – **one Post Routine `ALBE.CL.ACTIVITY.LIMIT`**, all other routine fields blank (D47) | **changed** | 8 |
+| 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – Post Routine 1 `ALBE.CL.ACTIVITY.LIMIT`; credit activities also Post Routine 2 `ALBE.CL.MAX.CIF`; other routine fields blank (D50) | **changed** | 8 |
 | 11 | Menu | Customer Limits sub-menu (maintain) | new / changed | 15.1 |
 | 12 | Security | access of the roles in 15.2 | changed | 15.2 |
 
@@ -74,7 +74,7 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 
 | # | Check | Expected | Log line |
 |---|---|---|---|
-| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
+| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `AlbeClLimitCreate: CREATED` |
 | 2 | FT credit below the limit to a configured account | no override; daily + monthly used updated | `ACTION \| INPUT …`, `RESULT \| INPUT … <= limit … -> OK` |
 | 3 | FT credit above the daily limit | override "Daily credit limit exceeded for Customer <id> by <amount>" (and monthly if over) | `RESULT \| INPUT … EXCEEDED by … raised: EB-ABLE.DAILY.LIMIT.EXCEED` |
 | 4 | Delete the unauthorised FT of check 3 | used back to the value after check 2 | `ACTION \| DELETE …`, `RESULT \| TAKEN BACK (input rejected)` |

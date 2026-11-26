@@ -4,6 +4,13 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – one package, classes named after the EB.API (26-Nov-2026, D50)
+- The MVC version (`com.temenos.ALBE.CustomerLimit`) is **removed**; the simple version is now the only code, in package **`com.temenos.albe`**:
+  `AlbeClActivityLimit` (EB.API `ALBE.CL.ACTIVITY.LIMIT`), `AlbeClMaxCif` (`ALBE.CL.MAX.CIF`), `AlbeClLimitCreate` (`ALBE.CL.LIMIT.CREATE`), `AlbeClConstants`.
+- Behaviour unchanged (D47-D49). Logs now read `ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: ACTION | ...`.
+- DEV: change JAVA.PACKAGE / JAVA.CLASS of the three EB.API records to `com.temenos.albe` and the new class names; credit activities: Post Routine 2 = `ALBE.CL.MAX.CIF`. Remove any `*.SIMPLE` EB.API records.
+- Checked outside T24: 37 cases pass; 0 compile errors against R25.
+
 ### Changed – simple version: max CIF as its own routine (26-Nov-2026, D49)
 - New `CustomerLimitMaxCif` (EB.API e.g. `ALBE.CL.MAX.CIF.SIMPLE`): the maximum CIF balance check is now a separate routine, attached as **Post Routine 2 on credit activities** after `ALBE.CL.ACTIVITY.SIMPLE`. `CustomerLimitActivity` checks daily and monthly only.
 - Same rules as before: WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit above MAXIMUM.OVERALL.CIF.AMOUNT -> override; no CUSTOMER.ACCOUNT -> error (stops the whole FT, so T24 also undoes the count of routine 1); blank maximum -> "not defined" override; account in another currency -> rate override, not checked.

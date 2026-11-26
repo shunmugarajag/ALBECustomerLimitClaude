@@ -37,7 +37,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 
 | | |
 |---|---|
-| **Where** | `CustomerLimitUtilizationUpdater.addToRecord` → `CustomerLimitRepository.readUtilisedLimit` / `writeUtilisedLimit` |
+| **Where** | `AlbeClActivityLimit.input` → `readUtilised` / `add` (D50) |
 | **Problem** | Read – add – write without a record lock. |
 | **Example** | Two credits of 4,000 for customer 100234 at the same moment: both read 3,000, both write 7,000 → total 7,000 instead of 11,000. The second check also did not see the first. |
 | **Impact** | Utilisation too low → later transactions pass a limit they should breach. Likely only under heavy parallel load (bulk / interface postings). |
@@ -92,7 +92,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 
 | | |
 |---|---|
-| **Where** | `MaximumCifLimitService.getTotalCifBalance`, `CustomerLimitRepository.readAccount` |
+| **Where** | `AlbeClMaxCif.validateRecord` (ACCOUNT read with the current company mnemonic, D50) |
 | **Problem** | Accounts are read with the **current** company's financial mnemonic. |
 | **Impact** | In a multi-company set-up a customer's accounts in another company are missed → total balance too low. |
 | **Fix** | Read each account's company and use that company's mnemonic (repository change). |
@@ -102,7 +102,7 @@ Already fine (checked): no shared state between calls (no static data, session p
 
 | | |
 |---|---|
-| **Where** | `CustomerLimitRepository.getCustomerAccountIds` |
+| **Where** | was `CustomerLimitRepository.getCustomerAccountIds` (removed; closed D45) |
 | **Problem** | If CUSTOMER.ACCOUNT has no entry, a SELECT `ACCOUNT WITH CUSTOMER EQ …` runs – a full scan on a large ACCOUNT file. |
 | **Impact** | Slow credit input for customers without a CUSTOMER.ACCOUNT entry. |
 | **Fix** | Remove the fallback (no entry = no accounts). |
@@ -158,7 +158,7 @@ All open questions (bank and DEV) are in [QUERIES_AND_GAPS.md](QUERIES_AND_GAPS.
 | Transaction currency = limit currency | rate 1, checks run normally |
 | Limit currency blank | **error** EB-ALBE.CIF.LIMIT.CCY.MISSING, transaction blocked (G6) |
 | Different currencies, limit CCY = local currency | the activity's **TXN.AMOUNT.LCY** (or ORIG.TXN.AMT.LCY) is used – no rate needed (21-Nov-2026) |
-| Different currencies, limit CCY ≠ local currency | `CustomerLimitRepository.readExchangeRate` returns "no rate" → override **EB-ABLE.EXCH.RATE.MISSING**, limit check **skipped** |
+| Different currencies, limit CCY ≠ local currency | **error** EB-ALBE.EXCH.RATE.MISSING – a limit not in local currency blocks (D44) |
 | Maximum CIF, account in another currency | same – rate-missing override, check skipped |
 
 Ready: conversion of the transaction and of account balances, 2-decimal rounding, converted amounts stored in UTILISED.LIMIT / TXN.DETAILS (reversals do not convert again). Missing: only the **rate lookup**.
@@ -175,7 +175,7 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 
 **Suggestion:** core **CURRENCY** (no new table, maintained daily by treasury). Rates are against the local currency; two foreign currencies are converted through local currency (USD → EGP → EUR), both reads cached for the call.
 
-**Change once answered:** `Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD` (+ market, rate type) and `CustomerLimitRepository.readExchangeRate(from, to)`. Nothing else changes; the rate-missing override stays as the safety net.
+**Change once answered:** the account-balance conversion in `AlbeClMaxCif` (candidate: R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount`); the rate-missing override stays as the safety net.
 
 ---
 

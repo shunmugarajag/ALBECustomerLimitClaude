@@ -33,7 +33,7 @@ Details of every step: `docs/T24_CONFIGURATION.md` (step numbers in brackets, e.
 
 | Done | Id | Test | Status |
 |---|---|---|---|
-| [ ] | **TQ20** | Single routine: is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? Log `CustomerLimitActivityController.validateRecord \| ACTION \| DELETE` / `REVERSAL`. **If not → go live with the fallback** (VAL + MAX.CIF + UPD). | OPEN – decides the set-up |
+| [ ] | **TQ20** | Single routine: is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? Log `AlbeClActivityLimit: ACTION \| DELETE` / `REVERSAL`. **If not → go live with the fallback** (VAL + MAX.CIF + UPD). | OPEN – decides the set-up |
 | [ ] | **TQ22** | Single routine counts in `validateRecord`: decline the override / cancel the FT – is UTILISED.LIMIT unchanged (our writes rolled back)? **If not → fallback set-up.** | OPEN |
 | [ ] | TQ5 | FT delete and FT reversal reach the activity (DELETE / AUTH-REV) | OPEN (REVERSE seen; DELETE, AUTH-REV not yet) – **go-live blocker** |
 | [ ] | TQ6 | AAA fields filled at input (ORIG.TXN.AMT, TXN.AMOUNT.LCY) | OPEN – **go-live blocker** |
@@ -102,10 +102,11 @@ Note: override ids are **EB-ABLE.*** (as created in DEV, D40); error ids are **E
 
 ### 2.5 EB.API [§6]
 
-| Done | EB.API id | Class (`com.temenos.ALBE.CustomerLimit.controller…`) | Method | Use |
+| Done | EB.API id | Class (`com.temenos.albe.…`) | Method | Use |
 |---|---|---|---|---|
-| [ ] | **ALBE.CL.ACTIVITY.LIMIT** | `activity.CustomerLimitActivityController` | validateRecord | the only activity routine (D47) |
-| [ ] | ALBE.CL.LIMIT.CREATE | `customer.CustomerLimitCreationController` | postUpdateRequest | customer version |
+| [ ] | **ALBE.CL.ACTIVITY.LIMIT** | `AlbeClActivityLimit` | validateRecord | Post Routine 1, every mapped activity |
+| [ ] | **ALBE.CL.MAX.CIF** | `AlbeClMaxCif` | validateRecord | Post Routine 2, credit activities |
+| [ ] | ALBE.CL.LIMIT.CREATE | `AlbeClLimitCreate` | postUpdateRequest | customer version |
 | [ ] | **Not installed / removed:** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF, ALBE.CL.MAX.CIF – their classes are not in the JAR (DEV: take them out of ACTIVITY.API first, then remove the EB.API) | – | – | – |
 
 SOURCE.TYPE = JAVA, JAVA.PACKAGE / JAVA.CLASS / JAVA.METHOD (confirm field names on R25).
@@ -134,7 +135,7 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 | Done | Step |
 |---|---|
 | [ ] | TQ20 passed in DEV (DELETE / AUTH-REV reach the routine) – **must** pass, there is no fallback routine since D47 |
-| [ ] | Post Routine.1 = `ALBE.CL.ACTIVITY.LIMIT`; every other routine field blank |
+| [ ] | Post Routine.1 = `ALBE.CL.ACTIVITY.LIMIT`; credit activities also Post Routine.2 = `ALBE.CL.MAX.CIF`; every other routine field blank |
 | [ ] | Pre Routine, Record Rtn, Validate Rtn, Pre Validate Rtn **blank** (not called for FT activities) |
 | [ ] | No routine on FUNDS.TRANSFER / TELLER versions or ACCOUNT.PARAMETER |
 | [ ] | Every activity with the routine is in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (else EB-ALBE.ACTIVITY.NOT.MAPPED blocks) |
@@ -179,9 +180,9 @@ Needs DIAGNOSTIC.API at INFO to see ACTION / RESULT lines. Find one transaction:
 
 | Done | # | Test | Expected | api.log line to look for |
 |---|---|---|---|---|
-| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
-| [ ] | 2 | Amend + re-authorise that customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| … already exists` |
-| [ ] | 3 | Credit below the limit (FT on an AA account) | no override; daily + monthly used updated; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `CustomerLimitActivityController.validateRecord \| ACTION \| INPUT`, then `RESULT \| COUNTED …` |
+| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `AlbeClLimitCreate: CREATED` |
+| [ ] | 2 | Amend + re-authorise that customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| … already exists` |
+| [ ] | 3 | Credit below the limit (FT on an AA account) | no override; daily + monthly used updated; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `AlbeClActivityLimit: \| ACTION \| INPUT`, then `RESULT \| COUNTED …` |
 | [ ] | 4 | Credit above the daily limit | "Daily credit limit exceeded for Customer <id> by <amount>" (one `&`, filled) | `RESULT \| CHECK daily/monthly … EXCEEDED by …`, `OVERRIDE \| … sent=…` |
 | [ ] | 5 | Delete the unauthorised transaction of test 4 | used back to the value after test 3; TXN.DETAILS deleted | `ACTION \| DELETE` |
 | [ ] | 6 | Authorise test 3 | no change | `ACTION \| AUTHORISE` |
@@ -229,7 +230,7 @@ Remove the routines first so nothing new is counted. Data already written does n
 | [ ] | Daily: `getCustomerLimits \| NOT FOUND` → create the missing limit record (RUNBOOK 3.3) | daily |
 | [ ] | `grep "ALBE.CUSTOMER.LIMIT.*\| OVERRIDE \|"` – overridden transactions, compliance review (reports removed 26-Nov) | daily |
 | [ ] | Housekeeping of EB.ALBE.TXN.DETAILS.LIMIT – retention period **OPEN (FQ12)**; keep as long as a reversal is possible | after FQ12 |
-| [ ] | Exchange rate for max CIF other-currency accounts (E1 / FQ8): set `Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD`, complete `CustomerLimitRepository.readExchangeRate` | when bank answers |
+| [ ] | Exchange rate for max CIF other-currency accounts (E1 / FQ8): convert account balances in `AlbeClMaxCif` (R25 `Currency` API) | when bank answers |
 | [ ] | Support team has `docs/SUPPORT_RUNBOOK.md` (error lines §4, common cases §3) | go-live day |
 | [ ] | Sign-off (RELEASE_NOTES §7): developer, reviewer, QA / SIT, business owner | go-live |
 

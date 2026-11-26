@@ -26,6 +26,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 - Source folder: `src`
 - Output folder: `bin`
 - Build system: Maven (`mvn clean package` builds `ALBE_CustomerLimit.jar`; `mvn clean deploy` copies it to the T24 server)
+- Source: `src/com/temenos/albe` (4 classes)
 
 ## Import into Eclipse
 
@@ -40,81 +41,33 @@ Add the required TAFJ and generated Table JARs through **Project → Properties 
 
 The repository does not include proprietary TAFJ libraries. Configure the JARs from your local TAFJ installation.
 
-## How it works (one routine)
+## How it works
 
-One Post Routine, `ALBE.CL.ACTIVITY.LIMIT` (`CustomerLimitActivityController.validateRecord`), is attached to every mapped activity:
+Three routines in package **`com.temenos.albe`**, each named after its EB.API (the MVC version was removed 26-Nov; Git history keeps it):
 
-| Activity status | What happens |
-|---|---|
-| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMITS read once (none → override "limit not defined", still counted; blank CURRENCY → error) 2. amount converted to the limit currency (cannot → error) 3. earlier input of the same FT found by its TXN.DETAILS key 4. daily + monthly records read once 5. daily / monthly check (used − earlier input + this > limit → override) 6. credit: max CIF check (no CUSTOMER.ACCOUNT → error) 7. not blocked → count (each record = used − earlier input + this, written once) and TXN.DETAILS written |
-| DELETE / AUTH-REV | take back exactly what TXN.DETAILS shows was counted, from the day it was counted on; nothing counted → nothing taken back |
-| AUTH / REVERSE | nothing (no read) |
-
-The count is written in the same commit as the FT, so a rejected override or a cancelled FT is undone by T24 (TQ22).
-
-## Simple version (package `CustomerLimitSimple`, 26-Nov)
-
-The same logic in **3 routine classes + constants**, in the style of the team's core Java routines (DataAccess / Session / generated tables used directly, one logger), next to the MVC version - the MVC code is not changed:
-
-| Class | EB.API (suggested) | Attach as |
-|---|---|---|
-| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitActivity` | `ALBE.CL.ACTIVITY.SIMPLE` | ACTIVITY.API Post Routine 1 on every mapped activity, `validateRecord` (daily / monthly check + overrides + count, DELETE / AUTH-REV take back) |
-| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitMaxCif` | `ALBE.CL.MAX.CIF.SIMPLE` | ACTIVITY.API Post Routine 2 on **credit** activities only, `validateRecord` (maximum CIF balance at input; no CUSTOMER.ACCOUNT -> error; counts nothing) |
-| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitCreation` | `ALBE.CL.LIMIT.CREATE.SIMPLE` | VERSION CUSTOMER,ALBE.CORP Auth routine, `postUpdateRequest` |
-| `com.temenos.ALBE.CustomerLimitSimple.CustomerLimitConstants` | - | all literals |
-
-Same rules, tables, override / error ids and log tag (`ALBE.CUSTOMER.LIMIT |`, one ACTION + one RESULT line per call). Both versions are in the same JAR: attach **either** the simple **or** the MVC routine to an activity / version, never both (double count).
-
-## Code structure (MVC)
-
-```
-T24 hook ──> controller ──> service ──> repository ──> T24 tables
-                 │             │
-                 │             └── model (CustomerLimitDTO, Limits, LimitBreach)
-                 └── view (CustomerLimitOverride: overrides shown to the user)
-```
-
-| Layer | Package | Classes | Role |
+| EB.API | Class | Attach as | Does |
 |---|---|---|---|
-| Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version) |
-| | `controller.activity` | **CustomerLimitActivityController** (the only activity routine), ActivityRequestBuilder (AAA → request) |
-| Service | `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater | Shared: read limits / activity mapping; utilisation record ids / amounts / add. |
-| | `service.activity` | CustomerLimitEngine (`processInput` / `reverse`), MaximumCifLimitService, TxnDetailsLimitRecorder, CurrencyConversionService | Daily / monthly check, max CIF check, count and take back. |
-| | `service.customer` | CustomerLimitCreationService | Limit creation (CUSTOMER version). |
-| Validation | `validation` | CustomerLimitRequestValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
-| Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
-| Utility | `util` | ValidationUtil | Common value checks shared by every layer: `isBlank`, `nvl`, `isPositive`, `toAmount` (blank/invalid = 0), `toOptionalAmount` (blank = limit not defined), `toText`, `toDate` (YYYYMMDD), `sameCurrency`. No business rules. |
-| Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
-| Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
-| View | `view` | CustomerLimitOverride | Overrides / errors on the AAA fields (`[ID,param]`, one parameter, D46). |
-| Constants | `constants` | Constants | All constants: tables, record ids, statuses, activity keywords, field / key names, override ids, messages, date formats. The only `final` class. |
+| `ALBE.CL.ACTIVITY.LIMIT` | `AlbeClActivityLimit` | ACTIVITY.API **Post Routine 1** on every mapped activity, method `validateRecord` | daily / monthly check, overrides, count at input; take back on DELETE / AUTH-REV |
+| `ALBE.CL.MAX.CIF` | `AlbeClMaxCif` | ACTIVITY.API **Post Routine 2** on **credit** activities, method `validateRecord` | maximum CIF balance at input; counts nothing |
+| `ALBE.CL.LIMIT.CREATE` | `AlbeClLimitCreate` | VERSION CUSTOMER,ALBE.CORP **Auth routine**, method `postUpdateRequest` | creates EB.ALBE.CIF.LIMITS from GEN.PARAM `CUSTOMER.LIMIT` if missing; never overwrites |
+| – | `AlbeClConstants` | – | all literals (tables, ids, override / error ids, log tag) |
 
-## Routines to register (EB.API)
+Written like the team's core Java routines: `DataAccess`, `Session` and the generated tables are used directly, one `LoggerFactory` logger (`API`), `logger.info` only.
 
-| Class | Attach to | Hooks |
+| Activity status | `AlbeClActivityLimit` | `AlbeClMaxCif` |
 |---|---|---|
-| `com.temenos.ALBE.CustomerLimit.controller.customer.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMITS `<customer>` from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. On customer amendment (authorised again) an existing record is **never overwritten**; if the read fails for any reason other than "not found", nothing is written. (HLSD 7.2.1 says After Unau; changed to Auth.) |
-| `com.temenos.ALBE.CustomerLimit.controller.activity.CustomerLimitActivityController` *(the only activity routine, D47)* | ACTIVITY.API **Post Routine** (EB.API `ALBE.CL.ACTIVITY.LIMIT`) – any mapped activity | `validateRecord`: UNAUTH = check daily / monthly + max CIF (credit), overrides, count; DELETE / AUTH-REV = take back; AUTH / REVERSE = nothing. ACTION log line INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT. Each record read once per call (no cache). |
+| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMITS (none → override "not defined", still counted; blank CURRENCY → error) 2. amount in the limit currency (cannot → error) 3. earlier input of the same FT (TXN.DETAILS key) 4. daily / monthly: used − earlier + this > limit → override 5. count: used − earlier + this, TXN.DETAILS written | WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit > MAXIMUM.OVERALL.CIF.AMOUNT → override; no accounts → error |
+| DELETE / AUTH-REV | take back exactly what TXN.DETAILS shows was counted, from the counted day; nothing counted → nothing | – |
+| AUTH / REVERSE | nothing | – |
 
-The routine reads limits only from EB.ALBE.CIF.LIMITS `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ABLE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.
-
-**FT, TELLER and other transactions** on AA accounts arrive as an `ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT` activity, so the one ACTIVITY.API routine covers them; it calls `service/activity/CustomerLimitEngine` (`processInput` at input, `reverse` for DELETE / AUTH-REV). An activity is counted under the FT/TT behind it (TXN.CONTRACT.ID), else its own id – the id also carries the arrangement, so each side of an FT is its own record. An **own-account transfer** (same customer on both sides) gives two activities (debit and credit arrangement); each calls the routine and is checked and counted on its own (D39). There are no non-AA accounts.
-
-The routine can be attached to **any activity** (`controller/activity/ActivityRequestBuilder`): an activity is counted when it has an amount (ORIG.TXN.AMT, else TXN.AMOUNT) and its ACTIVITY is mapped CREDIT or DEBIT in EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (not mapped → error EB-ALBE.ACTIVITY.NOT.MAPPED, D41). Dates use the **T24 date** (ORG.SYSTEM.DATE → T24 TODAY), not the server clock. A transaction in another currency is converted with the activity's LCY amount, else TXN.EXCH.RATE, else blocked (D44).
+The count is in the same commit as the FT: a rejected override or an error (from either routine) is rolled back by T24 (TQ22). FT, TELLER, TPH and other postings on AA accounts all arrive as an activity, so the same routines cover them – each activity used must be mapped in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` and have the routines attached.
 
 ### Currency conversion
 
 All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMITS `CURRENCY`):
-
-- transaction currency = AA.ARRANGEMENT `CURRENCY`; if it differs from `CCY` the TXN.AMOUNT is converted;
-- for the maximum CIF check every account's working balance is converted from the ACCOUNT currency;
-- amounts are rounded to 2 decimals; EB.ALBE.UTILISED.LIMIT and EB.ALBE.TXN.DETAILS.LIMIT hold the converted amount;
-- **transaction amount (D44):** only from the activity – LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY), else amount × TXN.EXCH.RATE; neither, or a limit not in LCY => **error EB-ALBE.EXCH.RATE.MISSING, transaction blocked**;
-- max CIF, another account in a foreign currency with no rate => override EB-ABLE.EXCH.RATE.MISSING and the max CIF check is skipped (parked, E1).
-
-**To configure (max CIF accounts only):** set `Constants.EXCH_RATE_TABLE` and `Constants.EXCH_RATE_FIELD`, and complete the read in
-`CustomerLimitRepository.readExchangeRate(fromCcy, toCcy)` (returns the rate for 1 unit of fromCcy in toCcy).
-Until then only same-currency transactions are checked.
+- transaction in another currency: the activity's LCY amount, else amount × TXN.EXCH.RATE; neither, or a limit not in LCY → **error EB-ALBE.EXCH.RATE.MISSING**, not counted;
+- max CIF: an account in another currency → override EB-ABLE.EXCH.RATE.MISSING, max CIF not checked (no rate source yet, E1);
+- amounts rounded to 2 decimals; UTILISED.LIMIT / TXN.DETAILS hold the converted amount; a take-back never reconverts.
 
 ## Local table field names assumed by the code
 
@@ -169,7 +122,7 @@ Utilisation is counted when the transaction is initiated:
 
 | Activity status | Utilisation | EB.ALBE.TXN.DETAILS.LIMIT |
 |---|---|---|
-| UNAUTH (input / re-input) | added; earlier input of the same AAA subtracted first | written / replaced |
+| UNAUTH (input / re-input) | used − earlier input of the same FT + this amount (one write) | written / replaced |
 | DELETE (unauthorised rejected) | reversed | read and deleted |
 | AUTH | no change | kept |
 | AUTH-REV (authorised reversed) | reversed on the original day/month | read and deleted |
@@ -191,29 +144,17 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.CUSTOMER.ACCOUNT.MISSING | **Error** (EB.ERROR, blocks, D45): No accounts found in CUSTOMER.ACCOUNT for Customer & – max CIF check with an empty CUSTOMER.ACCOUNT (no ACCOUNT SELECT fallback) |
 | EB-ALBE.EXCH.RATE.MISSING | **Error** (EB.ERROR, blocks, D44): Exchange rate not available &, transaction not allowed – no LCY amount and no TXN.EXCH.RATE on the activity, or the limit is not in LCY |
 
-`view.CustomerLimitOverride` raises them as `[ID,"<customer> by <amount over>"]` – **one parameter** (D46: a second `&` is not filled in DEV), **each on its own AAA field** because a field keeps only one override: daily → TXN.AMOUNT, monthly → TXN.AMOUNT.LCY, max CIF → ORIG.TXN.AMT, not defined → CURRENCY, rate missing → EFFECTIVE.DATE; errors on TXN.AMOUNT (D43).
+Raised as `[ID,"<customer> by <amount over>"]` – **one parameter** (D46), **each on its own AAA field** (a field keeps only one override): daily → TXN.AMOUNT, monthly → TXN.AMOUNT.LCY, max CIF → ORIG.TXN.AMT, not defined → CURRENCY, rate missing → EFFECTIVE.DATE; errors on TXN.AMOUNT (D43). Only the Post Routine is called for FT-created activities, and its override shows on the FT screen (DEV 26-Nov). See `docs/T24_CONFIGURATION.md` §8.
 
-In ACTIVITY.API the one routine `ALBE.CL.ACTIVITY.LIMIT` is the **Post Routine** – for FT-created activities only the Post Routine is called, and the override still shows on the FT screen (DEV 26-Nov). See `docs/T24_CONFIGURATION.md` §8.
+## Logging
 
-## Logging standard
-
-All logging goes through `util/LogUtil`, **INFO level only** (user, 26-Nov). No class creates its own logger.
+Each routine has `private static final Logger logger = LoggerFactory.getLogger(AlbeClConstants.LOGGER_NAME)` (logger `API` → `TAFJ/log/api.log`, DIAGNOSTIC.API – set it to **INFO** to see the lines) and calls `logger.info(...)` only:
 
 ```
-ALBE.CUSTOMER.LIMIT | <Class>.<method> | <EVENT> | details [| Exception: message @ frame]
-ALBE.CUSTOMER.LIMIT | CustomerLimitActivityController.validateRecord | RESULT | INPUT FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 ... | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | ... | raised: EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED
+ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: ACTION | INPUT FT26093BQZQK (ACCOUNTS-TRANSFERIN-ARRANGEMENT) arrangement AA26093C0Y4T status UNAUTH
+ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: RESULT | INPUT FT26093BQZQK customer 100128 CREDIT 1500 on 2026-04-03 | daily: used 33000 + this 1500.00 = 34500.00 > 10000 EXCEEDED by 24500.00 | ... | raised EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED
+ALBE.CUSTOMER.LIMIT | AlbeClMaxCif: RESULT | MAX CIF FT26093BQZQK customer 100128 CREDIT 1500.00 EGP | 1000001208 <balance> EGP | balance ... <= 200000 OK
 ```
 
-Each class has `private static final String CLASS_NAME = "<ClassName>";` and calls
-`LogUtil.info(CLASS_NAME, "method", "EVENT", details[, e])`. The **event** tells the kind of line:
-
-| Group | Events |
-|---|---|
-| Summary | `ACTIVITY` (activity fields at the start) `ACTION` (INPUT / DELETE / REVERSAL ... and what is done) `RESULT` (plain-language outcome with every number) |
-| Checks | `CALC` `INVALID` `SKIP` `OVERRIDE` `ERROR` (raised on the screen) |
-| Data | `FOUND` `NOT FOUND` `NEW` `CREATED` `WRITTEN` `UPDATED` `DELETED` `SELECT` `ADJUSTED` |
-| Problems | `FAILED` `BLOCKED` `NO RATE` `NO LCY` `NO CCY` `NOT CONFIGURED` `NOT MAPPED` |
-
-The lines go to `TAFJ/log/api.log` through DIAGNOSTIC.API – set it to **INFO** to see them.
-Useful greps: `grep "ALBE.CUSTOMER.LIMIT"` (everything), `grep "ALBE.CUSTOMER.LIMIT.*| RESULT |"` (one line per call), `grep "ALBE.CUSTOMER.LIMIT.*| FAILED\|BLOCKED |"` (problems).
-Logging never throws, so a logging problem cannot stop a transaction.
+Events: `ACTION` and `RESULT` (one each per call), `SKIP`, `NOT MAPPED`, `NOT FOUND`, `SELECT`, `CREATED`, problems `FAILED` / `BLOCKED` / `ERROR`.
+Greps: `grep "ALBE.CUSTOMER.LIMIT" api.log | grep <FT id>` (one transaction), `grep "| RESULT |"` (outcomes), `grep -E "\| (FAILED|BLOCKED|ERROR) \|"` (problems).

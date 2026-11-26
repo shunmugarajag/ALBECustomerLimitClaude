@@ -1,4 +1,4 @@
-package com.temenos.ALBE.CustomerLimitSimple;
+package com.temenos.albe;
 
 import java.util.List;
 
@@ -16,23 +16,23 @@ import com.temenos.t24.api.tables.ebalbeciflimits.EbAlbeCifLimitsTable;
 
 /*-----------------------------------------------------------------------------
  * Attached as : Auth Routine
- * EB.API      : ALBE.CL.LIMIT.CREATE.SIMPLE
+ * EB.API      : ALBE.CL.LIMIT.CREATE
  * Attached to : VERSION CUSTOMER,ALBE.CORP
  * Description : When a customer is authorised, creates EB.ALBE.CIF.LIMITS <customer> from
  *               EB.ALBE.GEN.PARAM CUSTOMER.LIMIT (KEY.NAME / KEY.VALUE), only if it does not exist.
  *               An existing record (customer amended and authorised again) is never overwritten;
  *               if the read fails for any other reason than "not found", nothing is written.
- *               Simple one-class version of CustomerLimitCreationController (same behaviour).
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
- * 26-Nov-2026   Development      Initial Version (simple 2-class version)
+ * 26-Nov-2026   Development      Initial Version
+ * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  *-----------------------------------------------------------------------------
  */
-public class CustomerLimitCreation extends RecordLifecycle {
+public class AlbeClLimitCreate extends RecordLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(CustomerLimitConstants.LOGGER_NAME);
-    private static final String NAME = "CustomerLimitCreation:";
+    private static final Logger logger = LoggerFactory.getLogger(AlbeClConstants.LOGGER_NAME);
+    private static final String NAME = "AlbeClLimitCreate:";
 
     @Override
     public void postUpdateRequest(String application, String currentRecordId, TStructure currentRecord,
@@ -41,7 +41,7 @@ public class CustomerLimitCreation extends RecordLifecycle {
         String customer = currentRecordId == null ? "" : currentRecordId.trim();
         try {
             if (customer.isEmpty()) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | customer id missing");
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | customer id missing");
                 return;
             }
             DataAccess da = new DataAccess(this);
@@ -49,24 +49,24 @@ public class CustomerLimitCreation extends RecordLifecycle {
             // never overwrite: create only when T24 says "no record"
             Boolean exists = cifLimitExists(da, customer);
             if (exists == null) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
-                        customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
+                        customer + " " + AlbeClConstants.CIF_LIMIT_TABLE
                         + " read failed - not created, so an existing record is not overwritten");
                 return;
             }
             if (exists) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " SKIP | " +
-                        customer + " " + CustomerLimitConstants.CIF_LIMIT_TABLE + " already exists, limits kept");
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
+                        customer + " " + AlbeClConstants.CIF_LIMIT_TABLE + " already exists, limits kept");
                 return;
             }
 
             EbAlbeGenParamRecord param;
             try {
-                param = new EbAlbeGenParamRecord(da.getRecord(CustomerLimitConstants.GEN_PARAM_TABLE,
-                        CustomerLimitConstants.GEN_PARAM_LIMIT_ID));
+                param = new EbAlbeGenParamRecord(da.getRecord(AlbeClConstants.GEN_PARAM_TABLE,
+                        AlbeClConstants.GEN_PARAM_LIMIT_ID));
             } catch (Exception e) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                        CustomerLimitConstants.GEN_PARAM_TABLE + ">" + CustomerLimitConstants.GEN_PARAM_LIMIT_ID
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                        AlbeClConstants.GEN_PARAM_TABLE + ">" + AlbeClConstants.GEN_PARAM_LIMIT_ID
                         + " - limit not created for " + customer);
                 return;
             }
@@ -78,57 +78,57 @@ public class CustomerLimitCreation extends RecordLifecycle {
                 String value = k.getKeyValue().getValue() == null ? "" : k.getKeyValue().getValue().trim();
                 found = found || !key.isEmpty();
                 switch (key) {
-                    case CustomerLimitConstants.KEY_CURRENCY:
+                    case AlbeClConstants.KEY_CURRENCY:
                         limits.setCurrency(value);
                         break;
-                    case CustomerLimitConstants.KEY_DAILY_CREDIT:
+                    case AlbeClConstants.KEY_DAILY_CREDIT:
                         limits.setDailyCreditLimit(value);
                         break;
-                    case CustomerLimitConstants.KEY_DAILY_DEBIT:
+                    case AlbeClConstants.KEY_DAILY_DEBIT:
                         limits.setDailyDebitLimit(value);
                         break;
-                    case CustomerLimitConstants.KEY_MONTHLY_CREDIT:
+                    case AlbeClConstants.KEY_MONTHLY_CREDIT:
                         limits.setMonthlyCreditLimit(value);
                         break;
-                    case CustomerLimitConstants.KEY_MONTHLY_DEBIT:
+                    case AlbeClConstants.KEY_MONTHLY_DEBIT:
                         limits.setMonthlyDebitLimit(value);
                         break;
-                    case CustomerLimitConstants.KEY_MAX_CIF:
+                    case AlbeClConstants.KEY_MAX_CIF:
                         limits.setMaximumOverallCifAmount(value);
                         break;
                     default:
                 }
             }
             if (!found) {
-                logger.info(CustomerLimitConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                        CustomerLimitConstants.GEN_PARAM_LIMIT_ID + " has no keys - limit not created for "
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
+                        AlbeClConstants.GEN_PARAM_LIMIT_ID + " has no keys - limit not created for "
                         + customer);
                 return;
             }
             new EbAlbeCifLimitsTable(this).write(customer, limits);
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " CREATED | " +
-                    CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " from "
-                    + CustomerLimitConstants.GEN_PARAM_LIMIT_ID);
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " CREATED | " +
+                    AlbeClConstants.CIF_LIMIT_TABLE + ">" + customer + " from "
+                    + AlbeClConstants.GEN_PARAM_LIMIT_ID);
         } catch (Exception e) {
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " ERROR | customer " + customer + " " + e);
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " ERROR | customer " + customer + " " + e);
         }
     }
 
     /** TRUE record exists, FALSE T24 says not found, null the read failed for another reason. */
     private Boolean cifLimitExists(DataAccess da, String customer) {
         try {
-            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(CustomerLimitConstants.CIF_LIMIT_TABLE,
+            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
                     customer));
             return !rec.toString().isEmpty();
         } catch (Exception e) {
             String text = (e.getClass().getSimpleName() + " " + e.getMessage()).toUpperCase();
-            for (String marker : CustomerLimitConstants.NOT_FOUND_MARKERS) {
+            for (String marker : AlbeClConstants.NOT_FOUND_MARKERS) {
                 if (text.contains(marker)) {
                     return Boolean.FALSE;
                 }
             }
-            logger.info(CustomerLimitConstants.LOG_TAG + NAME + " FAILED | " +
-                    CustomerLimitConstants.CIF_LIMIT_TABLE + ">" + customer + " existence unknown " + e);
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | " +
+                    AlbeClConstants.CIF_LIMIT_TABLE + ">" + customer + " existence unknown " + e);
             return null;
         }
     }
