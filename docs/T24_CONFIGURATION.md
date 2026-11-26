@@ -21,7 +21,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 | 11 | Data before go-live (existing customers, migrated utilisation) | ☐ |
 | 12 | Exchange rate (pending) | ☐ |
 | 13 | DEV / SIT test cases | ☐ |
-| 14 | Reports – enquiries (summary, period, transactions) | ☐ |
+| 14 | ~~Reports~~ – removed | – |
 | 15 | User menu and access | ☐ |
 
 ---
@@ -225,9 +225,6 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | ALBE.CL.DAILY.MONTHLY | `com.temenos.ALBE.CustomerLimit.controller.activity` | `DailyMonthlyLimitController` | `validateRecord`, `postCoreTableUpdate` |
 | ALBE.CL.MAX.CIF | `com.temenos.ALBE.CustomerLimit.controller.activity` | `MaximumCifLimitController` | `validateRecord` |
 | **ALBE.CL.ACTIVITY.LIMIT** *(single routine, D44)* | `com.temenos.ALBE.CustomerLimit.controller.activity` | `CustomerLimitActivityController` | `validateRecord` |
-| ALBE.E.CUSTOMER.LIMIT.SUMMARY | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `setIds` |
-| ALBE.E.CUSTOMER.LIMIT.PERIOD | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `setIds` |
-| ALBE.E.CUSTOMER.LIMIT.TXN | `com.temenos.ALBE.CustomerLimit.controller.enquiry` | `CustomerLimitTxnEnquiryController` | `setIds` |
 
 Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METHOD **(confirm)**.
 If your release needs one EB.API record per hook method, create two for `DailyMonthlyLimitController`
@@ -409,135 +406,9 @@ Also note in the DEV log (once):
 
 ---
 
-## 14. Reports – enquiries
+## 14. Reports – removed (26-Nov-2026)
 
-Three NOFILE enquiries. What each report shows, the columns and examples with sample data: **[REPORTS.md](REPORTS.md)**. This step is the T24 set-up only.
-
-| Report | ENQUIRY | STANDARD.SELECTION | EB.API (step 6) |
-|---|---|---|---|
-| Limit summary (one day) | `ALBE.CUSTOMER.LIMIT.SUMMARY` | `NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY` | `ALBE.E.CUSTOMER.LIMIT.SUMMARY` |
-| Period report (per day / month) | `ALBE.CUSTOMER.LIMIT.PERIOD` | `NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD` | `ALBE.E.CUSTOMER.LIMIT.PERIOD` |
-| Transaction report (incl. overridden) | `ALBE.CUSTOMER.LIMIT.TXN` | `NOFILE.ALBE.CUSTOMER.LIMIT.TXN` | `ALBE.E.CUSTOMER.LIMIT.TXN` |
-
-Build them the same way as the team's existing NOFILE enquiries (same STANDARD.SELECTION and ENQUIRY pattern) **(confirm)**.
-
-### 14.1 STANDARD.SELECTION
-
-One NOFILE STANDARD.SELECTION per report: the routine field pointing to the EB.API id, plus the selection fields below. Names must be exactly as shown (`Constants.ENQ_SEL_*`). Allow operand **EQ** only.
-
-**NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY**
-
-| Selection field | Format | Mandatory | Meaning |
-|---|---|---|---|
-| CUSTOMER | customer id | no | blank = every customer with an EB.ALBE.CIF.LIMITS record |
-| DATE | YYYYMMDD | no | blank = today |
-| OVER.LIMIT | Y | no | Y = only customers over a limit |
-
-**NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD**
-
-| Selection field | Format | Mandatory | Meaning |
-|---|---|---|---|
-| DATE.FROM | YYYYMMDD | date **or** month range | daily rows |
-| DATE.TO | YYYYMMDD | | blank = DATE.FROM |
-| MONTH.FROM | YYYYMM | | monthly rows |
-| MONTH.TO | YYYYMM | | blank = MONTH.FROM |
-| CUSTOMER | customer id | no | blank = all customers |
-| OVER.LIMIT | Y | no | Y = only rows over a limit |
-
-**NOFILE.ALBE.CUSTOMER.LIMIT.TXN**
-
-| Selection field | Format | Mandatory | Meaning |
-|---|---|---|---|
-| CUSTOMER | customer id | customer **or** a date | blank = all customers (date range then max 92 days) |
-| DATE.FROM | YYYYMMDD | | counted date from |
-| DATE.TO | YYYYMMDD | | counted date to (blank, no customer = today) |
-| OVERRIDDEN | Y | no | Y = only transactions accepted with a daily / monthly / max CIF override |
-
-The routines check the selection themselves (step 14.3 errors), so no mandatory flags are needed in STANDARD.SELECTION; set them if the bank wants the screen to enforce them too.
-
-### 14.2 ENQUIRY records
-
-Each routine returns one line per row, columns separated by `*`. In the ENQUIRY record, define one display field per column and take its value by column position (field extraction on `*`, as in the existing NOFILE enquiries) **(confirm)**.
-
-**ALBE.CUSTOMER.LIMIT.SUMMARY** – FILE.NAME `NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY`
-
-| Col | Heading | Format |
-|---|---|---|
-| 1 | Customer | text |
-| 2 | Ccy | text |
-| 3 | Report date | date |
-| 4 | Daily CR limit | amount |
-| 5 | Daily CR used | amount |
-| 6 | Daily CR available | amount (may be negative) |
-| 7 | Daily DR limit | amount |
-| 8 | Daily DR used | amount |
-| 9 | Daily DR available | amount (may be negative) |
-| 10 | Monthly CR limit | amount |
-| 11 | Monthly CR used | amount |
-| 12 | Monthly CR available | amount (may be negative) |
-| 13 | Monthly DR limit | amount |
-| 14 | Monthly DR used | amount |
-| 15 | Monthly DR available | amount (may be negative) |
-| 16 | Max CIF balance | amount |
-| 17 | Over limit | Y / N |
-
-**ALBE.CUSTOMER.LIMIT.PERIOD** – FILE.NAME `NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD`
-
-| Col | Heading | Format |
-|---|---|---|
-| 1 | Type | DAILY / MONTHLY |
-| 2 | Period | YYYYMMDD / YYYYMM |
-| 3 | Customer | text |
-| 4 | Ccy | text |
-| 5 | CR limit | amount |
-| 6 | CR used | amount |
-| 7 | CR available | amount (may be negative) |
-| 8 | DR limit | amount |
-| 9 | DR used | amount |
-| 10 | DR available | amount (may be negative) |
-| 11 | Over limit | Y / N |
-
-**ALBE.CUSTOMER.LIMIT.TXN** – FILE.NAME `NOFILE.ALBE.CUSTOMER.LIMIT.TXN`
-
-| Col | Heading | Format |
-|---|---|---|
-| 1 | Customer | text |
-| 2 | Activity (AAA) | text – can drill down to AA.ARRANGEMENT.ACTIVITY |
-| 3 | Account | text – can drill down to ACCOUNT |
-| 4 | CR / DR | text |
-| 5 | Amount | amount (limit currency) |
-| 6 | Effective date | date |
-| 7 | Counted date | date |
-| 8 | Record id | text |
-| 9 | Overrides | text (EB-ALBE.* ids) |
-
-Suggested: header shows the selection used; amounts right-aligned with 2 decimals; blank amount = limit not defined.
-
-### 14.3 EB.ERROR records
-
-| ID | Message (suggested) | Raised when |
-|---|---|---|
-| EB-NO.REC.SELECT | No records selected | nothing to show (normally already exists) |
-| EB-ALBE.ENQ.INVALID.DATE | Invalid date, enter YYYYMMDD | not a real date, e.g. 20261131 |
-| EB-ALBE.ENQ.INVALID.MONTH | Invalid month, enter YYYYMM | not a real month, e.g. 202613 |
-| EB-ALBE.ENQ.DATE.RANGE | From cannot be after to | FROM after TO |
-| EB-ALBE.ENQ.PERIOD.MANDATORY | Enter a date range or a month range | period report: neither or both |
-| EB-ALBE.ENQ.RANGE.TOO.LONG | Period too long (max 92 days / 24 months) | range above the limit |
-| EB-ALBE.ENQ.CUSTOMER.OR.DATE | Enter a customer or a date | transaction report without both |
-
-### 14.4 Checks after set-up
-
-| # | Run | Expected |
-|---|---|---|
-| 1 | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY CUSTOMER EQ <test customer>` | one line; columns in the right place |
-| 2 | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY OVER.LIMIT EQ Y` | only customers over a limit |
-| 3 | `ENQ ALBE.CUSTOMER.LIMIT.PERIOD DATE.FROM EQ <d1> DATE.TO EQ <d2>` | one line per customer per day with usage |
-| 4 | `ENQ ALBE.CUSTOMER.LIMIT.PERIOD MONTH.FROM EQ <m1> MONTH.TO EQ <m2>` | one line per customer per month |
-| 5 | `ENQ ALBE.CUSTOMER.LIMIT.TXN CUSTOMER EQ <test customer>` | counted transactions; rejected ones not shown |
-| 6 | `ENQ ALBE.CUSTOMER.LIMIT.TXN DATE.FROM EQ <d1> DATE.TO EQ <d2> OVERRIDDEN EQ Y` | only overridden transactions, Overrides column filled |
-| 7 | Each error of 14.3 once | the EB.ERROR message, no Java error in the log |
-
-The full test list with sample data is in [REPORTS.md](REPORTS.md#tests-dev--sit).
+The three NOFILE enquiries (summary, period, transactions) were removed from the code. Use standard enquiries / listings on EB.ALBE.UTILISED.LIMIT and EB.ALBE.TXN.DETAILS.LIMIT if needed.
 
 ---
 
@@ -553,40 +424,30 @@ Customer Limits
  │   ├─ Amend customer limits          EB.ALBE.CIF.LIMITS,AMEND   I
  │   ├─ View customer limits           EB.ALBE.CIF.LIMITS,VIEW    S      (optional)
  │   └─ Generic limits (parameter)     EB.ALBE.GEN.PARAM,LIMIT   I      (administrators only)
- └─ Reports
-     ├─ Limit summary                  ENQ ALBE.CUSTOMER.LIMIT.SUMMARY
-     ├─ Limit usage by period          ENQ ALBE.CUSTOMER.LIMIT.PERIOD
-     ├─ Counted transactions           ENQ ALBE.CUSTOMER.LIMIT.TXN
-     └─ Overridden transactions        ENQ ALBE.CUSTOMER.LIMIT.TXN    (OVERRIDDEN preset to Y, optional)
 ```
 
-| Menu item | Type | Application / enquiry | Function |
+| Menu item | Type | Application | Function |
 |---|---|---|---|
 | Amend customer limits | version | `EB.ALBE.CIF.LIMITS,AMEND` | input (I) |
 | View customer limits | version | `EB.ALBE.CIF.LIMITS,VIEW` | see (S) |
 | Generic limits | version | `EB.ALBE.GEN.PARAM,LIMIT` | input (I), record `CUSTOMER.LIMIT` |
-| Limit summary | enquiry | `ALBE.CUSTOMER.LIMIT.SUMMARY` | selection screen |
-| Limit usage by period | enquiry | `ALBE.CUSTOMER.LIMIT.PERIOD` | selection screen |
-| Counted transactions | enquiry | `ALBE.CUSTOMER.LIMIT.TXN` | selection screen |
-| Overridden transactions | enquiry | `ALBE.CUSTOMER.LIMIT.TXN` with OVERRIDDEN = Y | selection screen (optional shortcut) |
 
 ### 15.2 Who gets what (suggested)
 
-| Role | Maintain | Reports |
-|---|---|---|
-| Branch / front office | View customer limits | Limit summary, Counted transactions |
-| Limit / risk officer | Amend customer limits | all reports |
-| Authoriser | authorise EB.ALBE.CIF.LIMITS changes | all reports |
-| Parameter administrator | Generic limits | – |
-| Compliance / audit | View | all reports (incl. Overridden transactions) |
+| Role | Maintain |
+|---|---|
+| Branch / front office | View customer limits |
+| Limit / risk officer | Amend customer limits |
+| Authoriser | authorise EB.ALBE.CIF.LIMITS changes |
+| Parameter administrator | Generic limits |
+| Compliance / audit | View |
 
-Give access through the bank's usual user / role set-up (USER, SMS groups) so only these roles can open the versions and enquiries **(confirm)**. The bank decides the final role list.
+Give access through the bank's usual user / role set-up (USER, SMS groups) so only these roles can open the versions **(confirm)**. The bank decides the final role list.
 
 ### 15.3 Checks
 
 | # | Check | Expected |
 |---|---|---|
 | 1 | Log in as each role | sees only its menu items |
-| 2 | Amend a limit via the menu, authorise it | new limit used by the next transaction (summary report shows it) |
+| 2 | Amend a limit via the menu, authorise it | new limit used by the next transaction |
 | 3 | Front-office user opens EB.ALBE.CIF.LIMITS,AMEND directly | refused by security |
-| 4 | Open each report from the menu | selection screen opens; report runs |

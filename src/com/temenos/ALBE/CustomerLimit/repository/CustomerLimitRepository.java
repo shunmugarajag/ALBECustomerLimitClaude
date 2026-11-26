@@ -6,18 +6,13 @@ import java.util.List;
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
 import com.temenos.ALBE.CustomerLimit.util.LogUtil;
 import com.temenos.ALBE.CustomerLimit.util.ValidationUtil;
-import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
-import com.temenos.api.TField;
 import com.temenos.tafj.api.client.impl.T24Context;
-import com.temenos.api.TStructure;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
 import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
 import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord;
-import com.temenos.t24.api.records.fundstransfer.FundsTransferRecord;
-import com.temenos.t24.api.records.teller.TellerRecord;
 import com.temenos.t24.api.system.DataAccess;
 import com.temenos.t24.api.system.Session;
 import com.temenos.t24.api.tables.ebalbeciflimits.EbAlbeCifLimitsTable;
@@ -30,13 +25,11 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  *               selects or deletes one thing and logs what it did.
  *
  *               Tables / files used:
- *                 EB.ALBE.CIF.LIMITS         read, write, select   (id: customer id)
+ *                 EB.ALBE.CIF.LIMITS         read, write           (id: customer id)
  *                 EB.ALBE.GEN.PARAM          read                  (id: CUSTOMER.LIMIT)
- *                 EB.ALBE.UTILISED.LIMIT     read, write, select   (id: customer-YYYYMMDD / customer-YYYYMM)
+ *                 EB.ALBE.UTILISED.LIMIT     read, write           (id: customer-YYYYMMDD / customer-YYYYMM)
  *                 EB.ALBE.TXN.DETAILS.LIMIT  read, write, delete, select (id: customer-YYYYMMDD-AAA id)
  *                 ACCOUNT, CUSTOMER.ACCOUNT, COMPANY  read / select
- *                 AA.ARRANGEMENT.ACTIVITY    read (OVERRIDE, TXN.CONTRACT.ID - transaction report)
- *                 FUNDS.TRANSFER, TELLER     read (OVERRIDE - transaction report)
  *                 Session                    T24 date (!TODAY), local currency
  *
  *               Read methods return null (or an empty list) when nothing is found;
@@ -49,6 +42,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 21-Nov-2026   Development      T24 date and local currency; readActivity for the report
  * 22-Nov-2026   Development      One constructor for every hook (T24Context)
  * 25-Nov-2026   Development      readTxnDetails: record not found logged as INFO (normal at first input), other errors ERROR
+ * 26-Nov-2026   Development      Report (enquiry) reads and selects removed (reports dropped)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -66,7 +60,7 @@ public class CustomerLimitRepository {
     private boolean saveFailed = false;
 
     /**
-     * One constructor for every hook (ACTIVITY.API, version routine, enquiry): all T24 Java
+     * One constructor for every hook (ACTIVITY.API, version routine): all T24 Java
      * hooks extend T24Context.
      */
     public CustomerLimitRepository(T24Context hook) {
@@ -151,21 +145,6 @@ public class CustomerLimitRepository {
         return false;
     }
 
-    /** Ids of all EB.ALBE.CIF.LIMITS records (customers that have limits), sorted. */
-    public List<String> selectCifLimitIds() {
-        String selection = "BY @ID";
-        LogUtil.info(CLASS_NAME, "selectCifLimitIds", "SELECT", Constants.CIF_LIMIT_TABLE + " [" + selection + "]");
-        try {
-            List<String> ids = daObj.selectRecords("", Constants.CIF_LIMIT_TABLE, "", selection);
-            List<String> result = ids == null ? List.of() : ids;
-            LogUtil.info(CLASS_NAME, "selectCifLimitIds", "FOUND", result.size() + " records");
-            return result;
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "selectCifLimitIds", "FAILED", Constants.CIF_LIMIT_TABLE, e);
-            return List.of();
-        }
-    }
-
     /** New empty EB.ALBE.CIF.LIMITS record, to be filled and written. */
     public EbAlbeCifLimitsRecord newCifLimitRecord() {
         LogUtil.info(CLASS_NAME, "newCifLimitRecord", "NEW", Constants.CIF_LIMIT_TABLE + " record");
@@ -225,31 +204,6 @@ public class CustomerLimitRepository {
         }
     }
 
-    /**
-     * Ids of EB.ALBE.UTILISED.LIMIT records of all customers for the given months, in one SELECT.
-     * daily=true : daily records <customer>-YYYYMMDD of those months
-     * daily=false: monthly records <customer>-YYYYMM
-     * Used by the period enquiry only. The caller filters the exact days.
-     */
-    public List<String> selectUtilisedLimitIds(List<String> months, boolean daily) {
-        List<String> conditions = new java.util.ArrayList<>();
-        for (String month : months) {
-            conditions.add("@ID LIKE ...-" + month + (daily ? "..." : ""));
-        }
-        String selection = "WITH " + String.join(" OR ", conditions) + " BY @ID";
-        LogUtil.info(CLASS_NAME, "selectUtilisedLimitIds", "SELECT", Constants.UTILISED_LIMIT_TABLE + " ["
-                + selection + "]");
-        try {
-            List<String> ids = daObj.selectRecords("", Constants.UTILISED_LIMIT_TABLE, "", selection);
-            List<String> result = ids == null ? List.of() : ids;
-            LogUtil.info(CLASS_NAME, "selectUtilisedLimitIds", "FOUND", result.size() + " records");
-            return result;
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "selectUtilisedLimitIds", "FAILED", Constants.UTILISED_LIMIT_TABLE, e);
-            return List.of();
-        }
-    }
-
     /** New empty EB.ALBE.UTILISED.LIMIT record (first transaction of the day / month). */
     public EbAlbeUtilisedLimitRecord newUtilisedLimitRecord() {
         LogUtil.info(CLASS_NAME, "newUtilisedLimitRecord", "NEW", Constants.UTILISED_LIMIT_TABLE + " record");
@@ -298,36 +252,6 @@ public class CustomerLimitRepository {
     }
 
     /**
-     * Ids of EB.ALBE.TXN.DETAILS.LIMIT records (<customer>-<YYYYMMDD>-<AAA id>), sorted by id.
-     * Used by the enquiry only, never in a transaction.
-     * @param customerId one customer, or blank for all customers
-     * @param days       counted dates YYYYMMDD to select; empty = any date (only with a customer)
-     */
-    public List<String> selectTxnDetailsIds(String customerId, List<String> days) {
-        String customerPart = (customerId == null || customerId.isEmpty()) ? "..." : customerId;
-        List<String> conditions = new java.util.ArrayList<>();
-        if (days.isEmpty()) {
-            conditions.add("@ID LIKE " + customerPart + "-...");
-        } else {
-            for (String day : days) {
-                conditions.add("@ID LIKE " + customerPart + "-" + day + "-...");
-            }
-        }
-        String selection = "WITH " + String.join(" OR ", conditions) + " BY @ID";
-        LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "SELECT",
-                Constants.TXN_DETAILS_TABLE + " [" + selection + "]");
-        try {
-            List<String> ids = daObj.selectRecords("", Constants.TXN_DETAILS_TABLE, "", selection);
-            List<String> result = ids == null ? List.of() : ids;
-            LogUtil.info(CLASS_NAME, "selectTxnDetailsIds", "FOUND", result.size() + " records");
-            return result;
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "selectTxnDetailsIds", "FAILED", Constants.TXN_DETAILS_TABLE, e);
-            return List.of();
-        }
-    }
-
-    /**
      * Ids of the EB.ALBE.TXN.DETAILS.LIMIT records of one customer and one counted transaction
      * and arrangement (<customer>-<YYYYMMDD>-<transactionId>-<arrangementId>), whatever the date.
      * Used only to find the counted date of a transaction reversed on a later day.
@@ -347,57 +271,6 @@ public class CustomerLimitRepository {
             LogUtil.error(CLASS_NAME, "selectTxnDetailsIdsForTransaction", "FAILED", Constants.TXN_DETAILS_TABLE, e);
             return List.of();
         }
-    }
-
-    // =========================================================================
-    // AA.ARRANGEMENT.ACTIVITY (read only, for the reports)
-    // =========================================================================
-
-    /**
-     * AA.ARRANGEMENT.ACTIVITY <aaaId> for the transaction report (OVERRIDE, TXN.CONTRACT.ID).
-     * Reads the live record first, then the unauthorised one ($NAU) for activities not yet
-     * authorised. Null if the activity cannot be read.
-     */
-    public AaArrangementActivityRecord readActivity(String finMnemonic, String aaaId) {
-        LogUtil.detail(CLASS_NAME, "readActivity", "READ", Constants.AAA_TABLE + ">" + aaaId);
-        for (String suffix : new String[] { "", Constants.NAU_SUFFIX }) {
-            try {
-                AaArrangementActivityRecord aaaRec = new AaArrangementActivityRecord(
-                        daObj.getRecord(finMnemonic, Constants.AAA_TABLE, suffix, aaaId));
-                LogUtil.detail(CLASS_NAME, "readActivity", "FOUND", Constants.AAA_TABLE + suffix + ">" + aaaId);
-                return aaaRec;
-            } catch (Exception e) {
-                LogUtil.detail(CLASS_NAME, "readActivity", "NOT FOUND", Constants.AAA_TABLE + suffix + ">" + aaaId);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * OVERRIDE values of a FUNDS.TRANSFER or TELLER transaction (live record, then $NAU), for the
-     * transaction report. Empty list if it cannot be read.
-     */
-    public List<String> readTransactionOverrides(String finMnemonic, String application, String transactionId) {
-        LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "READ", application + ">" + transactionId);
-        for (String suffix : new String[] { "", Constants.NAU_SUFFIX }) {
-            try {
-                TStructure record = daObj.getRecord(finMnemonic, application, suffix, transactionId);
-                List<TField> overrides = Constants.TELLER_APPLICATION.equals(application)
-                        ? new TellerRecord(record).getOverride()
-                        : new FundsTransferRecord(record).getOverride();
-                List<String> values = new java.util.ArrayList<>();
-                for (TField overrideField : overrides) {
-                    values.add(overrideField.getValue());
-                }
-                LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "FOUND", application + suffix + ">"
-                        + transactionId + " overrides=" + values.size());
-                return values;
-            } catch (Exception e) {
-                LogUtil.detail(CLASS_NAME, "readTransactionOverrides", "NOT FOUND", application + suffix + ">"
-                        + transactionId);
-            }
-        }
-        return List.of();
     }
 
     /** New empty EB.ALBE.TXN.DETAILS.LIMIT record, to be filled and written. */

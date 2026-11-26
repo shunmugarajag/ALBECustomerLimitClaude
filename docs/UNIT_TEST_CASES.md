@@ -1,6 +1,6 @@
 # ALBE Customer Limit – Unit Test Cases and Results
 
-**Scope:** business logic, reports and validation, tested **outside T24** on 20/21-Nov-2026.
+**Scope:** business logic and validation, tested **outside T24** on 20/21-Nov-2026.
 **How:** the real code in `src/` compiled with stand-in TAFJ classes (kept outside the repository) and an in-memory repository that replaces the database. The controllers' T24 objects (hooks, AAA, arrangement) are covered by the DEV / SIT tests in [T24_CONFIGURATION.md](T24_CONFIGURATION.md) §13 and §14.4.
 **Result codes:** **Pass** = run and matched · **DEV** = can only be run in T24.
 
@@ -25,8 +25,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Activity mapping (any activity) | UT-A01 … A13 | 13 | 13 | – |
 | Counted date (T24 date) | UT-D06 … D09 | 4 | 4 | – |
 | Currency from the activity | UT-C04 … C05 | 2 | 2 | – |
-| Reports | UT-E01 … E17 | 17 | 17 | – |
-| Engine, key, own transfer | UT-G01 … G22 | 13 | 13 | – |
+| Engine, key, own transfer | UT-G01 … G21 | 12 | 12 | – |
 | Blank limit currency (error) | UT-H01 … H04 | 3 | 3 | – |
 | GEN.PARAM keys (DEV record) | UT-K01 … K04 | 4 | 4 | – |
 | Block on save failure (D37) | UT-B01 … B05 | 5 | 5 | – |
@@ -34,8 +33,8 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
 | Override text and fields (D43) | UT-W01 … W08 | 8 | 8 | – |
 | Single routine (D44) | UT-S01 … S15 | 15 | 15 | – |
-| Controllers in T24 | UT-T01 … T10 | 10 | – | 10 |
-| **Total** | | **157** | **147** | **10** |
+| Controllers in T24 | UT-T01 … T10 (no T05/T06) | 8 | – | 8 |
+| **Total** | | **137** | **129** | **8** |
 
 ---
 
@@ -201,7 +200,6 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-G18 | same, count | both sides counted: debit 700 and credit 700, two records | Pass |
 | UT-G19 | reversal of the debit side | only the debit taken back; credit stays | Pass |
 | UT-G20 | re-input of the credit side | replaced, still 700 (no double count) | Pass |
-| UT-G22 | report row for an FT-keyed activity | TXN.ID / TXN.REF = FT id, overrides from FUNDS.TRANSFER | Pass |
 
 ## Blank limit currency – 22-Nov-2026
 
@@ -273,28 +271,6 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-B04 | count ok, then reversal | not blocked after count | Pass |
 | UT-B05 | TXN.DETAILS delete fails at reversal | blocked | Pass |
 
-## Reports
-
-| Id | Report | Selection | Expected | Result |
-|---|---|---|---|---|
-| UT-E01 | Summary | all customers | one line per CIF.LIMIT record, 17 columns | Pass |
-| UT-E02 | Summary | customer over daily limit | available −2000, OVER.LIMIT Y | Pass |
-| UT-E03 | Summary | OVER.LIMIT Y | only customers over a limit | Pass |
-| UT-E04 | Summary | blank limit | limit and available blank | Pass |
-| UT-E05 | Summary | DATE 20261131 / 2026-11-20 | EB-ALBE.ENQ.INVALID.DATE | Pass |
-| UT-E06 | Period | 3 days, all customers | one line per customer per day **with usage** | Pass |
-| UT-E07 | Period | one customer, 20 days | only the 2 days with usage | Pass |
-| UT-E08 | Period | 2 months | monthly lines; used includes migrated (1,950,000 + 75,000 = 2,025,000) | Pass |
-| UT-E09 | Period | OVER.LIMIT Y | only over-limit lines | Pass |
-| UT-E10 | Period | none / both ranges / 202613 / from > to / 2026-01-01…2026-11-20 / 2024-01…2026-11 | PERIOD.MANDATORY / PERIOD.MANDATORY / INVALID.MONTH / DATE.RANGE / RANGE.TOO.LONG / RANGE.TOO.LONG | Pass |
-| UT-E11 | Period | customer without CIF.LIMIT | line with usage, limits blank | Pass |
-| UT-E12 | Transactions | one customer | counted transactions oldest first; rejected one not shown | Pass |
-| UT-E13 | Transactions | dates, all customers | all customers' transactions in the range | Pass |
-| UT-E14 | Transactions | OVERRIDDEN Y | only daily / monthly / max CIF overrides (not "limit not defined"); OVERRIDES column from the activity | Pass |
-| UT-E15 | Transactions | no customer, no date / from > to / 20261131 / > 92 days | CUSTOMER.OR.DATE / DATE.RANGE / INVALID.DATE / RANGE.TOO.LONG | Pass |
-| UT-E17 | Transactions | any | column 10 TXN.REF = AAA TXN.CONTRACT.ID (e.g. FT26091ABCDE); 10 columns | Pass |
-| UT-E16 | Summary, 1,000 customers | `LOG_DETAIL_ENABLED` false | 3 log lines (instead of ~3,000) | Pass |
-
 ## Controllers in T24 (DEV only)
 
 | Id | What | Where tested |
@@ -304,8 +280,6 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-T10 | single routine called for DELETE and AUTH-REV (ACTION DELETE / REVERSAL in api.log), take-back done (D44, TQ20) | §8 |
 | UT-T03 | `postCoreTableUpdate` fires for UNAUTH, DELETE and AUTH-REV | §13 #5, #6, #9 |
 | UT-T04 | Auth routine on CUSTOMER,ALBE.CORP creates the record; "record not found" text recognised | §13 #1, #2 |
-| UT-T05 | Enquiry `setIds` lines shown in the right columns; EB.ERROR messages | §14.4 |
-| UT-T06 | AA.ARRANGEMENT.ACTIVITY OVERRIDE read (live and `$NAU`) for the overridden-transactions report | REPORTS R10 |
 | UT-T07 | AAA ACTIVITY.CLASS filled at UNAUTH for FT/TT credits and debits (and for user-defined activities linked to the two classes) | §13 #3 |
 | UT-T08 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, INITIATION.TYPE filled at UNAUTH; ORG.SYSTEM.DATE unchanged on re-input / DELETE / AUTH-REV | GAPS A1, A4, A5 |
 | UT-T09 | `Session.getCurrentVariable("!TODAY")` returns the T24 date (DEV: 01 APR 2026, not the server clock) | GAPS G1 |

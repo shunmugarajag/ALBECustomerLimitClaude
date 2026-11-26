@@ -17,8 +17,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 | [CLAUDE.md](CLAUDE.md) | Handover for a new (Claude) session: rules, decisions and why, code map, open items, how to test |
 | [docs/GAPS.md](docs/GAPS.md) | Known gaps and open points (no table change needed): risk, example, proposed fix, decision needed; exchange rate questions for the bank |
 | [docs/QUERIES_AND_GAPS.md](docs/QUERIES_AND_GAPS.md) | Register: functional queries (bank / BA), technical queries (DEV), decisions taken, gaps raised and solved |
-| [docs/REPORTS.md](docs/REPORTS.md) | The customer limit reports: summary, period report, transaction report (incl. overridden transactions) – selection, columns, examples, T24 set-up |
-| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **report enquiries (step 14) and user menu and access (step 15)** |
+| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **user menu and access (step 15)** |
 
 ## Project configuration
 
@@ -54,18 +53,15 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 |---|---|---|---|
 | Controller | `controller.customer` | CustomerLimitCreationController (CUSTOMER version) |
 | | `controller.activity` | **CustomerLimitActivityController** (single routine, D44), DailyMonthlyLimitController, MaximumCifLimitController (kept for rollback), ActivityRequestBuilder (ACTIVITY.API) |
-| | `controller.enquiry` | CustomerLimitSummaryEnquiryController, CustomerLimitPeriodEnquiryController, CustomerLimitTxnEnquiryController (NOFILE reports) |
 | Service | `service` | CustomerLimitReader, CustomerLimitUtilizationUpdater | Shared: read limits; utilisation record ids / amounts / add / reverse. |
 | | `service.activity` | CustomerLimitEngine (one entry point), DailyMonthlyLimitService, MaximumCifLimitService, TxnDetailsLimitRecorder, CurrencyConversionService | Limit checks, utilisation count / reverse (ACTIVITY.API). |
 | | `service.customer` | CustomerLimitCreationService | Limit creation (CUSTOMER version). |
-| | `service.enquiry` | CustomerLimitEnquiryService | Report data (read only). |
-| Validation | `validation` | CustomerLimitRequestValidator, CustomerLimitEnquiryValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
+| Validation | `validation` | CustomerLimitRequestValidator | Checks the request built from T24 **once**, in the controller (customer, AAA id, date, one positive amount). Services trust a validated request. |
 | Utility | `util` | LogUtil | Writes every log line in one standard format (see *Logging standard*). |
 | Utility | `util` | ValidationUtil | Common value checks shared by every layer: `isBlank`, `nvl`, `isPositive`, `toAmount` (blank/invalid = 0), `toOptionalAmount` (blank = limit not defined), `toText`, `toDate` (YYYYMMDD), `sameCurrency`. No business rules. |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
 | Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
-| | `model.enquiry` | LimitSummaryRow, LimitPeriodRow, LimitTxnRow | One report row each. |
-| View | `view` | CustomerLimitOverride, CustomerLimitEnquiryView | Overrides on TXN.AMOUNT; enquiry lines (`*`-separated columns). |
+| View | `view` | CustomerLimitOverride | Overrides / errors on the AAA fields (`[ID,p1,p2]`). |
 | Constants | `constants` | Constants | All constants: tables, record ids, statuses, activity keywords, field / key names, override ids, messages, date formats. The only `final` class. |
 
 ## Routines to register (EB.API)
@@ -75,9 +71,6 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | `com.temenos.ALBE.CustomerLimit.controller.customer.CustomerLimitCreationController` | VERSION CUSTOMER,ALBE.CORP – **Auth routine** | `postUpdateRequest`: when the customer is authorised, creates EB.ALBE.CIF.LIMITS `<customer>` from EB.ALBE.GEN.PARAM CUSTOMER.LIMIT if not present. No delete flow: an unauthorised customer that is deleted never had a limit record. On customer amendment (authorised again) an existing record is **never overwritten**; if the read fails for any reason other than "not found", nothing is written. (HLSD 7.2.1 says After Unau; changed to Auth.) |
 | `com.temenos.ALBE.CustomerLimit.controller.activity.CustomerLimitActivityController` *(single routine, D44)* | ACTIVITY.API **Post Routine** (EB.API `ALBE.CL.ACTIVITY.LIMIT`) – any mapped activity | `validateRecord`: UNAUTH = check daily / monthly + max CIF (credit), overrides, count; DELETE / AUTH-REV = take back; AUTH / REVERSE = nothing. ACTION log line INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT. Each record read once per call (no cache). |
 | `com.temenos.ALBE.CustomerLimit.controller.activity.DailyMonthlyLimitController` *(kept for rollback)* | ACTIVITY.API Post Routines VAL + UPD | `validateRecord` (UNAUTH): daily + monthly check, overrides. `postCoreTableUpdate`: UNAUTH counts (re-input replaces the earlier amount), DELETE and AUTH-REV reverse, AUTH no change. |
-| `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitSummaryEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY | `setIds`: limit summary per customer (limits, used today / this month, available). Selection CUSTOMER, DATE, OVER.LIMIT (optional). |
-| `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitPeriodEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.PERIOD | `setIds`: per customer per day (DATE.FROM–DATE.TO) or per month (MONTH.FROM–MONTH.TO) with usage; CUSTOMER, OVER.LIMIT optional. |
-| `com.temenos.ALBE.CustomerLimit.controller.enquiry.CustomerLimitTxnEnquiryController` | STANDARD.SELECTION NOFILE.ALBE.CUSTOMER.LIMIT.TXN | `setIds`: transactions counted (EB.ALBE.TXN.DETAILS.LIMIT) for one customer, or all customers in a date range; OVERRIDDEN = Y for only overridden transactions. |
 | `com.temenos.ALBE.CustomerLimit.controller.activity.MaximumCifLimitController` | ACTIVITY.API – any activity (counted credits only), normally ACCOUNTS-CREDIT-ARRANGEMENT | `validateRecord` (UNAUTH): sum of working balances of all customer accounts + credit amount vs MAX.CIF.BALANCE, override. |
 
 The validators read limits only from EB.ALBE.CIF.LIMITS `<customer>`. If the customer has no record, or a limit field is blank, the acceptable override EB-ABLE.CIF.LIMIT.NOT.DEFINED ("Customer limit not defined for Customer &") is raised once per transaction. EB.ALBE.GEN.PARAM CUSTOMER.LIMIT is used only by the creation service.

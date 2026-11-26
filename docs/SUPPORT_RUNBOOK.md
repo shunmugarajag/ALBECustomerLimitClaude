@@ -70,10 +70,6 @@ The day comes from the activity's ORG.SYSTEM.DATE (D42). Previously: REMARKS tag
 
 The rate between the two currencies is missing in the rate source (or the rate source is not configured yet – E1). The limit check was skipped for that transaction; the amount is counted unconverted. Report the pair.
 
-### 3.8 Report says "No records selected"
-
-Normal when nothing matches. Check the selection: the period report needs a date **or** month range; the transaction report needs a customer or a date; ranges are limited to 92 days / 24 months.
-
 ## 4. Error lines and what to do
 
 | Log line contains | Meaning | Action |
@@ -100,6 +96,6 @@ Normal when nothing matches. Check the selection: the period report needs a date
 
 | Level | Who | When |
 |---|---|---|
-| 1 | Branch / operations | override questions, report use |
+| 1 | Branch / operations | override questions |
 | 2 | Application support | sections 3 and 4, record corrections with approval |
 | 3 | Development | repeated FAILED / ERROR lines, wrong behaviour, rate source, code fixes |

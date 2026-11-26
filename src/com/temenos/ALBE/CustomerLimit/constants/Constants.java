@@ -12,6 +12,7 @@ import java.util.List;
  * Modification History :
  *-----------------------------------------------------------------------------
  * 20-Nov-2026   Development      Initial Version
+ * 26-Nov-2026   Development      Report (enquiry) constants removed (reports dropped)
  *-----------------------------------------------------------------------------
  */
 public final class Constants {
@@ -49,9 +50,6 @@ public final class Constants {
     public static final String ACCOUNT_TABLE = "ACCOUNT";
     public static final String CUSTOMER_ACCOUNT_FILE = "CUSTOMER.ACCOUNT";
     public static final String COMPANY_TABLE = "COMPANY";
-    public static final String AAA_TABLE = "AA.ARRANGEMENT.ACTIVITY";
-    /** File suffix of unauthorised records. */
-    public static final String NAU_SUFFIX = "$NAU";
 
     /** EB.ALBE.GEN.PARAM record holding the generic limits. */
     public static final String GEN_PARAM_ID = "CUSTOMER.LIMIT";
@@ -130,10 +128,8 @@ public final class Constants {
     public static final List<String> REFERENCE_CUT_CHARS = List.of("\\", ";");
 
     // -------------------------------------------------------------------------
-    // Transactions behind an activity (transaction report reads their overrides)
+    // Transactions behind an activity
     // -------------------------------------------------------------------------
-    public static final String FT_APPLICATION = "FUNDS.TRANSFER";
-    public static final String TELLER_APPLICATION = "TELLER";
     /** Transaction id prefixes, to know which application a counted transaction came from. */
     public static final String TXN_PREFIX_AAA = "AAA";
     public static final String TXN_PREFIX_FT = "FT";
@@ -165,9 +161,6 @@ public final class Constants {
             DateTimeFormatter.ofPattern("uuuuMMdd").withResolverStyle(ResolverStyle.STRICT);
     /** Length of the YYYYMMDD part of a daily utilisation id. */
     public static final int DAILY_PERIOD_LENGTH = 8;
-    /** Strict YYYYMM for reading months (enquiry MONTH.FROM / MONTH.TO). */
-    public static final DateTimeFormatter MONTH_PARSE_FORMAT =
-            DateTimeFormatter.ofPattern("uuuuMM").withResolverStyle(ResolverStyle.STRICT);
 
     // -------------------------------------------------------------------------
     // Currency conversion
@@ -236,15 +229,6 @@ public final class Constants {
     public static final String ACTION_REVERSAL_INPUT = "REVERSAL INPUT";
     public static final String LOG_EVENT_ACTION = "ACTION";
 
-    /** Prefix of this module's EB.OVERRIDE ids; only these are taken from the AAA OVERRIDE field. */
-    public static final String OVERRIDE_ID_PREFIX = "EB-ABLE.";
-    /** End of the override id inside an AAA OVERRIDE value ("<id>}<message>..."). Confirm in DEV. */
-    public static final String OVERRIDE_ID_END = "}";
-    /** Separator of the override ids in the transaction report OVERRIDES column. */
-    public static final String OVERRIDE_LIST_SEPARATOR = " ";
-    /** Overrides that mean "accepted above a limit" (transaction report OVERRIDDEN = Y). */
-    public static final List<String> LIMIT_EXCEED_OVERRIDES = List.of(OVR_DAILY_LIMIT_EXCEED, OVR_MONTHLY_LIMIT_EXCEED,
-            OVR_MAX_CIF_BAL_EXCEED);
 
     // -------------------------------------------------------------------------
     // Messages (HLSD text, used for logging; %s = customer id, difference)
@@ -254,39 +238,6 @@ public final class Constants {
     public static final String MSG_MAX_CIF_EXCEEDED = "Overall credit/debit exceed for Customer %s by %s";
     public static final String MSG_LIMIT_NOT_DEFINED = "Customer limit not defined for Customer %s";
     public static final String MSG_EXCH_RATE_MISSING = "Exchange rate not available from %s to %s";
-
-    // -------------------------------------------------------------------------
-    // Enquiries (NOFILE.ALBE.CUSTOMER.LIMIT.SUMMARY / NOFILE.ALBE.CUSTOMER.LIMIT.TXN)
-    // -------------------------------------------------------------------------
-    /** Separator between the columns of one enquiry row (split by the ENQUIRY record). */
-    public static final String ENQ_SEPARATOR = "*";
-    /** Selection field names in STANDARD.SELECTION. */
-    public static final String ENQ_SEL_CUSTOMER = "CUSTOMER";
-    public static final String ENQ_SEL_DATE = "DATE";
-    public static final String ENQ_SEL_DATE_FROM = "DATE.FROM";
-    public static final String ENQ_SEL_DATE_TO = "DATE.TO";
-    public static final String ENQ_SEL_MONTH_FROM = "MONTH.FROM";
-    public static final String ENQ_SEL_MONTH_TO = "MONTH.TO";
-    /** OVER.LIMIT = Y: only rows where something used is above its limit. */
-    public static final String ENQ_SEL_OVER_LIMIT = "OVER.LIMIT";
-    /** OVERRIDDEN = Y: only transactions accepted with a limit-exceed override. */
-    public static final String ENQ_SEL_OVERRIDDEN = "OVERRIDDEN";
-    public static final String ENQ_YES = "Y";
-    public static final String ENQ_NO = "N";
-    /** Period report row types. */
-    public static final String PERIOD_DAILY = "DAILY";
-    public static final String PERIOD_MONTHLY = "MONTHLY";
-    /** Longest ranges an enquiry accepts (protects the online system). */
-    public static final int ENQ_MAX_DAYS = 92;
-    public static final int ENQ_MAX_MONTHS = 24;
-    /** EB.ERROR ids raised by the enquiries. */
-    public static final String ERR_NO_RECORDS = "EB-NO.REC.SELECT";
-    public static final String ERR_INVALID_DATE = "EB-ALBE.ENQ.INVALID.DATE";
-    public static final String ERR_DATE_RANGE = "EB-ALBE.ENQ.DATE.RANGE";
-    public static final String ERR_CUSTOMER_OR_DATE = "EB-ALBE.ENQ.CUSTOMER.OR.DATE";
-    public static final String ERR_INVALID_MONTH = "EB-ALBE.ENQ.INVALID.MONTH";
-    public static final String ERR_PERIOD_MANDATORY = "EB-ALBE.ENQ.PERIOD.MANDATORY";
-    public static final String ERR_RANGE_TOO_LONG = "EB-ALBE.ENQ.RANGE.TOO.LONG";
 
     // -------------------------------------------------------------------------
     // Override / error text sent to T24: [ID,param1,param2]

@@ -49,7 +49,7 @@ Rules for either option:
 | UTILISED.MIGRATED.DEBIT.LIMIT | migrated debit total |
 | UTILISED.CREDIT.LIMIT / UTILISED.DEBIT.LIMIT | leave empty – the routines add counted amounts here |
 
-- The routines **never write** the MIGRATED fields; they only add them in the monthly check and the reports.
+- The routines **never write** the MIGRATED fields; they only add them in the monthly check.
 - Only the go-live month is needed; from the next month the module counts everything itself.
 
 **Reconciliation**

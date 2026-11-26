@@ -44,7 +44,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ12 | Override text fills both `&` | 🟡 `ID FM p1 VM p2` shown raw (26-Nov); changed to `[ID,p1,p2]` (D43, R25 EB.HANDLE.OVERRIDES) – retest |
 | TQ13 | "Record not found" text | 🟢 R25: T24CoreException EB-INTERNAL.ERROR "…Record does not exist" – added to RECORD_NOT_FOUND_MARKERS (24-Nov) |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
-| TQ15 | Report reads AAA / FT ($NAU, live) | ⏸ parked (D28) |
+| TQ15 | Report reads AAA / FT ($NAU, live) | ✅ not needed – reports removed (26-Nov) |
 | TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
 | TQ18 | Force a save failure (e.g. lock the UTILISED.LIMIT record): the transaction must be cancelled with EB-ALBE.LIMIT.UPDATE.FAILED and nothing posted | 🔴 |
 | TQ20 | Single routine (D44): is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? (log `CustomerLimitActivityController.validateRecord \| ACTION \| DELETE / REVERSAL`) – if not, keep VAL + UPD | 🔴 |
@@ -63,14 +63,14 @@ Details: [GAPS.md](GAPS.md)
 | D5 | GEN.PARAM id `CUSTOMER.LIMIT` |
 | D6 | ~~Counted date in REMARKS tag~~ – replaced by D42 |
 | D7 | Convert to limit currency |
-| D8 | Reports: summary, period, transactions |
+| D8 | ~~Reports: summary, period, transactions~~ – removed 26-Nov |
 | D9 | T24 date, not server clock |
 | D10 | Bank decides where routines are attached |
 | D11 | Credit / debit = activity-class action |
 | D12 | All initiation types counted |
 | D13 | Amount = ORIG.TXN.AMT if filled |
 | D14 | LCY limit → use TXN.AMOUNT.LCY |
-| D15 | Report column TXN.REF |
+| D15 | ~~Report column TXN.REF~~ – removed 26-Nov |
 | D16 | FT / Teller / ACCOUNT.PARAMETER routines removed |
 | D17 | One engine (`CustomerLimitEngine`) |
 | D18 | Record id without `.CR/.DR` |
@@ -99,7 +99,7 @@ Details: [GAPS.md](GAPS.md)
 | D42 | Counted date from the activity's ORG.SYSTEM.DATE only (else T24 TODAY); REMARKS tag + DEF routine (`defaultFieldValues`) removed – DEV 25-Nov: Record Rtn never called for FT activities, `orgSystemDate=20260403` on every hook (user approved 26-Nov) |
 | D43 | **Checks as Post Routine** (VAL, MAX.CIF before UPD) – the only stage called for FT activities, and the override still reaches the FT screen (DEV 26-Nov). Override / error text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES / ERRORS); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE) – a field keeps only one override. Post-routine-only check controller and FT/TT version routine not needed (user approved 26-Nov) |
 | D44 | **Single routine** `CustomerLimitActivityController` (EB.API `ALBE.CL.ACTIVITY.LIMIT`, one Post Routine, `validateRecord`): INPUT = check + max CIF + overrides + count, DELETE / AUTH-REV = take back, AUTH / REVERSE = nothing; ACTION log line; each record read once per call, **no cache**; save failure → setError. **Conversion of the transaction amount only from the activity:** LCY amount, else TXN.EXCH.RATE, else **EB.ERROR EB-ALBE.EXCH.RATE.MISSING (blocks)**; limit not in LCY → blocked; max CIF other-currency accounts parked (override as before). Old VAL / MAX.CIF / UPD kept until after SIT (user approved 26-Nov) |
-| D28 | Reports parked for the first DEV set-up (23-Nov): no ENQUIRY / STANDARD.SELECTION / report EB.API yet; code stays in the JAR |
+| D28 | Reports parked for the first DEV set-up (23-Nov) – **removed from the code 26-Nov** (user) |
 
 ## 4. Gaps
 

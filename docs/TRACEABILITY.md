@@ -2,7 +2,7 @@
 
 Source: HLSD *Albaraka T24 project – Account module – 3 CBE Mandate CRs V2* (v0.2, 19-Nov-2026), sections 1.1.1, 1.1.2, 7.2.1 and use cases 8.2–8.6.
 Approved table structures: EB.TABLE.DEFINITION in DEV (ALBE.GEN.PARAM, ALBE.CIF.LIMIT, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT).
-Unit tests: [UNIT_TEST_CASES.md](UNIT_TEST_CASES.md) (`UT-…`). DEV/SIT tests: [T24_CONFIGURATION.md](T24_CONFIGURATION.md) §13 (`#1…#16`) and §14.4, [REPORTS.md](REPORTS.md) (`R1…R12`).
+Unit tests: [UNIT_TEST_CASES.md](UNIT_TEST_CASES.md) (`UT-…`). DEV/SIT tests: [T24_CONFIGURATION.md](T24_CONFIGURATION.md) §13 (`#1…#16`).
 
 Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs confirmation in DEV · **Deviation** = agreed difference to the HLSD · **Pending** = waits for input.
 
@@ -36,7 +36,7 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R22 | 1 / 7.2.1 | Input and deletion logic to be handled | re-input replaces the earlier amount; DELETE and AUTH-REV reverse from the original day / month | UT-U03…U06, #6 #7 #9 | Done |
 | R23 | 7.2.1 Maximum | Credit: total working balance of all customer accounts + amount > MAX.CIF.BALANCE → override "Overall credit/debit exceed …" | `MaximumCifLimitController` → `MaximumCifLimitService` | UT-X01, #12, use case 8.4 | Done |
 | R24 | 1.1.2 CCY | Limits in local currency | limits compared in EB.ALBE.CIF.LIMITS CCY; other currencies converted (`CurrencyConversionService`) | UT-F01…F04 | Done / Pending E1 |
-| R25 | 10 Assumptions | Reports not included (separate requirement) | three enquiries delivered additionally | R1…R12 | Additional |
+| R25 | 10 Assumptions | Reports not included (separate requirement) | none (three enquiries were built, then removed 26-Nov) | – | – |
 
 ## 2. HLSD use cases
 

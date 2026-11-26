@@ -23,7 +23,6 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
 | 5 | **Overrides** | After each check | Acceptable overrides from EB.OVERRIDE, raised on TXN.AMOUNT |
-| 6 | **Enquiries** | On demand | Summary (one day), period report (per day / month over a range), transaction report; one or all customers, optionally over-limit only |
 
 All limit breaches are **acceptable overrides**, not errors: the user can accept and continue.
 
@@ -72,13 +71,6 @@ All limit breaches are **acceptable overrides**, not errors: the user can accept
 | `controller.activity` | `MaximumCifLimitController` | `ActivityLifecycle.validateRecord` – maximum CIF balance check (credit only) |
 | `service.activity` | `CustomerLimitEngine` | **one entry point**: transaction info + customer limit info → `checkDailyMonthly`, `checkMaxCif`, `count`, `reverse` (counted day found by the transaction if needed); `transactionKey(reference)` = root reference used by every routine; own-account transfer (other side already recorded for the customer) → not counted, 0-amount marker, reversal takes nothing back |
 | `controller.activity` | `ActivityRequestBuilder` | common AAA → request mapping for **any activity**: counted or not (amount, direction from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` – D41, INITIATION.TYPE), amount (ORIG.TXN.AMT / TXN.AMOUNT + LCY), currency, counted date (REMARKS → ORG.SYSTEM.DATE → T24 TODAY) |
-| `controller.enquiry` | `CustomerLimitSummaryEnquiryController` | `Enquiry.setIds` – NOFILE limit summary report |
-| `controller.enquiry` | `CustomerLimitPeriodEnquiryController` | `Enquiry.setIds` – NOFILE period report (daily / monthly rows) |
-| `controller.enquiry` | `CustomerLimitTxnEnquiryController` | `Enquiry.setIds` – NOFILE transaction report |
-| `validation` | `CustomerLimitEnquiryValidator` | Enquiry selection checks: dates, months, ranges, range length, period given, customer or date |
-| `service.enquiry` | `CustomerLimitEnquiryService` | Builds the report rows (read only) |
-| `model.enquiry` | `LimitSummaryRow`, `LimitPeriodRow`, `LimitTxnRow` | One report row each (`isOverLimit()` on summary / period) |
-| `view` | `CustomerLimitEnquiryView` | Formats the rows as `*`-separated enquiry lines (column order documented in the class) |
 | `validation` | `CustomerLimitRequestValidator` | `isValidForDailyMonthly`, `isValidForMaxCif`, `isValidCustomerId` |
 | `service.customer` | `CustomerLimitCreationService` | `create(customerId)` – never overwrites an existing record |
 | `service.activity` | `DailyMonthlyLimitService` | `validate`, `countAtInput`, `reverse` |
@@ -200,21 +192,9 @@ total + credit > MAX.CIF.BALANCE -> breach (difference)
 Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
 **Pending:** the rate table and field are not configured yet (`Constants.EXCH_RATE_TABLE` / `EXCH_RATE_FIELD` are empty), so today only same-currency transactions are checked; other currencies raise the rate-missing override.
 
-### 5.6 Enquiries
+### 5.6 Enquiries – removed (26-Nov-2026)
 
-Full description, columns, examples and T24 set-up: **[REPORTS.md](REPORTS.md)**.
-
-| Enquiry | Selection | Reads |
-|---|---|---|
-| Summary | CUSTOMER (opt.), DATE (opt., default today), OVER.LIMIT | per customer: CIF.LIMIT + daily + monthly UTILISED.LIMIT; without CUSTOMER a SELECT of CIF.LIMIT ids |
-| Period | DATE.FROM–DATE.TO **or** MONTH.FROM–MONTH.TO, CUSTOMER (opt.), OVER.LIMIT | all customers: **one** SELECT on UTILISED.LIMIT (`@ID LIKE ...-YYYYMM...` per month), then one read per row; one customer: direct reads per day/month. CIF.LIMIT read once per customer (cached in the service for the run) |
-| Transactions | CUSTOMER and/or DATE.FROM / DATE.TO (counted date in the id) | one SELECT on TXN.DETAILS (`@ID LIKE <cust>-...` or `...-<day>-...` per day), then reads |
-
-- Only days / months **with usage** appear in the period report (no UTILISED.LIMIT record = no row).
-- Available = limit − used (negative = over the limit after an accepted override; blank when the limit is not defined).
-- Ranges are capped (`ENQ_MAX_DAYS` = 92, `ENQ_MAX_MONTHS` = 24); the transaction report needs a customer or a date and, without a customer, a range of at most 92 days.
-- Bad selection raises an EB.ERROR (`EB-ALBE.ENQ.*`); nothing found raises `EB-NO.REC.SELECT`.
-- Enquiries never write. Dates and months are parsed strictly (`DATE_PARSE_FORMAT`, `MONTH_PARSE_FORMAT`): 20261131 and 202613 are rejected.
+The three NOFILE reports (summary, period, transactions) and their classes were removed from the code at the user's request (Git history keeps them).
 
 ---
 
@@ -303,8 +283,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 | DB trace lines switchable (`LOG_DETAIL_ENABLED=false` in production) | done |
 | Per-transaction read cache (CIF.LIMIT, UTILISED.LIMIT and COMPANY are read more than once) | possible next step |
 | CUSTOMER.ACCOUNT empty -> SELECT on ACCOUNT fallback (slow on a large file) | consider removing once CUSTOMER.ACCOUNT is confirmed reliable |
-| Per-record read lines (FOUND / NOT FOUND of CIF.LIMIT, UTILISED.LIMIT, TXN.DETAILS, ACCOUNT) and per-row enquiry lines are `detail` | done – with `LOG_DETAIL_ENABLED=false` a 1,000-customer summary writes 3 lines instead of ~3,000 |
-| Enquiries filter in the SELECT (not in Java), read only by key, no file writing, BigDecimal amounts | done |
+| Per-record read lines (FOUND / NOT FOUND of CIF.LIMIT, UTILISED.LIMIT, TXN.DETAILS, ACCOUNT) are `detail` | done – with `LOG_DETAIL_ENABLED=false` a 1,000-customer summary writes 3 lines instead of ~3,000 |
 | EB.ALBE.TXN.DETAILS.LIMIT grows with every counted transaction | consider a housekeeping job for old records (keep at least as long as a reversal is possible) |
 
 ---
@@ -324,7 +303,7 @@ Controller `END` lines carry `elapsedMs` for timing.
 | 9 | Creation never overwrites, even on read failure | Amended customer limits must never be lost |
 | 10 | Technical failure does not block the transaction | Availability; monitored through logs |
 | 11 | MVC, single repository, validation once, LogUtil / ValidationUtil | Readability, one place per concern |
-| 12 | Local table structures are pre-approved: the code adds no fields (accepted overrides are read from AA.ARRANGEMENT.ACTIVITY at report time) | Table design is fixed |
+| 12 | Local table structures are pre-approved: the code adds no fields | Table design is fixed |
 
 ### Deviations from the HLSD (to be reflected in the HLSD)
 
@@ -356,7 +335,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 
 | Call | Status |
 |---|---|
-| Hook signatures: `ActivityLifecycle.defaultFieldValues / validateRecord / postCoreTableUpdate`, `RecordLifecycle.postUpdateRequest`, `Enquiry.setIds` | **verified (compile)** |
+| Hook signatures: `ActivityLifecycle.defaultFieldValues / validateRecord / postCoreTableUpdate`, `RecordLifecycle.postUpdateRequest` | **verified (compile)** |
 | `ArrangementContext.getArrangementActivityId()`, `getActivityStatus()` | **verified (compile)** |
 | `AaArrangementActivityRecord.getTxnAmount / getEffectiveDate / getActivity / getRemarks / setRemarks / getOverride / getLinkedAppl`, `AaArrangementRecord.getCurrency / getCustomer` | **verified (compile)** |
 | `TField.getValue / setValue / setOverride(String) / setError(String)` | **verified (compile + R25 bytecode)** – text `[ID,p1,p2]` (EB.HANDLE.OVERRIDES / ERRORS); one override per field (setOverride replaces) – D43 |
@@ -430,6 +409,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 26-Nov-2026 | D42: counted date only from the activity ORG.SYSTEM.DATE (else T24 TODAY); `defaultFieldValues` (DEF routine) and the REMARKS tag removed; G4 / G5 closed |
 | 26-Nov-2026 | D43: checks attached as Post Routines (before UPD) – override shown on the FT screen in DEV; override / error text `[ID,p1,p2]`; one override per AAA field (`CustomerLimitOverride.raiseFor(activity, …)`, `fieldFor`) |
 | 26-Nov-2026 | D44: single routine `CustomerLimitActivityController` (one Post Routine, `validateRecord`: INPUT check + max CIF + overrides + count, DELETE / AUTH-REV take back); engine `processInput`, records read once (`UtilisationRecords`, no cache); transaction amount converted only from the activity (LCY amount, else TXN.EXCH.RATE, else EB.ERROR `EB-ALBE.EXCH.RATE.MISSING`); limit not in LCY blocked |
+| 26-Nov-2026 | Reports removed (user): 3 NOFILE enquiry controllers, `CustomerLimitEnquiryService`, report rows, `CustomerLimitEnquiryView`, `CustomerLimitEnquiryValidator`, report-only repository methods (`selectCifLimitIds`, `selectUtilisedLimitIds`, `selectTxnDetailsIds(customer, days)`, `readActivity`, `readTransactionOverrides`) and constants; REPORTS.md deleted |
 | 25-Nov-2026 | Credit/debit mapping in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41); unmapped activity → EB-ALBE.ACTIVITY.NOT.MAPPED; ACTIVITY.CLASS action logic removed |
 | 22-Nov-2026 | Controller sub-packages `controller.customer`, `controller.activity`, `controller.enquiry` (EB.API package names updated) |
 | 22-Nov-2026 | FT / TELLER / ACCOUNT.PARAMETER routines **removed** – FT, TT and other postings on AA accounts arrive as activities, covered by ACTIVITY.API (classes in Git history) |

@@ -2,7 +2,6 @@ package com.temenos.ALBE.CustomerLimit.util;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.List;
 
 import com.temenos.ALBE.CustomerLimit.constants.Constants;
@@ -89,19 +88,6 @@ public class ValidationUtil {
             return LocalDate.parse(value.trim(), Constants.DATE_PARSE_FORMAT);
         } catch (Exception e) {
             LogUtil.error(CLASS_NAME, "toDate", "INVALID", "invalid date '" + value + "'");
-            return null;
-        }
-    }
-
-    /** YYYYMM text to YearMonth; null when blank or invalid (invalid is logged). */
-    public static YearMonth toMonth(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-        try {
-            return YearMonth.parse(value.trim(), Constants.MONTH_PARSE_FORMAT);
-        } catch (Exception e) {
-            LogUtil.error(CLASS_NAME, "toMonth", "INVALID", "invalid month '" + value + "'");
             return null;
         }
     }

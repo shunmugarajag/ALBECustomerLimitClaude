@@ -4,6 +4,9 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Removed – reports (26-Nov-2026)
+- The three NOFILE reports (limit summary, period report, transaction report) are removed from the code with everything only they used: enquiry controllers, report service, report rows, report view and selection validator, report-only reads/selects in the repository, report constants and `docs/REPORTS.md`. T24 set-up §14 (STANDARD.SELECTION / ENQUIRY / report EB.API / report EB.ERRORs) is no longer needed; the menu keeps only the maintenance versions. Git history keeps the old code.
+
 ### Added – single routine and conversion from the activity (26-Nov-2026, D44)
 - New `CustomerLimitActivityController` (EB.API `ALBE.CL.ACTIVITY.LIMIT`, one **Post Routine**, method `validateRecord`) does the whole flow in one call: input = daily / monthly check, max CIF check for credits, overrides, then count; delete and authorised reversal = take back; authorise and reversal input = nothing.
 - New **ACTION** log line per call in plain words: INPUT / DELETE / REVERSAL / AUTHORISE / REVERSAL INPUT.

@@ -15,7 +15,7 @@ Tick every line before a change is merged to `main`. These are the project's sta
 - [ ] Controllers only read the T24 objects, build / validate the request, call the service and the view – **no business rules, no DB access**.
 - [ ] **All DB access** (DataAccess, Session, Table classes, selects) only in `repository/CustomerLimitRepository`, each call logged.
 - [ ] Business rules only in `service/`.
-- [ ] Overrides and enquiry lines only built in `view/`.
+- [ ] Overrides / errors only built in `view/`.
 - [ ] Data passed between layers in `model/` classes.
 
 ## 3. Java standards
@@ -34,11 +34,11 @@ Tick every line before a change is merged to `main`. These are the project's sta
 
 ## 4. Validation and errors
 
-- [ ] Request validated **once**, in the controller (`CustomerLimitRequestValidator` / `CustomerLimitEnquiryValidator`); services do not repeat the checks.
+- [ ] Request validated **once**, in the controller (`CustomerLimitRequestValidator`); services do not repeat the checks.
 - [ ] Common value checks through `ValidationUtil` (no own isBlank / parse helpers).
 - [ ] Every controller body in `try`; unexpected exceptions logged with `LogUtil.error(..., e)`.
 - [ ] No empty `catch` blocks.
-- [ ] Limit breaches raise **acceptable overrides** (not errors); enquiry selection problems raise EB.ERROR ids from `Constants`.
+- [ ] Limit breaches raise **acceptable overrides** (not errors).
 
 ## 5. Logging
 
@@ -61,15 +61,14 @@ Tick every line before a change is merged to `main`. These are the project's sta
 
 ## 7. Performance
 
-- [ ] No SELECT inside a transaction routine (direct reads by key); SELECTs only in enquiries / documented fallbacks.
+- [ ] No SELECT inside a transaction routine (direct reads by key); SELECTs only in documented fallbacks.
 - [ ] No repeated reads of the same record in a loop (read once, reuse).
-- [ ] Enquiries filter in the SELECT where possible and respect the range limits.
 
 ## 8. Tests and documents
 
 - [ ] Compiles with no errors; the unit test programs give the expected results ([UNIT_TEST_CASES.md](UNIT_TEST_CASES.md)); new behaviour has a new case.
 - [ ] No stand-in / stub classes committed.
-- [ ] Docs updated where affected: README, TECHNICAL_REFERENCE (change history), T24_CONFIGURATION, REPORTS, GAPS, TRACEABILITY, `CHANGELOG.md`, `CLAUDE.md`.
+- [ ] Docs updated where affected: README, TECHNICAL_REFERENCE (change history), T24_CONFIGURATION, GAPS, TRACEABILITY, `CHANGELOG.md`, `CLAUDE.md`.
 - [ ] Commit message says what changed and why; pushed to `main`.
 
 | Reviewer | Date | Change / commit | Result |
