@@ -14,10 +14,10 @@
 
 | Function | Delivered |
 |---|---|
-| Customer limit creation | EB.ALBE.CIF.LIMITS created from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` when a customer is authorised (CUSTOMER,ALBE.CORP); never overwritten on amendment |
+| Customer limit creation | EB.ALBE.CIF.LIMITS created from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` when a customer is authorised (CUSTOMER,ALBE.CORP.INPUT); never overwritten on amendment |
 | Daily / monthly limit check | acceptable overrides on credit / debit activities; utilisation counted at input, reversed on rejection and reversal |
 | Maximum CIF balance check | acceptable override on credit activities |
-| Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ABLE.EXCH.RATE.MISSING) |
+| Currency conversion | to the limit currency – **rate source pending** (other currencies get EB-ALBE.EXCH.RATE.MISSING) |
 | Logging | standard `ALBE.CUSTOMER.LIMIT | …` lines through logger `API` → `TAFJ/log/api.log`, all at INFO (DIAGNOSTIC.API), D47 |
 
 Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
@@ -39,10 +39,10 @@ Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any 
 |---|---|---|---|---|
 | 1 | EB.TABLE.DEFINITION | ALBE.CIF.LIMIT (new), ALBE.GEN.PARAM, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT (approved, unchanged) | new / existing | 1 |
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
-| 3 | EB.OVERRIDE | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
+| 3 | OVERRIDE | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED, EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ALBE.MAX.CIF.BAL.EXCEED, EB-ALBE.CIF.LIMIT.NOT.DEFINED, EB-ALBE.EXCH.RATE.MISSING | new | 4 |
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks) | new | 14.3 |
 | 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT**, **ALBE.CL.MAX.CIF** – JAVA.PACKAGE `com.temenos.albe`, classes AlbeClActivityLimit / AlbeClMaxCif / AlbeClLimitCreate (D50); **remove** ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF | new / removed | 6 |
-| 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
+| 6 | VERSION | CUSTOMER,ALBE.CORP.INPUT – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
 | 7 | VERSION | EB.ALBE.CIF.LIMITS,AMEND · EB.ALBE.CIF.LIMITS,VIEW (optional) · EB.ALBE.GEN.PARAM,LIMIT | new | 9 |
 | 8 | ACTIVITY.API product condition | per product and mapped activity (e.g. ACCOUNTS-TRANSFERIN / -OUT, ACCOUNTS-CREDIT / -DEBIT-ARRANGEMENT), Property Class ACCOUNT, CR.MOVEMENT / DR.MOVEMENT – Post Routine 1 `ALBE.CL.ACTIVITY.LIMIT`; credit activities also Post Routine 2 `ALBE.CL.MAX.CIF`; other routine fields blank (D50) | **changed** | 8 |
 | 11 | Menu | Customer Limits sub-menu (maintain) | new / changed | 15.1 |
@@ -57,11 +57,11 @@ Package the T24 records (items 2–11) in a **DL.DEFINE** (or the team's usual r
 | 1 | Install / authorise the EB.TABLE.DEFINITION records; create the files | FILE.CONTROL entries exist |
 | 2 | Generate the table Java API; put the generated JARs and `ALBE_CustomerLimit.jar` on the TAFJ classpath; restart / refresh TAFJ if your environment needs it | no class-not-found in the TAFJ log |
 | 3 | EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` with the bank's values | record authorised |
-| 4 | EB.OVERRIDE and EB.ERROR records | records authorised |
+| 4 | OVERRIDE and EB.ERROR records | records authorised |
 | 5 | EB.API records | records authorised |
 | 6 | Versions EB.ALBE.CIF.LIMITS,AMEND / ,VIEW, EB.ALBE.GEN.PARAM,LIMIT | versions open |
 | 8 | ACTIVITY.API conditions on the selected products; proof and publish the products | conditions active on new activities |
-| 9 | VERSION CUSTOMER,ALBE.CORP AUTH.ROUTINE | – |
+| 9 | VERSION CUSTOMER,ALBE.CORP.INPUT AUTH.ROUTINE | – |
 | 10 | Menu and security | menu visible for the roles |
 | 11 | Go-live data: limits for existing customers, migrated monthly totals – [DATA_MIGRATION.md](DATA_MIGRATION.md) | reconciliation counts match |
 | 12 | Post-installation checks (section 4) | all pass |
@@ -74,9 +74,9 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 
 | # | Check | Expected | Log line |
 |---|---|---|---|
-| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `AlbeClLimitCreate: CREATED` |
+| 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMITS created with the generic values | `AlbeClLimitCreate: CREATED` |
 | 2 | FT credit below the limit to a configured account | no override; daily + monthly used updated | `ACTION \| INPUT …`, `RESULT \| INPUT … <= limit … -> OK` |
-| 3 | FT credit above the daily limit | override "Daily credit limit exceeded for Customer <id> by <amount>" (and monthly if over) | `RESULT \| INPUT … EXCEEDED by … raised: EB-ABLE.DAILY.LIMIT.EXCEED` |
+| 3 | FT credit above the daily limit | override "Daily credit limit exceeded for Customer <id> by <amount>" (and monthly if over) | `RESULT \| INPUT … EXCEEDED by … raised: EB-ALBE.DAILY.LIMIT.EXCEED` |
 | 4 | Delete the unauthorised FT of check 3 | used back to the value after check 2 | `ACTION \| DELETE …`, `RESULT \| TAKEN BACK (input rejected)` |
 | 5 | Reverse an authorised FT and authorise the reversal | used goes down by its amount | `ACTION \| REVERSAL …`, `RESULT \| TAKEN BACK (reversal)` |
 | 6 | Search the log for errors | none | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED\|BLOCKED) \|"` |
@@ -90,9 +90,9 @@ Remove the routines first so nothing new is counted, then the rest. Data written
 | # | Action |
 |---|---|
 | 1 | Remove the routines from the ACTIVITY.API conditions; proof and publish the products |
-| 2 | Clear AUTH.ROUTINE ALBE.CL.LIMIT.CREATE on CUSTOMER,ALBE.CORP |
+| 2 | Clear AUTH.ROUTINE ALBE.CL.LIMIT.CREATE on CUSTOMER,ALBE.CORP.INPUT |
 | 3 | Remove the menu entries and role access |
-| 4 | Reverse the release package (EB.API, versions, EB.OVERRIDE, EB.ERROR) |
+| 4 | Reverse the release package (EB.API, versions, OVERRIDE, EB.ERROR) |
 | 5 | **Do not just delete `ALBE_CustomerLimit.jar`**: JBoss `module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name and a missing file takes down every T24 deployment (DEV 25-Nov). Leave the JAR (no routine points to it), or remove its entry from module.xml first in a planned change with a restart. |
 | 6 | *(optional)* keep or clear the local tables – EB.ALBE.UTILISED.LIMIT / TXN.DETAILS hold only bookkeeping; EB.ALBE.CIF.LIMITS holds the customers' limits (keep if a re-install is planned) |
 

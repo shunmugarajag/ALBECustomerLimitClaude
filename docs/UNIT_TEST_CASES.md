@@ -82,6 +82,6 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 | UT-DEV1 | Post Routine overrides shown on the FT screen, `&` = "<customer> by <amount>" | T24_CONFIGURATION §13 #4 |
 | UT-DEV2 | DELETE and AUTH-REV reach `AlbeClActivityLimit` (TQ20), take-back done | §13 #6, #9 |
 | UT-DEV3 | declined override / error in either routine → T24 rolls back the count (TQ22 passed with the MVC routine 26-Nov; retest) | §13 #5a |
-| UT-DEV4 | `AlbeClLimitCreate` on CUSTOMER,ALBE.CORP creates the record; "record not found" text recognised | §13 #1, #2 |
+| UT-DEV4 | `AlbeClLimitCreate` on CUSTOMER,ALBE.CORP.INPUT creates the record; "record not found" text recognised | §13 #1, #2 |
 | UT-DEV5 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, TXN.EXCH.RATE filled at UNAUTH (TQ21) | GAPS A1, A4, A5 |
 | UT-DEV6 | `AlbeClMaxCif` reads the real WORKING.BALANCE (DEV showed 0.00 with the MVC version) | §13 #12 |

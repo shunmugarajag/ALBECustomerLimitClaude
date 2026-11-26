@@ -34,8 +34,8 @@ import com.temenos.t24.api.system.Session;
  *   + this credit (in the limit currency)  > MAXIMUM.OVERALL.CIF.AMOUNT -> override, by the excess
  *
  *   no CUSTOMER.ACCOUNT accounts      -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked)
- *   account in another currency       -> override EB-ABLE.EXCH.RATE.MISSING, not checked (no rate yet)
- *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> override EB-ABLE.CIF.LIMIT.NOT.DEFINED
+ *   account in another currency       -> override EB-ALBE.EXCH.RATE.MISSING, not checked (no rate yet)
+ *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> override EB-ALBE.CIF.LIMIT.NOT.DEFINED
  *   no limit record / blank CURRENCY / amount not convertible / debit / not mapped
  *                                     -> nothing here (AlbeClActivityLimit raises those)
  *

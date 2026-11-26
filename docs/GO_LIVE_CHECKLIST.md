@@ -17,7 +17,7 @@ Details of every step: `docs/T24_CONFIGURATION.md` (step numbers in brackets, e.
 | [ ] | FQ15 | Production values for GEN.PARAM `CUSTOMER.LIMIT` (CURRENCY + 5 limits) | DEV: EGP, all 10000 | OPEN (bank) |
 | [ ] | FQ1 / D31 | Final list of products and activities that get the routine (fill the worksheet, section 7) | all account products (current + savings), ACCOUNTS-CREDIT/DEBIT-ARRANGEMENT | decided – confirm list |
 | [ ] | FQ2 | Other actions (e.g. APPLYPAYMENT) – count or not? | not counted | OPEN (assumed) |
-| [ ] | FQ8 / E1 | Exchange-rate source for **max CIF** when the customer has accounts in another currency (table, field, mid/buy/sell, market, quote direction) | override EB-ABLE.EXCH.RATE.MISSING, max CIF check skipped | OPEN (parked) – **listed as go-live blocker** |
+| [ ] | FQ8 / E1 | Exchange-rate source for **max CIF** when the customer has accounts in another currency (table, field, mid/buy/sell, market, quote direction) | override EB-ALBE.EXCH.RATE.MISSING, max CIF check skipped | OPEN (parked) – **listed as go-live blocker** |
 | [ ] | FQ12 | How long to keep EB.ALBE.TXN.DETAILS.LIMIT records (housekeeping) | kept forever | OPEN |
 | [ ] | FQ13 | HLSD update for the agreed deviations (Auth routine, GEN.PARAM `CUSTOMER.LIMIT`, counted date, currency conversion) | – | OPEN (BA) |
 | [ ] | G2 / TQ2 | Parallel inputs for one customer can lose a count – lock or rebuild job? | no lock | OPEN – **go-live blocker** |
@@ -86,19 +86,19 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | [ ] | **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | "No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed" – max CIF check with an empty CUSTOMER.ACCOUNT |
 | [ ] | **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | "Exchange rate not available &, transaction not allowed" (& = "from USD to EGP") – no LCY amount and no TXN.EXCH.RATE, or limit not in LCY |
 
-### 2.4 EB.OVERRIDE (all acceptable) [§4]
+### 2.4 OVERRIDE (all acceptable) [§4]
 
 | Done | Id | AAA field it is raised on |
 |---|---|---|
-| [ ] | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED – "Daily debit limit exceeded for Customer &" | TXN.AMOUNT |
-| [ ] | EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED – "Daily credit limit exceeded for Customer &" | TXN.AMOUNT |
-| [ ] | EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED – "Monthly debit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
-| [ ] | EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED – "Monthly credit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
-| [ ] | EB-ABLE.MAX.CIF.BAL.EXCEED – "Overall balance limit exceeded for Customer &" | ORIG.TXN.AMT |
-| [ ] | EB-ABLE.CIF.LIMIT.NOT.DEFINED – "Customer limit not defined for Customer &" | CURRENCY |
-| [ ] | EB-ABLE.EXCH.RATE.MISSING – "Exchange rate not available &" (max CIF only) | EFFECTIVE.DATE |
+| [ ] | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED – "Daily debit limit exceeded for Customer &" | TXN.AMOUNT |
+| [ ] | EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED – "Daily credit limit exceeded for Customer &" | TXN.AMOUNT |
+| [ ] | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED – "Monthly debit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
+| [ ] | EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED – "Monthly credit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
+| [ ] | EB-ALBE.MAX.CIF.BAL.EXCEED – "Overall balance limit exceeded for Customer &" | ORIG.TXN.AMT |
+| [ ] | EB-ALBE.CIF.LIMIT.NOT.DEFINED – "Customer limit not defined for Customer &" | CURRENCY |
+| [ ] | EB-ALBE.EXCH.RATE.MISSING – "Exchange rate not available &" (max CIF only) | EFFECTIVE.DATE |
 
-Note: override ids are **EB-ABLE.*** (as created in DEV, D40); error ids are **EB-ALBE.***.
+Note: override ids are **EB-ALBE.*** (as created in DEV, D40); error ids are **EB-ALBE.***.
 
 ### 2.5 EB.API [§6]
 
@@ -142,7 +142,7 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 | [ ] | Proof and publish each product (AA.PRODUCT.DESIGNER) |
 | [ ] | Fill the worksheet (section 7) for every product / activity |
 
-### 2.9 VERSION CUSTOMER,ALBE.CORP [§7]
+### 2.9 VERSION CUSTOMER,ALBE.CORP.INPUT [§7]
 
 | Done | Step | Check |
 |---|---|---|
@@ -166,7 +166,7 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 | [ ] | 1 | Install everything up to 2.7 – **routines not attached yet** | – |
 | [ ] | 2 | **M1** – EB.ALBE.CIF.LIMITS for existing customers (scope, values, method OPEN – section 1.1). Never overwrite an existing record; re-runnable | customers in scope = created + already existing; sample of 20 = GEN.PARAM / file; `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY` one line per customer |
 | [ ] | 3 | **M2** – go-live month record `<customer>-YYYYMM`: UTILISED.MIGRATED.CREDIT.LIMIT / UTILISED.MIGRATED.DEBIT.LIMIT (limit currency). Leave UTILISED.CREDIT/DEBIT.LIMIT empty (source / cut-off OPEN) | sum = source totals; `ENQ ALBE.CUSTOMER.LIMIT.PERIOD MONTH.FROM EQ <go-live month>` |
-| [ ] | 4 | Attach routines: 2.8 ACTIVITY.API, then 2.9 CUSTOMER,ALBE.CORP | – |
+| [ ] | 4 | Attach routines: 2.8 ACTIVITY.API, then 2.9 CUSTOMER,ALBE.CORP.INPUT | – |
 | [ ] | 5 | **M3** (optional) – only if transactions were done on go-live day before step 4: load today's daily record + add to monthly UTILISED fields | – |
 | [ ] | 6 | Smoke test (section 4) | all pass |
 
@@ -180,14 +180,14 @@ Needs DIAGNOSTIC.API at INFO to see ACTION / RESULT lines. Find one transaction:
 
 | Done | # | Test | Expected | api.log line to look for |
 |---|---|---|---|---|
-| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `AlbeClLimitCreate: CREATED` |
+| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `AlbeClLimitCreate: CREATED` |
 | [ ] | 2 | Amend + re-authorise that customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| … already exists` |
 | [ ] | 3 | Credit below the limit (FT on an AA account) | no override; daily + monthly used updated; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `AlbeClActivityLimit: \| ACTION \| INPUT`, then `RESULT \| COUNTED …` |
 | [ ] | 4 | Credit above the daily limit | "Daily credit limit exceeded for Customer <id> by <amount>" (one `&`, filled) | `RESULT \| CHECK daily/monthly … EXCEEDED by …`, `OVERRIDE \| … sent=…` |
 | [ ] | 5 | Delete the unauthorised transaction of test 4 | used back to the value after test 3; TXN.DETAILS deleted | `ACTION \| DELETE` |
 | [ ] | 6 | Authorise test 3 | no change | `ACTION \| AUTHORISE` |
 | [ ] | 7 | Reverse the authorised test 3 (input + authorise) | amount taken back from the original day / month | `ACTION \| REVERSAL INPUT`, then `ACTION \| REVERSAL` |
-| [ ] | 8 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| CHECK …` |
+| [ ] | 8 | Debit over the daily debit limit | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| CHECK …` |
 | [ ] | 9 | Activity with the routine but not in `CUSTOMER.LIMIT.ACTIVITY` (test product only) | error EB-ALBE.ACTIVITY.NOT.MAPPED, blocked | error line (NOT MAPPED) |
 | [ ] | 10 | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY CUSTOMER EQ <test customer>` | numbers match tests 3–7 | – |
 | [ ] | 11 | Search for errors | none | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED) \|" api.log` |
@@ -212,9 +212,9 @@ Remove the routines first so nothing new is counted. Data already written does n
 | Done | # | Step |
 |---|---|---|
 | [ ] | 1 | Remove the routines from all ACTIVITY.API conditions; proof and publish |
-| [ ] | 2 | Clear AUTH.ROUTINE `ALBE.CL.LIMIT.CREATE` on CUSTOMER,ALBE.CORP |
+| [ ] | 2 | Clear AUTH.ROUTINE `ALBE.CL.LIMIT.CREATE` on CUSTOMER,ALBE.CORP.INPUT |
 | [ ] | 3 | Remove menu entries and role access |
-| [ ] | 4 | Reverse the release package (EB.API, versions, EB.OVERRIDE, EB.ERROR) |
+| [ ] | 4 | Reverse the release package (EB.API, versions, OVERRIDE, EB.ERROR) |
 | [ ] | 5 | JAR: **do not just delete `ALBE_CustomerLimit.jar`** – module.xml loads it by name and a missing JAR takes down all T24 deployments. Put back the previous JAR under the same name (or have module.xml changed first), then restart |
 | [ ] | 6 | *(optional)* tables: UTILISED.LIMIT / TXN.DETAILS = bookkeeping only; keep EB.ALBE.CIF.LIMITS if a re-install is planned |
 

@@ -11,10 +11,10 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 | 1 | Local tables (EB.TABLE.DEFINITION) | ☐ |
 | 2 | Generate the table Java API (JARs) | ☐ |
 | 3 | Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` | ☐ |
-| 4 | EB.OVERRIDE records | ☐ |
+| 4 | OVERRIDE records | ☐ |
 | 5 | Build and deploy the routine JAR | ☐ |
 | 6 | EB.API records | ☐ |
-| 7 | VERSION CUSTOMER,ALBE.CORP (creation) | ☐ |
+| 7 | VERSION CUSTOMER,ALBE.CORP.INPUT (creation) | ☐ |
 | 8 | ACTIVITY.API on the AA products (checks + utilisation) | ☐ |
 | 9 | Versions for EB.ALBE.CIF.LIMITS and EB.ALBE.GEN.PARAM | ☐ |
 | 10 | Logging | ☐ |
@@ -69,7 +69,7 @@ ID: **customer id** (validate as CUSTOMER).
 | 5 | MONTHLY.DEBIT.LIMIT | Monthly debit limit | Amount |
 | 6 | MAXIMUM.OVERALL.CIF.AMOUNT | Maximum overall CIF balance | Amount |
 
-A blank limit field means "not defined": the transaction gets the EB-ABLE.CIF.LIMIT.NOT.DEFINED override.
+A blank limit field means "not defined": the transaction gets the EB-ALBE.CIF.LIMIT.NOT.DEFINED override.
 
 ### 1.3 EB.ALBE.UTILISED.LIMIT – daily and monthly totals  *(exists)*
 
@@ -150,41 +150,44 @@ Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME 
 
 ---
 
-## 4. EB.OVERRIDE records
+## 4. OVERRIDE and EB.ERROR records
 
-Create and authorise these five records. All are **acceptable** overrides (the user can accept and continue).
-`&` is replaced by the parameters in the order shown.
+**Created in DEV on 26/27-Nov-2026 through OFS (source GCS) – D51.** The application is **OVERRIDE** (not EB.OVERRIDE – that name gives "APPLICATION MISSING"); fields `MESSAGE:1:1`, `TYPE:1:1=Warning`. EB.ERROR field `ERROR.MSG:1:1`. A comma is the OFS field separator, so messages use " - " instead of a comma. The OFS lines are in `ALBE_OFS_OVERRIDE_ERROR.txt` (given to the user; ids only, users / passwords as placeholders).
 
-| ID | MESSAGE | & parameters |
+**OVERRIDE** (all `TYPE = Warning` – acceptable; one `&`):
+
+| ID | MESSAGE (DEV) | & |
 |---|---|---|
-| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED *(D46)* | Daily debit limit exceeded for Customer & | "<customer> by <amount over>" |
-| EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED *(D46)* | Daily credit limit exceeded for Customer & | "<customer> by <amount over>" |
-| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED *(D46)* | Monthly debit limit exceeded for Customer & | "<customer> by <amount over>" |
-| EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED *(D46)* | Monthly credit limit exceeded for Customer & | "<customer> by <amount over>" |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & *(changed, D46)* | "<customer> by <amount over>" |
-| EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & *(changed, D46)* | "from <currency> to <limit currency>" – **max CIF only** (another account of the customer in a foreign currency, parked until E1) |
+| EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED | Daily credit limit exceeded for customer & | "<customer> by <amount over>" |
+| EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED | Daily debit limit exceeded for customer & | "<customer> by <amount over>" |
+| EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly credit limit exceeded for customer & | "<customer> by <amount over>" |
+| EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED | Monthly debit limit exceeded for customer & | "<customer> by <amount over>" |
+| EB-ALBE.MAX.CIF.BAL.EXCEED | Maximum CIF balance exceeded for customer & | "<customer> by <amount over>" |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for customer & | customer id |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from <currency> to <limit currency>" |
 
 **EB.ERROR** (blocks the transaction):
 
-| ID | MESSAGE | Raised when |
+| ID | MESSAGE (DEV) | Raised when |
 |---|---|---|
-| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for Customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
-| EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
-| EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
-| **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed | max CIF check (credit, MAXIMUM.OVERALL.CIF.AMOUNT filled) and CUSTOMER.ACCOUNT `<customer>` is empty / missing – & = customer id |
-| **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | Exchange rate not available &, transaction not allowed *(& = "from USD to EGP")* | the transaction currency differs from the limit currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE – or the customer's limit is not in the local currency. & = transaction currency, limit currency |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
+| EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated - transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (D37) |
+| EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & is not mapped in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity |
+| EB-ALBE.CUSTOMER.ACCOUNT.MISSING | No accounts found for customer & | max CIF check and CUSTOMER.ACCOUNT `<customer>` is empty (D45) |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & - transaction not allowed | currency differs and the activity has no LCY amount / TXN.EXCH.RATE, or the limit is not in local currency (D44) – & = "from USD to EGP" |
 
-The routine sends `[ID,param]` – **one parameter per message** (D46, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with part 2. DEV 26-Nov: with two parameters both values landed in the first `&` ("for Customer 100128,23000.00 by"), so each message has **one `&`** and the code sends e.g. "100128 by 12000.00". **Change the EB.OVERRIDE / EB.ERROR message texts in T24 as in the tables above** (create the four debit / credit ids; the old EB-ABLE.DAILY.LIMIT.EXCEED / MONTHLY.LIMIT.EXCEED are no longer used).
+**Removed in DEV (reversed, 27-Nov):** the misspelt `EB-ABLE.*` records – OVERRIDE EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING; EB.ERROR EB-ABLE.LIMIT.UPDATE.FAILED. Unused leftover: EB.ERROR EB-ALBE.ENQ.INVALID.DATE (removed reports) – may be reversed.
+
+The routine sends `[ID,param]` – **one parameter per message** (D46, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with part 2. DEV 26-Nov: with two parameters both values landed in the first `&` ("for Customer 100128,23000.00 by"), so each message has **one `&`** and the code sends e.g. "100128 by 12000.00". **Change the OVERRIDE / EB.ERROR message texts in T24 as in the tables above** (done in DEV, D51).
 Each override goes on its **own AAA field** – a field keeps only one override (DEV 26-Nov: daily + monthly on TXN.AMOUNT showed only the monthly one):
 
 | Override | AAA field |
 |---|---|
-| EB-ABLE.DAILY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT |
-| EB-ABLE.MONTHLY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT.LCY |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
-| EB-ABLE.CIF.LIMIT.NOT.DEFINED | CURRENCY |
-| EB-ABLE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
+| EB-ALBE.DAILY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT |
+| EB-ALBE.MONTHLY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT.LCY |
+| EB-ALBE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | CURRENCY |
+| EB-ALBE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
 | errors (EB-ALBE.*) | TXN.AMOUNT |
 
 ---
@@ -228,13 +231,15 @@ One EB.API record per routine. Suggested IDs (any naming standard of the team ca
 | **ALBE.CL.MAX.CIF** | `com.temenos.albe` | `AlbeClMaxCif` | `validateRecord` |
 | **ALBE.CL.LIMIT.CREATE** | `com.temenos.albe` | `AlbeClLimitCreate` | `postUpdateRequest` |
 
-Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METHOD **(confirm)**.
+EB.API fields (DEV): SOURCE.TYPE = `METHOD`, JAVA.METHOD, JAVA.CLASS, JAVA.PACKAGE, PROTECTION.LEVEL = FULL. **T24 checks the class when the record is input** – it refuses a class that is not in the deployed JAR ("Class … cannot be loaded or do not exist", OFS 27-Nov).
 
-**26-Nov (D50):** the existing EB.API records `ALBE.CL.ACTIVITY.LIMIT`, `ALBE.CL.MAX.CIF` and `ALBE.CL.LIMIT.CREATE` keep their ids – **change JAVA.PACKAGE to `com.temenos.albe` and JAVA.CLASS as above** (the old `com.temenos.ALBE.CustomerLimit…` classes are no longer in the JAR – an EB.API still pointing there gives "ROUTINE DOES NOT EXIST"). Remove `ALBE.CL.DAILY.MONTHLY.VAL / .UPD / .DEF` from every ACTIVITY.API and delete those EB.API records.
+**DEV state 27-Nov (D51):**
+- `ALBE.CL.DAILY.MONTHLY.DEF / .UPD / .VAL` – **reversed** (OFS 27-Nov).
+- `ALBE.CL.ACTIVITY.LIMIT`, `ALBE.CL.MAX.CIF`, `ALBE.CL.LIMIT.CREATE` still point to the old classes (`com.temenos.ALBE.CustomerLimit.controller…`). The change to `com.temenos.albe` was **refused** because the new classes are not deployed yet. **Order:** deploy the new JAR, then at once input + authorise the 3 EB.API changes (`ALBE_OFS_EBAPI_FIX.txt` lines 1–6). Between the two steps the routines point to classes that are no longer in the JAR – keep the gap short.
 
 ---
 
-## 7. VERSION CUSTOMER,ALBE.CORP – customer limit creation
+## 7. VERSION CUSTOMER,ALBE.CORP.INPUT – customer limit creation
 
 | Field | Value |
 |---|---|
@@ -244,6 +249,8 @@ Typical EB.API fields: SOURCE.TYPE = `JAVA`, JAVA.PACKAGE, JAVA.CLASS, JAVA.METH
 Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMITS `<customer>` is created from GEN.PARAM `CUSTOMER.LIMIT` – only if it does not exist. Amending and re-authorising the customer leaves the limit record unchanged.
 
 > Customers created through **other** CUSTOMER versions will not get a limit record. Attach the same routine to those versions if they also need one.
+>
+> **DEV 27-Nov:** there is no VERSION `CUSTOMER,ALBE.CORP`; the routine is on **`CUSTOMER,ALBE.CORP.INPUT`** (AUTH.ROUTINE.1 = ALBE.CL.LIMIT.CREATE). Retail versions (e.g. `CUSTOMER,ALBE.RETAIL.INPUT`) do not have it – open question FQ19.
 
 ---
 
@@ -258,7 +265,16 @@ Attach on the **ACTIVITY.API** property condition of every AA product that needs
 | ACCOUNTS-TRANSFERIN-ARRANGEMENT (credit) | ACCOUNT | CR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | Post Routine.2 = **ALBE.CL.MAX.CIF**; others blank |
 | ACCOUNTS-TRANSFEROUT-ARRANGEMENT (debit) | ACCOUNT | DR.MOVEMENT | **ALBE.CL.ACTIVITY.LIMIT** | blank |
 
-Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT). Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**. **Never** leave an old VAL / UPD / MAX.CIF routine next to it (double count, DEV 26-Nov).
+Same for any other mapped activity (e.g. ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT).
+
+**DEV state 27-Nov (D51)** – AA.PRD.DES.ACTIVITY.API records with our routines:
+
+| Product condition | Found | Fix (`ALBE_OFS_ACTIVITY_API_FIX.txt`) |
+|---|---|---|
+| `ACCT.MANDATE.API-20260401` | TRANSFERIN / TRANSFEROUT: Post Routine.1 = ALBE.CL.ACTIVITY.LIMIT | add Post Routine 1.2 = ALBE.CL.MAX.CIF (TRANSFERIN) |
+| `ALBE.STMT.FEE.API-20260403` | TRANSFERIN / TRANSFEROUT: old ALBE.CL.DAILY.MONTHLY.VAL + .UPD – **"MISSING EB.API"** after the reversal | 1.1 / 2.1 = ALBE.CL.ACTIVITY.LIMIT, 1.2 = ALBE.CL.MAX.CIF, 2.2 removed (`=-`) |
+
+ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT are mapped in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` but **not attached** to any condition (FQ20). `ALBE.STMT.FEE.API-20260403` no longer has the ACCOUNTS-NEW-ARRANGEMENT line of `-20260401` (not ours – ask the owner). Pre Routine, Record Rtn, Validate Rtn and Pre Validate Rtn stay **blank**. **Never** leave an old VAL / UPD / MAX.CIF routine next to it (double count, DEV 26-Nov).
 
 | Status | api.log `ACTION` line | What it does |
 |---|---|---|
@@ -328,8 +344,8 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 - **What you see per transaction (all lines are INFO, D47):** one `ACTIVITY` line per call (the activity as T24 sent it), one `RESULT` line per step in plain words (the check with its numbers, the overrides / errors raised, what was counted or taken back), plus `OVERRIDE` (exact text sent) and `UPDATED` / `WRITTEN` (records changed). Problems are lines with the events FAILED / BLOCKED / NOT MAPPED / NO CCY. DIAGNOSTIC.API must be at **INFO** to see any line.
   ```
   ACTIVITY | hook=validateRecord status=UNAUTH aaa=AAACT26093... activity=ACCOUNTS-CREDIT-ARRANGEMENT class=... arrangement=AA26093XZ06K customer=100199 contract=FT26093BGWJR txnAmount=11000 ... remarks='ALBE.LIMIT.DATE=20260403'
-  RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED
-  OVERRIDE | override=EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED sent=[EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED,100199 by 11000.00]
+  RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED, EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED
+  OVERRIDE | override=EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED sent=[EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED,100199 by 11000.00]
   RESULT   | COUNTED FT26093BGWJR ... | daily 100199-20260403 used credit 10,000.00 -> 21,000.00 | monthly 100199-202604 used credit 10,000.00 -> 21,000.00 | saved EB.ALBE.TXN.DETAILS.LIMIT 100199-20260403-FT26093BGWJR-AA26093XZ06K
   ```
   Find one transaction: `grep "ALBE.CUSTOMER.LIMIT" api.log | grep FT26093BGWJR`; only the outcomes: `grep "| RESULT |"`.
@@ -363,7 +379,7 @@ Needed only when the transaction (or an account) currency differs from the custo
 **Max CIF – other accounts in another currency (parked):**
 1. Bank to confirm the exchange-rate table, record id and rate field (rate for 1 unit of *from* currency in *to* currency).
 2. Developer converts each account balance in `AlbeClMaxCif` (candidate: R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount`, EXCHRATE).
-3. Until then: the **EB-ABLE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
+3. Until then: the **EB-ALBE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
 
 ---
 
@@ -373,21 +389,21 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 
 | # | Test | Expected result | Log line to look for |
 |---|---|---|---|
-| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `AlbeClLimitCreate: CREATED \| ... created=true` |
+| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `AlbeClLimitCreate: CREATED \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| ... already exists, limits kept` |
 | 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `RESULT \| INPUT ... -> OK`, `add \| UPDATED` |
-| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `RESULT \| INPUT ... -> EXCEEDED by 2,000.00` |
+| 4 | Credit 4000 (input) | override EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `RESULT \| INPUT ... -> EXCEEDED by 2,000.00` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `RESULT \| INPUT ... used credit 3,000.00 -> 7,000.00` |
 | 5a | Repeat test 4 but **reject** the override | utilisation stays 3000 (T24 rolls back, TQ22) | no `RESULT` change kept |
 | 6 | **Delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| DELETE ... take back`, `RESULT \| TAKEN BACK (input rejected)` |
 | 7 | Amend an unauthorised transaction's amount (re-input) | counted once with the new amount, not twice | `RESULT \| ... re-input: earlier input ... is replaced` |
 | 8 | Authorise test 3 | no change to utilisation | `ACTION \| AUTHORISE ... nothing to do` |
 | 9 | **Reverse** the authorised transaction of test 3 (next day if possible) | 3000 subtracted from the **original** day's and month's records | `RESULT \| TAKEN BACK (reversal)` |
-| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| ... daily debit ... EXCEEDED` |
-| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED on TXN.AMOUNT.LCY; MIGRATED field unchanged | `RESULT \| ... monthly ... migrated ...` |
-| 12 | Credit that takes total balance over MAXIMUM.OVERALL.CIF.AMOUNT | EB-ABLE.MAX.CIF.BAL.EXCEED "... by <difference>" on ORIG.TXN.AMT | `RESULT \| ... max CIF ... EXCEEDED` |
-| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ABLE.CIF.LIMIT.NOT.DEFINED; still counted | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
-| 14 | Blank DAILY.CREDIT.LIMIT | EB-ABLE.CIF.LIMIT.NOT.DEFINED (once) | `RESULT \| ... is blank -> not checked` |
+| 10 | Debit over the daily debit limit | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| ... daily debit ... EXCEEDED` |
+| 11 | Monthly breach (with a migrated amount loaded) | EB-ALBE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED on TXN.AMOUNT.LCY; MIGRATED field unchanged | `RESULT \| ... monthly ... migrated ...` |
+| 12 | Credit that takes total balance over MAXIMUM.OVERALL.CIF.AMOUNT | EB-ALBE.MAX.CIF.BAL.EXCEED "... by <difference>" on ORIG.TXN.AMT | `RESULT \| ... max CIF ... EXCEEDED` |
+| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ALBE.CIF.LIMIT.NOT.DEFINED; still counted | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
+| 14 | Blank DAILY.CREDIT.LIMIT | EB-ALBE.CIF.LIMIT.NOT.DEFINED (once) | `RESULT \| ... is blank -> not checked` |
 | 15 | USD transaction with no LCY amount and no TXN.EXCH.RATE | ERROR EB-ALBE.EXCH.RATE.MISSING "from USD to EGP"; not counted | `convertRequest \| BLOCKED` |
 | 16 | Own-account transfer | both sides checked and counted, two TXN.DETAILS records (one per arrangement) | two `RESULT \| INPUT` lines |
 | 17 | Any test | no `FAILED` / unexpected `BLOCKED` lines | `grep "\| FAILED \|\|\| BLOCKED \|"` |

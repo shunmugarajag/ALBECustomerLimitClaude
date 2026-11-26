@@ -17,7 +17,7 @@ Eclipse **Java Project** for the ALBE Customer Limit implementation.
 | [CLAUDE.md](CLAUDE.md) | Handover for a new (Claude) session: rules, decisions and why, code map, open items, how to test |
 | [docs/GAPS.md](docs/GAPS.md) | Known gaps and open points (no table change needed): risk, example, proposed fix, decision needed; exchange rate questions for the bank |
 | [docs/QUERIES_AND_GAPS.md](docs/QUERIES_AND_GAPS.md) | Register: functional queries (bank / BA), technical queries (DEV), decisions taken, gaps raised and solved |
-| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, EB.OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **user menu and access (step 15)** |
+| [docs/T24_CONFIGURATION.md](docs/T24_CONFIGURATION.md) | What to set up in T24 / TAFJ: tables, JARs, GEN.PARAM, OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, tests, **user menu and access (step 15)** |
 
 ## Project configuration
 
@@ -49,7 +49,7 @@ Three routines in package **`com.temenos.albe`**, each named after its EB.API (t
 |---|---|---|---|
 | `ALBE.CL.ACTIVITY.LIMIT` | `AlbeClActivityLimit` | ACTIVITY.API **Post Routine 1** on every mapped activity, method `validateRecord` | daily / monthly check, overrides, count at input; take back on DELETE / AUTH-REV |
 | `ALBE.CL.MAX.CIF` | `AlbeClMaxCif` | ACTIVITY.API **Post Routine 2** on **credit** activities, method `validateRecord` | maximum CIF balance at input; counts nothing |
-| `ALBE.CL.LIMIT.CREATE` | `AlbeClLimitCreate` | VERSION CUSTOMER,ALBE.CORP **Auth routine**, method `postUpdateRequest` | creates EB.ALBE.CIF.LIMITS from GEN.PARAM `CUSTOMER.LIMIT` if missing; never overwrites |
+| `ALBE.CL.LIMIT.CREATE` | `AlbeClLimitCreate` | VERSION CUSTOMER,ALBE.CORP.INPUT **Auth routine**, method `postUpdateRequest` | creates EB.ALBE.CIF.LIMITS from GEN.PARAM `CUSTOMER.LIMIT` if missing; never overwrites |
 | – | `AlbeClConstants` | – | all literals (tables, ids, override / error ids, log tag) |
 
 Written like the team's core Java routines: `DataAccess`, `Session` and the generated tables are used directly, one `LoggerFactory` logger (`API`), `logger.info` only.
@@ -66,7 +66,7 @@ The count is in the same commit as the FT: a rejected override or an error (from
 
 All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMITS `CURRENCY`):
 - transaction in another currency: the activity's LCY amount, else amount × TXN.EXCH.RATE; neither, or a limit not in LCY → **error EB-ALBE.EXCH.RATE.MISSING**, not counted;
-- max CIF: an account in another currency → override EB-ABLE.EXCH.RATE.MISSING, max CIF not checked (no rate source yet, E1);
+- max CIF: an account in another currency → override EB-ALBE.EXCH.RATE.MISSING, max CIF not checked (no rate source yet, E1);
 - amounts rounded to 2 decimals; UTILISED.LIMIT / TXN.DETAILS hold the converted amount; a take-back never reconverts.
 
 ## Local table field names assumed by the code
@@ -129,15 +129,15 @@ Utilisation is counted when the transaction is initiated:
 
 Validation on re-input leaves out the AAA's own earlier input amount.
 
-## EB.OVERRIDE records
+## OVERRIDE records
 
 | Id | Message |
 |---|---|
-| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED / EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED | Daily debit (credit) limit exceeded for Customer & |
-| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED / EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly debit (credit) limit exceeded for Customer & |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & |
-| EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
+| EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED / EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED | Daily debit (credit) limit exceeded for Customer & |
+| EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED / EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly debit (credit) limit exceeded for Customer & |
+| EB-ALBE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
@@ -152,7 +152,7 @@ Each routine has `private static final Logger logger = LoggerFactory.getLogger(A
 
 ```
 ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: ACTION | INPUT FT26093BQZQK (ACCOUNTS-TRANSFERIN-ARRANGEMENT) arrangement AA26093C0Y4T status UNAUTH
-ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: RESULT | INPUT FT26093BQZQK customer 100128 CREDIT 1500 on 2026-04-03 | daily: used 33000 + this 1500.00 = 34500.00 > 10000 EXCEEDED by 24500.00 | ... | raised EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED
+ALBE.CUSTOMER.LIMIT | AlbeClActivityLimit: RESULT | INPUT FT26093BQZQK customer 100128 CREDIT 1500 on 2026-04-03 | daily: used 33000 + this 1500.00 = 34500.00 > 10000 EXCEEDED by 24500.00 | ... | raised EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED
 ALBE.CUSTOMER.LIMIT | AlbeClMaxCif: RESULT | MAX CIF FT26093BQZQK customer 100128 CREDIT 1500.00 EGP | 1000001208 <balance> EGP | balance ... <= 200000 OK
 ```
 

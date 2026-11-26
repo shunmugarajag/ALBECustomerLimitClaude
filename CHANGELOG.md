@@ -4,6 +4,12 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – override ids EB-ALBE.*, T24 set-up aligned with DEV (27-Nov-2026, D51)
+- All 7 override ids in `AlbeClConstants` are now **`EB-ALBE.*`** (were the misspelt `EB-ABLE.*`). The matching OVERRIDE and EB.ERROR records were created in DEV by OFS with one `&` each, and the `EB-ABLE.*` records reversed. **Deploy this JAR** – the JAR in DEV still raises the reversed `EB-ABLE.*` ids.
+- Docs: application name **OVERRIDE** (not EB.OVERRIDE); version **CUSTOMER,ALBE.CORP.INPUT** (CUSTOMER,ALBE.CORP does not exist); DEV state of EB.API and ACTIVITY.API recorded in T24_CONFIGURATION §4, §6–8.
+- DEV order: deploy the JAR → repoint the 3 EB.API records to `com.temenos.albe` (T24 refuses a class that is not deployed) → fix ACTIVITY.API `ALBE.STMT.FEE.API-20260403` (still had the removed DAILY.MONTHLY routines).
+- New open questions FQ19 (retail versions) and FQ20 (credit / debit activities not attached).
+
 ### Changed – one package, classes named after the EB.API (26-Nov-2026, D50)
 - The MVC version (`com.temenos.ALBE.CustomerLimit`) is **removed**; the simple version is now the only code, in package **`com.temenos.albe`**:
   `AlbeClActivityLimit` (EB.API `ALBE.CL.ACTIVITY.LIMIT`), `AlbeClMaxCif` (`ALBE.CL.MAX.CIF`), `AlbeClLimitCreate` (`ALBE.CL.LIMIT.CREATE`), `AlbeClConstants`.

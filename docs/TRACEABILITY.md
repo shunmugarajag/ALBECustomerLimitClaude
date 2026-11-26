@@ -26,14 +26,14 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R10 | 7.2.1 | Generic limit record created by the user | step 3 of T24_CONFIGURATION | – | Done (config) |
 | R11 | 7.2.1 Creation | On customer creation copy generic limits to EB.ALBE.CIF.LIMITS `<customer id>` | `AlbeClLimitCreate.postUpdateRequest` | UT-C01…C03, #1 | Done |
 | R12 | 7.2.1 Creation | User can amend a customer's limits any time; amend version on the user menu | VERSION `EB.ALBE.CIF.LIMITS,AMEND`, menu (T24_CONFIGURATION §9, §15); creation never overwrites | UT-C01, #2 | Done |
-| R13 | 7.2.1 Creation | Attached as After Unau routine on CUSTOMER,ALBE.CORP | attached as **Auth routine** | #1 | Deviation D1 |
+| R13 | 7.2.1 Creation | Attached as After Unau routine on CUSTOMER,ALBE.CORP.INPUT | attached as **Auth routine** | #1 | Deviation D1 |
 | R14 | 7.2.1 Creation | Delete EB.ALBE.CIF.LIMITS when the unauthorised customer is deleted | not needed: record created only at authorisation | – | Deviation D1 |
 | R15 | 7.2.1 Daily/monthly | Attached in ACTIVITY.API for the selected products and activities | `AlbeClActivityLimit.validateRecord` (Post Routine 1) + `AlbeClMaxCif` (Post Routine 2, credits) | #3 | Done |
 | R16 | 7.2.1 Daily | Credit: utilised daily credit (`custid-YYYYMMDD`, server date) + TXN amount > limit → override "Daily credit/debit exceed for Customer & by &" | `AlbeClActivityLimit.check` → override on TXN.AMOUNT | UT-D02, #4, use case 8.2 | Done |
 | R17 | 7.2.1 Daily | Debit: same with daily debit | same, debit side | UT-D04, #10, use case 8.5 | Done |
 | R18 | 7.2.1 Monthly | Credit: utilised monthly credit (`custid-YYYYMM`) + amount > limit → override "Monthly credit/debit exceed …" | `checkMonthly` | UT-M01, use case 8.3 | Done |
 | R19 | 7.2.1 Monthly | Debit: same with monthly debit | same, debit side | UT-M02, #11, use case 8.6 | Done |
-| R20 | 7.2.1 | EB.OVERRIDE record for each message | EB-ABLE.DAILY/MONTHLY.DEBIT/CREDIT.LIMIT.EXCEED (4, D46 – HLSD text split by direction, one `&`), EB-ABLE.MAX.CIF.BAL.EXCEED (+ 2 module overrides) | #4 | Done (config) |
+| R20 | 7.2.1 | OVERRIDE record for each message | EB-ALBE.DAILY/MONTHLY.DEBIT/CREDIT.LIMIT.EXCEED (4, D46 – HLSD text split by direction, one `&`), EB-ALBE.MAX.CIF.BAL.EXCEED (+ 2 module overrides) | #4 | Done (config) |
 | R21 | 7.2.1 | If not exceeded, update the utilised limit | counted at input in `postCoreTableUpdate` (UNAUTH) – **also when the override is accepted** | UT-U01, UT-U03 | Deviation D5 |
 | R22 | 1 / 7.2.1 | Input and deletion logic to be handled | re-input replaces the earlier amount; DELETE and AUTH-REV reverse from the original day / month | UT-U03…U06, #6 #7 #9 | Done |
 | R23 | 7.2.1 Maximum | Credit: total working balance of all customer accounts + amount > MAX.CIF.BALANCE → override "Overall credit/debit exceed …" | `AlbeClMaxCif.validateRecord` | UT-X01, #12, use case 8.4 | Done |

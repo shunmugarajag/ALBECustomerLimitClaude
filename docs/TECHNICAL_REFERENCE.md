@@ -18,11 +18,11 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 
 | # | Function | When | Result |
 |---|---|---|---|
-| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMITS `<customer>`, only if the customer has no record yet |
+| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP.INPUT) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMITS `<customer>`, only if the customer has no record yet |
 | 2 | **Daily / monthly limit check** | AA credit or debit activity input | Override if today's or this month's credit (or debit) total would go over the customer's limit |
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
-| 5 | **Overrides** | After each check | Acceptable overrides from EB.OVERRIDE, raised on TXN.AMOUNT |
+| 5 | **Overrides** | After each check | Acceptable overrides from OVERRIDE, raised on TXN.AMOUNT |
 
 All limit breaches are **acceptable overrides**, not errors: the user can accept and continue.
 
@@ -35,7 +35,7 @@ Three T24 routines in package `com.temenos.albe`, each named after its EB.API, p
 ```
  ACTIVITY.API Post Routine 1 (all mapped activities)   ALBE.CL.ACTIVITY.LIMIT -> AlbeClActivityLimit
  ACTIVITY.API Post Routine 2 (credit activities)       ALBE.CL.MAX.CIF        -> AlbeClMaxCif
- VERSION CUSTOMER,ALBE.CORP Auth routine              ALBE.CL.LIMIT.CREATE   -> AlbeClLimitCreate
+ VERSION CUSTOMER,ALBE.CORP.INPUT Auth routine              ALBE.CL.LIMIT.CREATE   -> AlbeClLimitCreate
                                     all literals       AlbeClConstants
 ```
 
@@ -162,7 +162,7 @@ total + credit > MAXIMUM.OVERALL.CIF.AMOUNT -> breach (difference)
 | transaction: same currency, or either currency blank | unchanged (2 decimals) |
 | transaction: other currency, limit in LCY | activity LCY amount, else amount × TXN.EXCH.RATE (D44) |
 | transaction: neither, or limit not in LCY | ERROR EB-ALBE.EXCH.RATE.MISSING, blocked, not counted |
-| transaction: LCY not readable (technical) | override EB-ABLE.EXCH.RATE.MISSING, not checked, not counted |
+| transaction: LCY not readable (technical) | override EB-ALBE.EXCH.RATE.MISSING, not checked, not counted |
 | max CIF account in another currency | no rate source yet → override, max CIF not checked (E1) |
 
 Converted amounts are rounded to 2 decimals, HALF_UP (`Constants.AMOUNT_SCALE`).
@@ -176,13 +176,13 @@ The three NOFILE reports (summary, period, transactions) and their classes were 
 
 ## 6. Overrides
 
-| Id | Message (EB.OVERRIDE) | Parameters | Raised when |
+| Id | Message (OVERRIDE) | Parameters | Raised when |
 |---|---|---|---|
-| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED / .DAILY.CREDIT. | Daily debit (credit) limit exceeded for Customer & | "customer by difference" | daily breach |
-| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED / .MONTHLY.CREDIT. | Monthly debit (credit) limit exceeded for Customer & | "customer by difference" | monthly breach |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & | "customer by difference" | maximum CIF breach |
-| EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & | "from CCY to CCY" | no rate (max CIF accounts) |
+| EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED / .DAILY.CREDIT. | Daily debit (credit) limit exceeded for Customer & | "customer by difference" | daily breach |
+| EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED / .MONTHLY.CREDIT. | Monthly debit (credit) limit exceeded for Customer & | "customer by difference" | monthly breach |
+| EB-ALBE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & | "customer by difference" | maximum CIF breach |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from CCY to CCY" | no rate (max CIF accounts) |
 
 Raised by `AlbeClActivityLimit` / `AlbeClMaxCif` as `TField.setOverride("[ID,param]")` with **one** parameter (D46 – DEV showed a second `&` is not filled) – R25 `EB.HANDLE.OVERRIDES` takes part 1 as the id and fills the `&` with the other parts (anything not starting with `[` is used raw). `TField.setOverride` **replaces** the field's one override value, so each override goes on its own AAA field (`fieldFor`): daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE; errors (`setError`, same format, `EB.HANDLE.ERRORS`) on TXN.AMOUNT. D43.
 
@@ -267,7 +267,7 @@ grep -E "ALBE.CUSTOMER.LIMIT.*\| (FAILED|BLOCKED|ERROR) \|" <log> # to monitor
 
 | HLSD 7.2.1 | Implemented | Agreed |
 |---|---|---|
-| Creation routine: After Unau on CUSTOMER,ALBE.CORP; delete CIF.LIMIT when the unauthorised customer is deleted | Auth routine; no delete flow | 20-Nov-2026 |
+| Creation routine: After Unau on CUSTOMER,ALBE.CORP.INPUT; delete CIF.LIMIT when the unauthorised customer is deleted | Auth routine; no delete flow | 20-Nov-2026 |
 | Table EB.ALBE.GEN.CIF.LIMIT for generic limits | EB.ALBE.GEN.PARAM record `CUSTOMER.LIMIT` (KEY.NAME / KEY.VALUE) | yes |
 | – | Currency conversion to the limit currency | added |
 
@@ -318,7 +318,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 | Change | Where |
 |---|---|
 | New limit type | field in EB.ALBE.CIF.LIMITS + GEN.PARAM key → `AlbeClConstants.KEY_*`, copy in `AlbeClLimitCreate`, check in `AlbeClActivityLimit` (or its own routine like `AlbeClMaxCif`) |
-| New override | EB.OVERRIDE record + `AlbeClConstants.OVR_*`, raised on its own AAA field |
+| New override | OVERRIDE record + `AlbeClConstants.OVR_*`, raised on its own AAA field |
 | Exchange rate for max CIF accounts (E1) | `AlbeClMaxCif` – e.g. R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount` (market and rate type to be decided) |
 | New activity (FT, TELLER, TPH, ...) | GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` line + attach the routines in ACTIVITY.API – no code change |
 

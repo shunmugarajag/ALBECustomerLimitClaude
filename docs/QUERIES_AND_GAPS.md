@@ -22,9 +22,11 @@ Details: [GAPS.md](GAPS.md)
 | FQ13 | HLSD update for agreed deviations | – | 🔴 |
 | FQ14 | ~~Parallel updates~~ – merged into TQ2 | – | ⚪ |
 | FQ15 | GEN.PARAM `CUSTOMER.LIMIT` values (CCY + 5 limits) | DEV: EGP, all 10000; keys CURRENCY / MAXIMUM.OVERALL.CIF.BALANCE read by code | 🟢 D26 (production values from bank) |
-| FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP | 🟢 D25 |
+| FQ16 | Which CUSTOMER versions create limits? | CUSTOMER,ALBE.CORP.INPUT (DEV, 27-Nov) | 🟢 D25 |
 | FQ17 | Count transactions that are authorised straight away (zero-auth / STP FT, COB postings)? | count at the input stage only (UNAUTH), as today – no AUTH counting | 🟢 D35 |
 | FQ18 | Joint account: whose limit counts? | no joint accounts at the bank (23-Nov) | ⚪ D38 |
+| FQ19 | Should retail customer versions (e.g. CUSTOMER,ALBE.RETAIL.INPUT) also create limits? DEV has ALBE.CL.LIMIT.CREATE only on CUSTOMER,ALBE.CORP.INPUT | open | 🟡 |
+| FQ20 | ACCOUNTS-CREDIT / DEBIT-ARRANGEMENT are mapped in GEN.PARAM but attached to no ACTIVITY.API condition – attach, and to which condition? | open | 🟡 |
 
 ## 2. DEV checks
 
@@ -45,7 +47,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ13 | "Record not found" text | 🟢 R25: T24CoreException EB-INTERNAL.ERROR "…Record does not exist" – added to RECORD_NOT_FOUND_MARKERS (24-Nov) |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ✅ not needed – reports removed (26-Nov) |
-| TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
+| TQ16 | Authorise a new customer via CUSTOMER,ALBE.CORP.INPUT: is EB.ALBE.CIF.LIMIT created? (proves the Auth routine runs and can write) | 🟢 yes – DEV 23-Nov |
 | TQ18 | Force a save failure (e.g. lock the UTILISED.LIMIT record): the transaction must be cancelled with EB-ALBE.LIMIT.UPDATE.FAILED and nothing posted | 🔴 |
 | TQ20 | Single routine (D44): is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? (log `CustomerLimitActivityController.validateRecord \| ACTION \| DELETE / REVERSAL`) – if not, keep VAL + UPD | 🔴 |
 | TQ21 | TXN.EXCH.RATE meaning on a USD FT: 1 USD = rate EGP (multiply)? | 🔴 |
@@ -96,7 +98,7 @@ Details: [GAPS.md](GAPS.md)
 | D37 | Utilisation / TXN.DETAILS write fails → block the transaction (FQ9, G3) |
 | D38 | No joint accounts – first CUSTOMER of the arrangement is the only holder (FQ18) |
 | D39 | TXN.DETAILS id = <cust>-<date>-<FT/AAA>-<arrangement>; own-account transfers counted and checked on both sides (FQ6) |
-| D40 | EB.OVERRIDE ids are EB-ABLE.* as created in DEV (code follows T24); EB.ERROR ids EB-ALBE.* |
+| D40 | ~~EB.OVERRIDE ids are EB-ABLE.* as created in DEV~~ – replaced by D51 (all EB-ALBE.*) |
 | D41 | Credit / debit from GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (KEY.NAME = AAA ACTIVITY, KEY.VALUE CREDIT/DEBIT) instead of the ACTIVITY.CLASS action; activity not mapped → EB.ERROR EB-ALBE.ACTIVITY.NOT.MAPPED (25-Nov); separate table (key = activity) considered 25-Nov – approval available, **not chosen** (30–40 activities = no performance impact) |
 | D42 | Counted date from the activity's ORG.SYSTEM.DATE only (else T24 TODAY); REMARKS tag + DEF routine (`defaultFieldValues`) removed – DEV 25-Nov: Record Rtn never called for FT activities, `orgSystemDate=20260403` on every hook (user approved 26-Nov) |
 | D43 | **Checks as Post Routine** (VAL, MAX.CIF before UPD) – the only stage called for FT activities, and the override still reaches the FT screen (DEV 26-Nov). Override / error text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES / ERRORS); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE) – a field keeps only one override. Post-routine-only check controller and FT/TT version routine not needed (user approved 26-Nov) |
@@ -107,6 +109,7 @@ Details: [GAPS.md](GAPS.md)
 | D48 | **Simple 2-class version** (26-Nov, user: "write the logic in 1 or 2 classes instead of MVC", "do not touch existing code, separate package, like the T24 sample"; chose 2 classes + Constants): package `CustomerLimitSimple` with `CustomerLimitActivity` + `CustomerLimitCreation` + `CustomerLimitConstants`; same rules as D47; MVC code kept unchanged. Which version goes to SIT: open (user) |
 | D49 | **Simple version: max CIF as its own routine** (26-Nov, user: "split max cif as separate class", chose "own routine"): `CustomerLimitMaxCif` = 2nd Post Routine on credit activities (EB.API `ALBE.CL.MAX.CIF.SIMPLE`); reads CIF.LIMITS / mapping again (no shared state); counts nothing; its error stops the whole FT |
 | D50 | **One package, names from the EB.API** (26-Nov, user: "clean package except simpler version, rename as per EB.API"; answers: delete MVC, drop SIMPLE, package `com.temenos.albe`): `AlbeClActivityLimit` / `AlbeClMaxCif` / `AlbeClLimitCreate` / `AlbeClConstants`; MVC package removed (Git history keeps it) | done |
+| D51 | **T24 ids and config aligned with DEV** (27-Nov, user: "fix ABLE to ALBE", "fix the code as per override, error change and t24 config"): OVERRIDE / EB.ERROR ids all `EB-ALBE.*`, one `&`, created by OFS (source GCS); `EB-ABLE.*` reversed; application name OVERRIDE (not EB.OVERRIDE); version CUSTOMER,ALBE.CORP.INPUT; old DAILY.MONTHLY EB.API reversed; ALBE.STMT.FEE.API-20260403 to be repointed; EB.API repoint only after the JAR deploy (T24 checks the class) | done in code; DEV steps open |
 | D28 | Reports parked for the first DEV set-up (23-Nov) – **removed from the code 26-Nov** (user) |
 
 ## 4. Gaps

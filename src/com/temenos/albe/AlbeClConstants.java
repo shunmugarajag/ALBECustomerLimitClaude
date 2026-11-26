@@ -72,13 +72,13 @@ public final class AlbeClConstants {
     public static final int AMOUNT_SCALE = 2;
 
     // Overrides (user can accept) - one & each: "<customer> by <amount over>" / "from USD to EGP"
-    public static final String OVR_DAILY_CREDIT = "EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED";
-    public static final String OVR_DAILY_DEBIT = "EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED";
-    public static final String OVR_MONTHLY_CREDIT = "EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED";
-    public static final String OVR_MONTHLY_DEBIT = "EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED";
-    public static final String OVR_MAX_CIF = "EB-ABLE.MAX.CIF.BAL.EXCEED";
-    public static final String OVR_NOT_DEFINED = "EB-ABLE.CIF.LIMIT.NOT.DEFINED";
-    public static final String OVR_RATE_MISSING = "EB-ABLE.EXCH.RATE.MISSING";
+    public static final String OVR_DAILY_CREDIT = "EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED";
+    public static final String OVR_DAILY_DEBIT = "EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED";
+    public static final String OVR_MONTHLY_CREDIT = "EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED";
+    public static final String OVR_MONTHLY_DEBIT = "EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED";
+    public static final String OVR_MAX_CIF = "EB-ALBE.MAX.CIF.BAL.EXCEED";
+    public static final String OVR_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
+    public static final String OVR_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
 
     // Errors (transaction blocked)
     public static final String ERR_NOT_MAPPED = "EB-ALBE.ACTIVITY.NOT.MAPPED";

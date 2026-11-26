@@ -8,7 +8,7 @@ For production support and business-user questions after go-live. How the module
 
 | When | Routine | What it does | What you see |
 |---|---|---|---|
-| Customer authorised (CUSTOMER,ALBE.CORP) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
+| Customer authorised (CUSTOMER,ALBE.CORP.INPUT) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
 | Credit / debit activity input | ALBE.CL.ACTIVITY.LIMIT | checks daily / monthly (+ max CIF for a credit), counts the amount | overrides / errors; UTILISED.LIMIT and TXN.DETAILS records |
 | Activity deleted (unauthorised) / reversed | ALBE.CL.ACTIVITY.LIMIT | takes back what was counted, from the day and month it was counted on; deletes the TXN.DETAILS record | totals go down |
 
@@ -67,7 +67,7 @@ The day comes from the activity's ORG.SYSTEM.DATE (D42), else T24 TODAY. The rev
 ### 3.7 "Exchange rate not available from X to Y"
 
 - **Error** (EB-ALBE.EXCH.RATE.MISSING, transaction blocked, D44): the transaction is in another currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE, or the customer's limit is not in EGP. Check the customer's CIF.LIMITS CURRENCY and the FT; nothing was counted.
-- **Override** (EB-ABLE.EXCH.RATE.MISSING): max CIF only – another account of the customer is in a currency with no rate (E1, parked); the max CIF check was skipped. Report the pair.
+- **Override** (EB-ALBE.EXCH.RATE.MISSING): max CIF only – another account of the customer is in a currency with no rate (E1, parked); the max CIF check was skipped. Report the pair.
 
 ### 3.9 The log says INPUT … counted, but the utilisation did not change
 
