@@ -44,6 +44,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 25-Nov-2026   Development      readTxnDetails: record not found logged as INFO (normal at first input), other errors ERROR
  * 26-Nov-2026   Development      Report (enquiry) reads and selects removed (reports dropped)
  * 26-Nov-2026   Development      CUSTOMER.ACCOUNT only - ACCOUNT SELECT fallback removed (G8)
+ * 26-Nov-2026   Development      readTxnDetails through the Table class: sees a write of the same commit (D46)
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitRepository {
@@ -232,12 +233,20 @@ public class CustomerLimitRepository {
     // EB.ALBE.TXN.DETAILS.LIMIT
     // =========================================================================
 
-    /** Reads EB.ALBE.TXN.DETAILS.LIMIT <id>; null if there is no record. */
+    /**
+     * Reads EB.ALBE.TXN.DETAILS.LIMIT <id>; null if there is no record.
+     * Read through the generated Table class (like EB.ALBE.UTILISED.LIMIT) so a record written earlier
+     * in the SAME commit is found - DataAccess.getRecord did not see it (DEV 26-Nov, FT2609332FH0:
+     * counted twice).
+     */
     public EbAlbeTxnDetailsLimitRecord readTxnDetails(String recordId) {
         LogUtil.detail(CLASS_NAME, "readTxnDetails", "READ", Constants.TXN_DETAILS_TABLE + ">" + recordId);
         try {
-            EbAlbeTxnDetailsLimitRecord txnRec =
-                    new EbAlbeTxnDetailsLimitRecord(daObj.getRecord(Constants.TXN_DETAILS_TABLE, recordId));
+            EbAlbeTxnDetailsLimitRecord txnRec = txnDetailsTable.read(recordId);
+            if (txnRec == null) {
+                LogUtil.detail(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
+                return null;
+            }
             LogUtil.detail(CLASS_NAME, "readTxnDetails", "FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId
                     + " flag=" + txnRec.getCreditDebitFlag().getValue() + " amount=" + txnRec.getTxnAmount().getValue());
             return txnRec;
@@ -246,7 +255,9 @@ public class CustomerLimitRepository {
                 // normal: first input of the activity (no earlier input to take back)
                 LogUtil.detail(CLASS_NAME, "readTxnDetails", "NOT FOUND", Constants.TXN_DETAILS_TABLE + ">" + recordId);
             } else {
-                LogUtil.error(CLASS_NAME, "readTxnDetails", "FAILED", Constants.TXN_DETAILS_TABLE + ">" + recordId, e);
+                // Table.read may word "not found" differently from DataAccess: logged (INFO), not an alert.
+                LogUtil.info(CLASS_NAME, "readTxnDetails", "NOT READ", Constants.TXN_DETAILS_TABLE + ">" + recordId
+                        + " (treated as not found)", e);
             }
             return null;
         }

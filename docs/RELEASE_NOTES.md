@@ -39,7 +39,7 @@ Build setting: `Constants.LOG_DETAIL_ENABLED` = **false** (default). Set true on
 |---|---|---|---|---|
 | 1 | EB.TABLE.DEFINITION | ALBE.CIF.LIMIT (new), ALBE.GEN.PARAM, ALBE.UTILISED.LIMIT, ALBE.TXN.DETAILS.LIMIT (approved, unchanged) | new / existing | 1 |
 | 2 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | new | 3 |
-| 3 | EB.OVERRIDE | EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
+| 3 | EB.OVERRIDE | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED, EB-ABLE.MAX.CIF.BAL.EXCEED, EB-ABLE.CIF.LIMIT.NOT.DEFINED, EB-ABLE.EXCH.RATE.MISSING | new | 4 |
 | 4 | EB.ERROR | EB-ALBE.CIF.LIMIT.CCY.MISSING (blank limit currency, blocks), EB-ALBE.ACTIVITY.NOT.MAPPED (D41, blocks), **EB-ALBE.EXCH.RATE.MISSING** (D44, amount cannot be converted, blocks), **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** (max CIF, no accounts in CUSTOMER.ACCOUNT, blocks), EB-ALBE.LIMIT.UPDATE.FAILED (utilisation save failed, blocks),  | new | 14.3 |
 | 5 | EB.API | ALBE.CL.LIMIT.CREATE, **ALBE.CL.ACTIVITY.LIMIT** (single routine, D44); rollback: ALBE.CL.DAILY.MONTHLY.VAL / .UPD, ALBE.CL.MAX.CIF (.DEF not used since D42) | new | 6 |
 | 6 | VERSION | CUSTOMER,ALBE.CORP – AUTH.ROUTINE = ALBE.CL.LIMIT.CREATE | **changed** | 7 |
@@ -76,7 +76,7 @@ Routines are attached **last** (steps 8 and 9), so nothing runs before all recor
 |---|---|---|---|
 | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the generic values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
 | 2 | FT credit below the limit to a configured account | no override; daily + monthly used updated | `ACTION \| INPUT …`, `RESULT \| INPUT … <= limit … -> OK` |
-| 3 | FT credit above the daily limit | override EB-ABLE.DAILY.LIMIT.EXCEED (and monthly if over) with customer and amount | `RESULT \| INPUT … EXCEEDED by … raised: EB-ABLE.DAILY.LIMIT.EXCEED` |
+| 3 | FT credit above the daily limit | override "Daily credit limit exceeded for Customer <id> by <amount>" (and monthly if over) | `RESULT \| INPUT … EXCEEDED by … raised: EB-ABLE.DAILY.LIMIT.EXCEED` |
 | 4 | Delete the unauthorised FT of check 3 | used back to the value after check 2 | `ACTION \| DELETE …`, `RESULT \| TAKEN BACK (input rejected)` |
 | 5 | Reverse an authorised FT and authorise the reversal | used goes down by its amount | `ACTION \| REVERSAL …`, `RESULT \| TAKEN BACK (reversal)` |
 | 6 | Search the log for errors | none | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED\|BLOCKED) \|"` |

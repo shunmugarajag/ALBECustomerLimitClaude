@@ -13,7 +13,7 @@ import java.math.BigDecimal;
  *-----------------------------------------------------------------------------
  */
 public class LimitBreach {
-    /** EB.OVERRIDE id, e.g. EB-ABLE.DAILY.LIMIT.EXCEED */
+    /** EB.OVERRIDE id, e.g. EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED */
     private final String overrideId;
     /** HLSD message text with the values filled in, for logging. */
     private final String message;

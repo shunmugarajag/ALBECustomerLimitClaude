@@ -16,27 +16,27 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  * Description : View layer: everything the user sees from the limit checks.
  *               Raises the HLSD customer limit overrides (and errors) on a field.
  *
- *               EB.OVERRIDE records to create (message text from HLSD):
- *                 EB-ABLE.DAILY.LIMIT.EXCEED    Daily credit/debit exceed for Customer & by &
- *                 EB-ABLE.MONTHLY.LIMIT.EXCEED  Monthly credit/debit exceed for Customer & by &
- *                 EB-ABLE.MAX.CIF.BAL.EXCEED    Overall credit/debit exceed for Customer & by &
- *                 EB-ABLE.CIF.LIMIT.NOT.DEFINED Customer limit not defined for Customer &
- *                                               (no EB.ALBE.CIF.LIMITS record, or a limit field is blank)
- *                 EB-ABLE.EXCH.RATE.MISSING     Exchange rate not available from & to &
- *                                               (transaction currency, limit currency)
+ *               EB.OVERRIDE records (D46: ONE & each - a second & is not filled in DEV):
+ *                 EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED    Daily debit limit exceeded for Customer &
+ *                 EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED   Daily credit limit exceeded for Customer &
+ *                 EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED  Monthly debit limit exceeded for Customer &
+ *                 EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED Monthly credit limit exceeded for Customer &
+ *                 EB-ABLE.MAX.CIF.BAL.EXCEED          Overall balance limit exceeded for Customer &
+ *                     (& = "<customer> by <amount over>", e.g. "100128 by 12000.00")
+ *                 EB-ABLE.CIF.LIMIT.NOT.DEFINED       Customer limit not defined for Customer &
+ *                 EB-ABLE.EXCH.RATE.MISSING           Exchange rate not available &  (& = "from USD to EGP")
  *
- *               Text format [ID,param1,param2] (R25 EB.HANDLE.OVERRIDES / EB.HANDLE.ERRORS:
- *               part 1 = id, the other parts fill the & placeholders in order). Parameters
- *               must not contain "," "[" or "]" - they are removed.
+ *               Text format [ID,param] (R25 EB.HANDLE.OVERRIDES / EB.HANDLE.ERRORS: part 1 = id,
+ *               part 2 fills the &). "," "[" "]" are removed from the parameter.
  *
  *               A T24 field holds ONE override (TField.setOverride replaces the value), so
  *               each override goes on its own AAA field:
- *                 EB-ABLE.DAILY.LIMIT.EXCEED    TXN.AMOUNT
- *                 EB-ABLE.MONTHLY.LIMIT.EXCEED  TXN.AMOUNT.LCY
- *                 EB-ABLE.MAX.CIF.BAL.EXCEED    ORIG.TXN.AMT
- *                 EB-ABLE.CIF.LIMIT.NOT.DEFINED CURRENCY
- *                 EB-ABLE.EXCH.RATE.MISSING     EFFECTIVE.DATE   (max CIF account currency only)
- *                 errors (EB-ALBE.*)            TXN.AMOUNT       (incl. EB-ALBE.EXCH.RATE.MISSING, D44)
+ *                 daily debit / credit       TXN.AMOUNT
+ *                 monthly debit / credit     TXN.AMOUNT.LCY
+ *                 max CIF                    ORIG.TXN.AMT
+ *                 limit not defined          CURRENCY
+ *                 exchange rate (override)   EFFECTIVE.DATE   (max CIF account currency only)
+ *                 errors (EB-ALBE.*)         TXN.AMOUNT
  *------------------------------------------------------------------------------
  * Modification History :
  *-----------------------------------------------------------------------------
@@ -48,6 +48,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
  *                                last override per field was kept, & not filled)
  * 26-Nov-2026   Development      D44: amount not convertible -> ERROR EB-ALBE.EXCH.RATE.MISSING
  * 26-Nov-2026   Development      No CUSTOMER.ACCOUNT (max CIF) -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING
+ * 26-Nov-2026   Development      D46: one parameter per message; debit / credit override ids
  *-----------------------------------------------------------------------------
  */
 public class CustomerLimitOverride {
@@ -70,8 +71,7 @@ public class CustomerLimitOverride {
         }
         if (request.isRateBlocked()) {
             // D44: the amount cannot be converted to the limit currency - error, transaction blocked.
-            raiseError(activity.getTxnAmount(), Constants.ERR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
-                    request.getLimitCurrency());
+            raiseError(activity.getTxnAmount(), Constants.ERR_EXCH_RATE_MISSING, fromTo(request));
             return 1;
         }
         if (request.isCustomerAccountMissing()) {
@@ -87,12 +87,11 @@ public class CustomerLimitOverride {
         }
         if (request.isRateMissing()) {
             raise(fieldFor(activity, Constants.OVR_EXCH_RATE_MISSING), Constants.OVR_EXCH_RATE_MISSING,
-                    request.getRateMissingCurrency(), request.getLimitCurrency());
+                    fromTo(request));
             raised++;
         }
         for (LimitBreach breach : request.getBreaches()) {
-            raise(fieldFor(activity, breach.getOverrideId()), breach.getOverrideId(), request.getCustomerId(),
-                    breach.getDifference().toPlainString());
+            raise(fieldFor(activity, breach.getOverrideId()), breach.getOverrideId(), customerBy(request, breach));
             raised++;
         }
         LogUtil.detail(CLASS_NAME, "raiseFor", "END", "customer=" + request.getCustomerId() + " overridesRaised="
@@ -102,7 +101,8 @@ public class CustomerLimitOverride {
 
     /** The AAA field an override is attached to: one field per override (a field keeps only one). */
     public static TField fieldFor(AaArrangementActivityRecord activity, String overrideId) {
-        if (Constants.OVR_MONTHLY_LIMIT_EXCEED.equals(overrideId)) {
+        if (Constants.OVR_MONTHLY_CREDIT_LIMIT_EXCEED.equals(overrideId)
+                || Constants.OVR_MONTHLY_DEBIT_LIMIT_EXCEED.equals(overrideId)) {
             return activity.getTxnAmountLcy();
         }
         if (Constants.OVR_MAX_CIF_BAL_EXCEED.equals(overrideId)) {
@@ -119,7 +119,7 @@ public class CustomerLimitOverride {
 
     /**
      * Every override the validation produced for this request, as override texts
-     * ([ID,param1,param2]): "limit not defined" once, "no exchange rate", then one per
+     * ([ID,param]): "limit not defined" once, "no exchange rate", then one per
      * breached limit (same order as raiseFor).
      */
     public static List<String> texts(CustomerLimitDTO request) {
@@ -131,8 +131,7 @@ public class CustomerLimitOverride {
             return texts;
         }
         if (request.isRateBlocked()) {
-            texts.add(build(Constants.ERR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
-                    request.getLimitCurrency()));
+            texts.add(build(Constants.ERR_EXCH_RATE_MISSING, fromTo(request)));
             return texts;
         }
         if (request.isCustomerAccountMissing()) {
@@ -150,16 +149,25 @@ public class CustomerLimitOverride {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId()
                     + " no exchange rate from " + request.getRateMissingCurrency() + " to "
                     + request.getLimitCurrency());
-            texts.add(build(Constants.OVR_EXCH_RATE_MISSING, request.getRateMissingCurrency(),
-                    request.getLimitCurrency()));
+            texts.add(build(Constants.OVR_EXCH_RATE_MISSING, fromTo(request)));
         }
         for (LimitBreach breach : request.getBreaches()) {
             LogUtil.info(CLASS_NAME, "texts", "OVERRIDE", "customer=" + request.getCustomerId() + " breach "
                     + breach.getMessage());
-            texts.add(build(breach.getOverrideId(), request.getCustomerId(),
-                    breach.getDifference().toPlainString()));
+            texts.add(build(breach.getOverrideId(), customerBy(request, breach)));
         }
         return texts;
+    }
+
+    /** The one parameter of a limit-exceeded override: "<customer> by <amount over>" (D46). */
+    public static String customerBy(CustomerLimitDTO request, LimitBreach breach) {
+        return request.getCustomerId() + Constants.PARAM_BY + breach.getDifference().toPlainString();
+    }
+
+    /** The one parameter of an exchange-rate message: "from <currency> to <limit currency>" (D46). */
+    public static String fromTo(CustomerLimitDTO request) {
+        return Constants.PARAM_FROM + ValidationUtil.nvl(request.getRateMissingCurrency()) + Constants.PARAM_TO
+                + ValidationUtil.nvl(request.getLimitCurrency());
     }
 
     /** Ids that raiseFor sends for this request, for the RESULT log line ("none" when nothing). */

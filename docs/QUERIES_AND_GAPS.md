@@ -41,7 +41,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ9 | `!TODAY` = T24 date | 🔴 |
 | TQ10 | COB UNAUTH.PROCESS setting | 🔴 |
 | TQ11 | Reverse and replay – new AAA ids? | 🔴 |
-| TQ12 | Override text fills both `&` | 🟡 `ID FM p1 VM p2` shown raw (26-Nov); changed to `[ID,p1,p2]` (D43, R25 EB.HANDLE.OVERRIDES) – retest |
+| TQ12 | Override text fills the `&` | 🟡 `ID FM p1 VM p2` shown raw; `[ID,p1,p2]` put both values into the first `&` (DEV 26-Nov) → **one parameter** `[ID,"100128 by 12000.00"]` (D46) – retest |
 | TQ13 | "Record not found" text | 🟢 R25: T24CoreException EB-INTERNAL.ERROR "…Record does not exist" – added to RECORD_NOT_FOUND_MARKERS (24-Nov) |
 | TQ14 | CUSTOMER.ACCOUNT complete; other companies | 🔴 |
 | TQ15 | Report reads AAA / FT ($NAU, live) | ✅ not needed – reports removed (26-Nov) |
@@ -50,6 +50,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ20 | Single routine (D44): is the Post Routine `validateRecord` called for **DELETE and AUTH-REV**? (log `CustomerLimitActivityController.validateRecord \| ACTION \| DELETE / REVERSAL`) – if not, keep VAL + UPD | 🔴 |
 | TQ21 | TXN.EXCH.RATE meaning on a USD FT: 1 USD = rate EGP (multiply)? | 🔴 |
 | TQ22 | Single routine counts inside validateRecord: user declines the override / cancels, or T24 stops the FT later (e.g. insufficient funds) – are the UTILISED.LIMIT / TXN.DETAILS writes rolled back? (check UTILISED.LIMIT unchanged) – if not, keep VAL + UPD | 🔴 |
+| TQ23 | Same commit: a TXN.DETAILS record written earlier is now found (Table read, D46) – e.g. FT re-committed after the override screen counts once | 🔴 |
 | TQ19 | Daily + monthly breach on one FT: both overrides shown (one AAA field each, D43)? "by" amount = used + this − limit (FT26093GZC6N showed 13,000 for an expected 12,750 – check the log) | 🔴 |
 | TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 
@@ -101,6 +102,7 @@ Details: [GAPS.md](GAPS.md)
 | D43 | **Checks as Post Routine** (VAL, MAX.CIF before UPD) – the only stage called for FT activities, and the override still reaches the FT screen (DEV 26-Nov). Override / error text **`[ID,p1,p2]`** (R25 EB.HANDLE.OVERRIDES / ERRORS); **one override per AAA field** (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE) – a field keeps only one override. Post-routine-only check controller and FT/TT version routine not needed (user approved 26-Nov) |
 | D44 | **Single routine** `CustomerLimitActivityController` (EB.API `ALBE.CL.ACTIVITY.LIMIT`, one Post Routine, `validateRecord`): INPUT = check + max CIF + overrides + count, DELETE / AUTH-REV = take back, AUTH / REVERSE = nothing; ACTION log line; each record read once per call, **no cache**; save failure → setError. **Conversion of the transaction amount only from the activity:** LCY amount, else TXN.EXCH.RATE, else **EB.ERROR EB-ALBE.EXCH.RATE.MISSING (blocks)**; limit not in LCY → blocked; max CIF other-currency accounts parked (override as before). Old VAL / MAX.CIF / UPD kept until after SIT (user approved 26-Nov) |
 | D45 | Review fixes (26-Nov): single routine never uses the "take back from today" fallback (a second AUTH-REV call took back another FT's amount); LCY not readable = technical failure (override, not blocked). **Max CIF: CUSTOMER.ACCOUNT empty → EB.ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING (blocks), ACCOUNT SELECT fallback removed** (user) |
+| D46 | **Override messages specific and with one `&`**: separate ids EB-ABLE.DAILY.DEBIT / DAILY.CREDIT / MONTHLY.DEBIT / MONTHLY.CREDIT.LIMIT.EXCEED; every override / error has one parameter ("100128 by 12000.00", "from USD to EGP") – DEV showed a second `&` is not filled (user chose separate ids). TXN.DETAILS read through the Table class – DataAccess did not see a write of the same commit (FT2609332FH0 counted twice with old + new routines attached) |
 | D28 | Reports parked for the first DEV set-up (23-Nov) – **removed from the code 26-Nov** (user) |
 
 ## 4. Gaps

@@ -157,11 +157,13 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 
 | ID | MESSAGE | & parameters |
 |---|---|---|
-| EB-ABLE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer id, amount over |
-| EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer id, amount over |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer id, amount over |
+| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED *(D46)* | Daily debit limit exceeded for Customer & | "<customer> by <amount over>" |
+| EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED *(D46)* | Daily credit limit exceeded for Customer & | "<customer> by <amount over>" |
+| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED *(D46)* | Monthly debit limit exceeded for Customer & | "<customer> by <amount over>" |
+| EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED *(D46)* | Monthly credit limit exceeded for Customer & | "<customer> by <amount over>" |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & *(changed, D46)* | "<customer> by <amount over>" |
 | EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer id |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from currency, to currency – **max CIF only** (another account of the customer in a foreign currency, parked until E1) |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & *(changed, D46)* | "from <currency> to <limit currency>" – **max CIF only** (another account of the customer in a foreign currency, parked until E1) |
 
 **EB.ERROR** (blocks the transaction):
 
@@ -171,15 +173,15 @@ Create and authorise these five records. All are **acceptable** overrides (the u
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated, transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (decision D37) – the whole transaction is cancelled |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & not defined in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity name |
 | **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed | max CIF check (credit, MAXIMUM.OVERALL.CIF.AMOUNT filled) and CUSTOMER.ACCOUNT `<customer>` is empty / missing – & = customer id |
-| **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | Exchange rate not available from & to &, transaction not allowed | the transaction currency differs from the limit currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE – or the customer's limit is not in the local currency. & = transaction currency, limit currency |
+| **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | Exchange rate not available &, transaction not allowed *(& = "from USD to EGP")* | the transaction currency differs from the limit currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE – or the customer's limit is not in the local currency. & = transaction currency, limit currency |
 
-The routine sends `[ID,param1,param2]` (D43, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with the other parts. The old `ID FM p1 VM p2` text was shown raw on the FT screen (DEV 26-Nov).
+The routine sends `[ID,param]` – **one parameter per message** (D46, 26-Nov): R25 `EB.HANDLE.OVERRIDES` / `EB.HANDLE.ERRORS` take part 1 as the id and fill the `&` with part 2. DEV 26-Nov: with two parameters both values landed in the first `&` ("for Customer 100128,23000.00 by"), so each message has **one `&`** and the code sends e.g. "100128 by 12000.00". **Change the EB.OVERRIDE / EB.ERROR message texts in T24 as in the tables above** (create the four debit / credit ids; the old EB-ABLE.DAILY.LIMIT.EXCEED / MONTHLY.LIMIT.EXCEED are no longer used).
 Each override goes on its **own AAA field** – a field keeps only one override (DEV 26-Nov: daily + monthly on TXN.AMOUNT showed only the monthly one):
 
 | Override | AAA field |
 |---|---|
-| EB-ABLE.DAILY.LIMIT.EXCEED | TXN.AMOUNT |
-| EB-ABLE.MONTHLY.LIMIT.EXCEED | TXN.AMOUNT.LCY |
+| EB-ABLE.DAILY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT |
+| EB-ABLE.MONTHLY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT.LCY |
 | EB-ABLE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
 | EB-ABLE.CIF.LIMIT.NOT.DEFINED | CURRENCY |
 | EB-ABLE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
@@ -339,8 +341,8 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 - **What you see per transaction (INFO, 25-Nov-2026):** one `ACTIVITY` line per hook (the activity as T24 sent it), one `RESULT` line per step in plain words (the check with its numbers, the overrides / errors raised, what was counted or taken back), plus `OVERRIDE` (exact text sent) and `UPDATED` / `WRITTEN` (records changed). Errors (NOT MAPPED, NO CCY, FAILED, BLOCK) are always written.
   ```
   ACTIVITY | hook=validateRecord status=UNAUTH aaa=AAACT26093... activity=ACCOUNTS-CREDIT-ARRANGEMENT class=... arrangement=AA26093XZ06K customer=100199 contract=FT26093BGWJR txnAmount=11000 ... remarks='ALBE.LIMIT.DATE=20260403'
-  RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ABLE.DAILY.LIMIT.EXCEED, EB-ABLE.MONTHLY.LIMIT.EXCEED
-  OVERRIDE | customer=100199 sent=EB-ABLE.DAILY.LIMIT.EXCEED^100199]11000.00
+  RESULT   | CHECK daily/monthly FT26093BGWJR (ACCOUNTS-CREDIT-ARRANGEMENT) customer 100199 CREDIT 11,000.00 EGP on 2026-04-03 arrangement AA26093XZ06K | daily credit (100199-20260403): used 10,000.00 + this 11,000.00 = 21,000.00 > limit 10,000.00 -> EXCEEDED by 11,000.00 | monthly credit (100199-202604): ... -> EXCEEDED by 11,000.00 | raised: EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED
+  OVERRIDE | override=EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED sent=[EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED,100199 by 11000.00]
   RESULT   | COUNTED FT26093BGWJR ... | daily 100199-20260403 used credit 10,000.00 -> 21,000.00 | monthly 100199-202604 used credit 10,000.00 -> 21,000.00 | saved EB.ALBE.TXN.DETAILS.LIMIT 100199-20260403-FT26093BGWJR-AA26093XZ06K
   ```
   Find one transaction: `grep "ALBE.CUSTOMER.LIMIT" api.log | grep FT26093BGWJR`; only the outcomes: `grep "| RESULT |"`.
@@ -387,14 +389,14 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 | 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| ... already exists` |
 | 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<today>-<FT/AAA>-<arrangement>`; activity REMARKS ends with `ALBE.LIMIT.DATE=<today>` | `checkLimit \| OK`, `addToRecord \| UPDATED` |
-| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
+| 4 | Credit 4000 (input) | override EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `checkLimit \| BREACH` |
 | 5 | Accept the override and commit test 4 | utilisation 7000 | `postCoreTableUpdate \| ACTION \| COUNT` |
 | 6 | **Reject / delete** the unauthorised transaction of test 4 | utilisation back to 3000; its TXN.DETAILS record deleted | `ACTION \| REVERSE rejected input` |
 | 7 | Amend an unauthorised transaction's amount (re-input) | counted once with the new amount, not twice | `validate \| CALC \| earlierInputs=1` |
 | 8 | Authorise test 3 | no change to utilisation | `postCoreTableUpdate \| SKIP \| status=AUTH` |
 | 9 | **Reverse** the authorised transaction of test 3 (next day if possible) | 3000 subtracted from the **original** day's and month's records | `ACTION \| REVERSE reversal` |
-| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.LIMIT.EXCEED | `checkLimit \| BREACH \| DAILY.DEBIT.LIMIT` |
-| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.LIMIT.EXCEED; MIGRATED field unchanged | `validateMonthlyLimit \| CALC \| ... migrated=` |
+| 10 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `checkLimit \| BREACH \| DAILY.DEBIT.LIMIT` |
+| 11 | Monthly breach (with a migrated amount loaded) | EB-ABLE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED; MIGRATED field unchanged | `validateMonthlyLimit \| CALC \| ... migrated=` |
 | 12 | Credit that takes total balance over MAX.CIF.BALANCE | EB-ABLE.MAX.CIF.BAL.EXCEED "... by <difference>" | `MaximumCifLimitService.validate \| BREACH` |
 | 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ABLE.CIF.LIMIT.NOT.DEFINED | `getCustomerLimits \| NOT FOUND` |
 | 14 | Blank DAILY.CREDIT.LIMIT | EB-ABLE.CIF.LIMIT.NOT.DEFINED (once) | `checkLimit \| NOT DEFINED` |

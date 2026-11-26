@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – clear override messages; one count per FT in the same commit (26-Nov-2026, D46)
+- DEV showed the second `&` of a message is not filled ("for Customer 100128,23000.00 by"). Every override / error now has **one** `&` and the code fills it with the whole text, e.g. "100128 by 12000.00".
+- The message says **debit or credit**: new override ids EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED (EB.OVERRIDE records to create; the old DAILY / MONTHLY.LIMIT.EXCEED are not used). MAX.CIF, EXCH.RATE and error texts change to one `&` too.
+- TXN.DETAILS is read like UTILISED.LIMIT (Table class), so a record written earlier in the same commit is found and the FT is not counted twice (DEV FT2609332FH0 was counted twice when old and new routines were both attached).
+
 ### Fixed – review findings; max CIF without CUSTOMER.ACCOUNT blocks (26-Nov-2026, D45)
 - Single routine: a reversal is only taken back when TXN.DETAILS shows it was counted. Before, a second AUTH-REV call could take the amount back again from another transaction's usage.
 - Clearer log: `NOTHING TAKEN BACK` when there was nothing to take back, `SAVE FAILED` on the INPUT line, an ACTION line when the routine hits a technical error.

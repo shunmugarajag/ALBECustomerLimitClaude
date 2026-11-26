@@ -32,9 +32,9 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 | Record-not-found text (TQ13) | UT-N01 … N02 | 2 | 2 | – |
 | Activity credit/debit mapping (D41) | UT-O01 … O07 | 7 | 7 | – |
 | Override text and fields (D43) | UT-W01 … W08 | 8 | 8 | – |
-| Single routine (D44 / D45) | UT-S01 … S19 | 19 | 19 | – |
+| Single routine (D44 / D45 / D46) | UT-S01 … S20 | 20 | 20 | – |
 | Controllers in T24 | UT-T01 … T10 (no T05/T06) | 8 | – | 8 |
-| **Total** | | **141** | **133** | **8** |
+| **Total** | | **142** | **134** | **8** |
 
 ---
 
@@ -42,11 +42,11 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md).
 
 | Id | Given | When | Expected | Actual | Result |
 |---|---|---|---|---|---|
-| UC-8.2 | daily credit limit 5000, utilised daily credit 3000 | credit 4000 | EB-ABLE.DAILY.LIMIT.EXCEED, customer, **2000** | `EB-ABLE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
-| UC-8.3 | monthly credit limit 15000, utilised monthly 13000 | credit 7000 | EB-ABLE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ABLE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
+| UC-8.2 | daily credit limit 5000, utilised daily credit 3000 | credit 4000 | EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED, **2000** | `[EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED,100234 by 2000.00]` | Pass |
+| UC-8.3 | monthly credit limit 15000, utilised monthly 13000 | credit 7000 | EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED, **5000** | `[EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED,100234 by 5000.00]` | Pass |
 | UC-8.4 | MAX.CIF.BALANCE 100000, working balance 70000 | credit 50000 | EB-ABLE.MAX.CIF.BAL.EXCEED, **20000** | `EB-ABLE.MAX.CIF.BAL.EXCEED^100234]20000.00` | Pass |
-| UC-8.5 | daily debit limit 5000, utilised daily debit 3000 | debit 4000 | EB-ABLE.DAILY.LIMIT.EXCEED, **2000** | `EB-ABLE.DAILY.LIMIT.EXCEED^100234]2000.00` | Pass |
-| UC-8.6 | monthly debit limit 15000, utilised monthly 13000 | debit 7000 | EB-ABLE.MONTHLY.LIMIT.EXCEED, **5000** | `EB-ABLE.MONTHLY.LIMIT.EXCEED^100234]5000.00` | Pass |
+| UC-8.5 | daily debit limit 5000, utilised daily debit 3000 | debit 4000 | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED, **2000** | `[EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED,100234 by 2000.00]` | Pass |
+| UC-8.6 | monthly debit limit 15000, utilised monthly 13000 | debit 7000 | EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED, **5000** | `[EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED,100234 by 5000.00]` | Pass |
 
 (`^` = field mark, `]` = value mark in the override text.)
 
@@ -232,7 +232,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 
 | Id | Case | Expected | Result |
 |---|---|---|---|
-| UT-W01 | build id + 2 params | `[EB-ABLE.MONTHLY.LIMIT.EXCEED,100199,12750.00]` | Pass |
+| UT-W01 | build id + 1 param (D46) | `[EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED,100199 by 12750.00]` | Pass |
 | UT-W02 | build without params | id only | Pass |
 | UT-W03 | params with `,` `[` `]` (e.g. `1,000.00`) | removed: `[EB-X,1000.00,a]` | Pass |
 | UT-W04 | null param | empty part `[EB-X,100,]` | Pass |
@@ -249,7 +249,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-S02 | credit 1000 within limits | no override, daily + monthly 1000.00, TXN.DETAILS written | Pass |
 | UT-S03 | reads for one input | CIF.LIMITS 1, UTILISED 2, TXN.DETAILS 1 | Pass |
 | UT-S04 | credit 4500, daily used 1000, limit 5000 | breach by 500.00, counted 5500.00 | Pass |
-| UT-S05 | override text | `[EB-ABLE.DAILY.LIMIT.EXCEED,100,500.00]` on TXN.AMOUNT | Pass |
+| UT-S05 | override text | `[EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED,100 by 500.00]` on TXN.AMOUNT | Pass |
 | UT-S06 | same FT called again (after "Accept Overrides" / re-input) | still 5500.00, one record, same breach | Pass |
 | UT-S07 | debit 300 | counted, reads 1 / 2 / 1 | Pass |
 | UT-S08 | credit with daily + max CIF breach | both breaches in one result | Pass |
@@ -264,6 +264,7 @@ Given: GEN.PARAM `CUSTOMER.LIMIT` exactly as in DEV – CURRENCY EGP, the four d
 | UT-S17 | credit, CUSTOMER.ACCOUNT empty | ERROR `[EB-ALBE.CUSTOMER.ACCOUNT.MISSING,500]`, not counted | Pass |
 | UT-S18 | debit, CUSTOMER.ACCOUNT empty | not affected, counted | Pass |
 | UT-S19 | LCY not readable, USD transaction | rate-missing override, not blocked | Pass |
+| UT-S20 | debit 2500 > daily debit 2000 (D46) | `[EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED,100 by 500.00]` | Pass |
 
 ## Block on save failure (D37) – 23-Nov-2026
 

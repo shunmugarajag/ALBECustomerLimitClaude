@@ -85,17 +85,19 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | [ ] | EB-ALBE.LIMIT.UPDATE.FAILED | utilisation / TXN.DETAILS save failed (D37) |
 | [ ] | EB-ALBE.ACTIVITY.NOT.MAPPED | activity not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 | [ ] | **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | "No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed" – max CIF check with an empty CUSTOMER.ACCOUNT |
-| [ ] | **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | "Exchange rate not available from & to &, transaction not allowed" – no LCY amount and no TXN.EXCH.RATE, or limit not in LCY |
+| [ ] | **EB-ALBE.EXCH.RATE.MISSING** *(new, D44)* | "Exchange rate not available &, transaction not allowed" (& = "from USD to EGP") – no LCY amount and no TXN.EXCH.RATE, or limit not in LCY |
 
 ### 2.4 EB.OVERRIDE (all acceptable) [§4]
 
 | Done | Id | AAA field it is raised on |
 |---|---|---|
-| [ ] | EB-ABLE.DAILY.LIMIT.EXCEED – "Daily credit/debit exceed for Customer & by &" | TXN.AMOUNT |
-| [ ] | EB-ABLE.MONTHLY.LIMIT.EXCEED – "Monthly credit/debit exceed for Customer & by &" | TXN.AMOUNT.LCY |
-| [ ] | EB-ABLE.MAX.CIF.BAL.EXCEED – "Overall credit/debit exceed for Customer & by &" | ORIG.TXN.AMT |
+| [ ] | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED – "Daily debit limit exceeded for Customer &" | TXN.AMOUNT |
+| [ ] | EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED – "Daily credit limit exceeded for Customer &" | TXN.AMOUNT |
+| [ ] | EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED – "Monthly debit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
+| [ ] | EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED – "Monthly credit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
+| [ ] | EB-ABLE.MAX.CIF.BAL.EXCEED – "Overall balance limit exceeded for Customer &" | ORIG.TXN.AMT |
 | [ ] | EB-ABLE.CIF.LIMIT.NOT.DEFINED – "Customer limit not defined for Customer &" | CURRENCY |
-| [ ] | EB-ABLE.EXCH.RATE.MISSING – "Exchange rate not available from & to &" (max CIF only) | EFFECTIVE.DATE |
+| [ ] | EB-ABLE.EXCH.RATE.MISSING – "Exchange rate not available &" (max CIF only) | EFFECTIVE.DATE |
 
 Note: override ids are **EB-ABLE.*** (as created in DEV, D40); error ids are **EB-ALBE.***.
 
@@ -185,11 +187,11 @@ Needs DIAGNOSTIC.API at INFO to see ACTION / RESULT lines. Find one transaction:
 | [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `CustomerLimitCreationController.postUpdateRequest \| END \| … created=true` |
 | [ ] | 2 | Amend + re-authorise that customer | limit record unchanged | `CustomerLimitCreationService.create \| SKIP \| … already exists` |
 | [ ] | 3 | Credit below the limit (FT on an AA account) | no override; daily + monthly used updated; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `CustomerLimitActivityController.validateRecord \| ACTION \| INPUT`, then `RESULT \| COUNTED …` |
-| [ ] | 4 | Credit above the daily limit | EB-ABLE.DAILY.LIMIT.EXCEED with customer and amount over (both `&` filled) | `RESULT \| CHECK daily/monthly … EXCEEDED by …`, `OVERRIDE \| … sent=…` |
+| [ ] | 4 | Credit above the daily limit | "Daily credit limit exceeded for Customer <id> by <amount>" (one `&`, filled) | `RESULT \| CHECK daily/monthly … EXCEEDED by …`, `OVERRIDE \| … sent=…` |
 | [ ] | 5 | Delete the unauthorised transaction of test 4 | used back to the value after test 3; TXN.DETAILS deleted | `ACTION \| DELETE` |
 | [ ] | 6 | Authorise test 3 | no change | `ACTION \| AUTHORISE` |
 | [ ] | 7 | Reverse the authorised test 3 (input + authorise) | amount taken back from the original day / month | `ACTION \| REVERSAL INPUT`, then `ACTION \| REVERSAL` |
-| [ ] | 8 | Debit over the daily debit limit | EB-ABLE.DAILY.LIMIT.EXCEED | `RESULT \| CHECK …` |
+| [ ] | 8 | Debit over the daily debit limit | EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| CHECK …` |
 | [ ] | 9 | Activity with the routine but not in `CUSTOMER.LIMIT.ACTIVITY` (test product only) | error EB-ALBE.ACTIVITY.NOT.MAPPED, blocked | error line (NOT MAPPED) |
 | [ ] | 10 | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY CUSTOMER EQ <test customer>` | numbers match tests 3–7 | – |
 | [ ] | 11 | Search for errors | none | `grep -E "ALBE.CUSTOMER.LIMIT.*\| (ERROR\|FAILED) \|" api.log` |

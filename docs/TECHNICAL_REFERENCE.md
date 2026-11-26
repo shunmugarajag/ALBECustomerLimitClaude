@@ -202,13 +202,13 @@ The three NOFILE reports (summary, period, transactions) and their classes were 
 
 | Id | Message (EB.OVERRIDE) | Parameters | Raised when |
 |---|---|---|---|
-| EB-ABLE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & | customer, difference | daily breach |
-| EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & | customer, difference | monthly breach |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & | customer, difference | maximum CIF breach |
+| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED / .DAILY.CREDIT. | Daily debit (credit) limit exceeded for Customer & | "customer by difference" | daily breach |
+| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED / .MONTHLY.CREDIT. | Monthly debit (credit) limit exceeded for Customer & | "customer by difference" | monthly breach |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & | "customer by difference" | maximum CIF breach |
 | EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & | from CCY, to CCY | no rate |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & | "from CCY to CCY" | no rate (max CIF accounts) |
 
-Raised by `CustomerLimitOverride.raiseFor(activity, request)` as `TField.setOverride("[ID,param1,param2]")` – R25 `EB.HANDLE.OVERRIDES` takes part 1 as the id and fills the `&` with the other parts (anything not starting with `[` is used raw). `TField.setOverride` **replaces** the field's one override value, so each override goes on its own AAA field (`fieldFor`): daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE; errors (`setError`, same format, `EB.HANDLE.ERRORS`) on TXN.AMOUNT. D43.
+Raised by `CustomerLimitOverride.raiseFor(activity, request)` as `TField.setOverride("[ID,param]")` with **one** parameter (D46 – DEV showed a second `&` is not filled) – R25 `EB.HANDLE.OVERRIDES` takes part 1 as the id and fills the `&` with the other parts (anything not starting with `[` is used raw). `TField.setOverride` **replaces** the field's one override value, so each override goes on its own AAA field (`fieldFor`): daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE; errors (`setError`, same format, `EB.HANDLE.ERRORS`) on TXN.AMOUNT. D43.
 
 Only `validateRecord` hands overrides back to T24 (R25 invokers: `AA_VALIDATE_RECORD_INVOKER` / `EB_TEMPLATE_HOOK_VALIDATE_RECORD_INVOKER` call `handleOverrides`; the post-update, default and VERSION `postUpdateRequest` invokers only turn an exception into an error). In DEV the checks run as **Post Routines** (VAL, MAX.CIF before UPD) – the only stage called for FT activities.
 
@@ -338,7 +338,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 | Hook signatures: `ActivityLifecycle.defaultFieldValues / validateRecord / postCoreTableUpdate`, `RecordLifecycle.postUpdateRequest` | **verified (compile)** |
 | `ArrangementContext.getArrangementActivityId()`, `getActivityStatus()` | **verified (compile)** |
 | `AaArrangementActivityRecord.getTxnAmount / getEffectiveDate / getActivity / getRemarks / setRemarks / getOverride / getLinkedAppl`, `AaArrangementRecord.getCurrency / getCustomer` | **verified (compile)** |
-| `TField.getValue / setValue / setOverride(String) / setError(String)` | **verified (compile + R25 bytecode)** – text `[ID,p1,p2]` (EB.HANDLE.OVERRIDES / ERRORS); one override per field (setOverride replaces) – D43 |
+| `TField.getValue / setValue / setOverride(String) / setError(String)` | **verified (compile + R25 bytecode)** – text `[ID,param]`, one parameter (D46; two parameters land in the first `&` in DEV); one override per field (setOverride replaces) – D43 |
 | `DataAccess.getRecord(app, id)` / `getRecord(mne, app, suffix, id)`, `selectRecords`, `getConcatValues`; `Session.getCompanyId`; `CompanyRecord.getFinancialMne`; `AccountRecord.getWorkingBalance / getCurrency` | **verified (compile)** |
 | `TransactionContext.getCurrentFunction()`; `T24CoreException(String, String)`; `FilterCriteria.getFieldname / getValue` | **verified (compile)** |
 | Generated table class pattern `XxxTable.read(id)` (throws if missing) / `write(id, rec)` / `delete(id)` | **matches** the team's sample `FfPostScheduleUpdate` (`EbFfCollectionDetsTable`) |
@@ -411,6 +411,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 26-Nov-2026 | D44: single routine `CustomerLimitActivityController` (one Post Routine, `validateRecord`: INPUT check + max CIF + overrides + count, DELETE / AUTH-REV take back); engine `processInput`, records read once (`UtilisationRecords`, no cache); transaction amount converted only from the activity (LCY amount, else TXN.EXCH.RATE, else EB.ERROR `EB-ALBE.EXCH.RATE.MISSING`); limit not in LCY blocked |
 | 26-Nov-2026 | Reports removed (user): 3 NOFILE enquiry controllers, `CustomerLimitEnquiryService`, report rows, `CustomerLimitEnquiryView`, `CustomerLimitEnquiryValidator`, report-only repository methods (`selectCifLimitIds`, `selectUtilisedLimitIds`, `selectTxnDetailsIds(customer, days)`, `readActivity`, `readTransactionOverrides`) and constants; REPORTS.md deleted |
 | 26-Nov-2026 | D45 review fixes: single routine take-back without the "from today" fallback, NOTHING TAKEN BACK / SAVE FAILED in RESULT, ACTION line on technical error, blank LCY = override (not blocked); max CIF: CUSTOMER.ACCOUNT empty → EB.ERROR `EB-ALBE.CUSTOMER.ACCOUNT.MISSING`, ACCOUNT SELECT fallback removed (G8) |
+| 26-Nov-2026 | D46: separate debit / credit override ids for daily and monthly, one parameter per message ("customer by amount" / "from CCY to CCY"); TXN.DETAILS read through the Table class (sees a write of the same commit – DEV FT2609332FH0 counted twice) |
 | 25-Nov-2026 | Credit/debit mapping in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41); unmapped activity → EB-ALBE.ACTIVITY.NOT.MAPPED; ACTIVITY.CLASS action logic removed |
 | 22-Nov-2026 | Controller sub-packages `controller.customer`, `controller.activity`, `controller.enquiry` (EB.API package names updated) |
 | 22-Nov-2026 | FT / TELLER / ACCOUNT.PARAMETER routines **removed** – FT, TT and other postings on AA accounts arrive as activities, covered by ACTIVITY.API (classes in Git history) |

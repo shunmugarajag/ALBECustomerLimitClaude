@@ -38,6 +38,7 @@ import com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord
  * 20-Nov-2026   Development      Initial Version
  * 22-Nov-2026   Development      Blank CIF.LIMIT CCY = error (limitCcyMissing)
  * 25-Nov-2026   Development      plain-language notes for the RESULT log line (used + this = total vs limit)
+ * 26-Nov-2026   Development      D46: debit / credit override ids
  * 26-Nov-2026   Development      Single routine: validate / count with the limits and records read once
  *                                (UtilisationRecords); D44 conversion -> blocked instead of 'no rate'
  *-----------------------------------------------------------------------------
@@ -143,8 +144,8 @@ public class DailyMonthlyLimitService {
         LogUtil.detail(CLASS_NAME, "validateDailyLimit", "CALC", limitField + " record=" + dailyId
                 + " utilised=" + utilised + " txn=" + request.getAmount() + " limit=" + limit);
         checkLimit(request, "daily " + (credit ? "credit" : "debit") + " (" + dailyId + ")", limitField, limit,
-                utilised, Constants.OVR_DAILY_LIMIT_EXCEED,
-                Constants.MSG_DAILY_EXCEEDED);
+                utilised, credit ? Constants.OVR_DAILY_CREDIT_LIMIT_EXCEED : Constants.OVR_DAILY_DEBIT_LIMIT_EXCEED,
+                credit ? Constants.MSG_DAILY_CREDIT_EXCEEDED : Constants.MSG_DAILY_DEBIT_EXCEEDED);
     }
 
     /** Monthly: migrated + this month's utilised credit (or debit) + txn amount against the monthly limit. */
@@ -170,8 +171,9 @@ public class DailyMonthlyLimitService {
                         + limit);
         checkLimit(request, "monthly " + (credit ? "credit" : "debit") + " (" + monthlyId
                 + (migrated.signum() > 0 ? ", migrated " + ValidationUtil.formatAmount(migrated) : "") + ")",
-                limitField, limit, migrated.add(utilised), Constants.OVR_MONTHLY_LIMIT_EXCEED,
-                Constants.MSG_MONTHLY_EXCEEDED);
+                limitField, limit, migrated.add(utilised),
+                credit ? Constants.OVR_MONTHLY_CREDIT_LIMIT_EXCEED : Constants.OVR_MONTHLY_DEBIT_LIMIT_EXCEED,
+                credit ? Constants.MSG_MONTHLY_CREDIT_EXCEEDED : Constants.MSG_MONTHLY_DEBIT_EXCEEDED);
     }
 
     /**

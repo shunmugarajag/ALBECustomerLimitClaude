@@ -14,6 +14,7 @@ import java.util.List;
  * 20-Nov-2026   Development      Initial Version
  * 26-Nov-2026   Development      Report (enquiry) constants removed (reports dropped)
  * 26-Nov-2026   Development      ERR_CUSTOMER_ACCOUNT_MISSING (max CIF, no CUSTOMER.ACCOUNT)
+ * 26-Nov-2026   Development      D46: debit / credit override ids, one parameter per message
  *-----------------------------------------------------------------------------
  */
 public final class Constants {
@@ -186,16 +187,26 @@ public final class Constants {
     // EB.OVERRIDE ids
     // -------------------------------------------------------------------------
     // EB.OVERRIDE ids spelled EB-ABLE.* exactly as created in DEV (23/24-Nov-2026); the EB.ERROR ids stay EB-ALBE.*.
-    /** Daily credit/debit exceed for Customer & by & */
-    public static final String OVR_DAILY_LIMIT_EXCEED = "EB-ABLE.DAILY.LIMIT.EXCEED";
-    /** Monthly credit/debit exceed for Customer & by & */
-    public static final String OVR_MONTHLY_LIMIT_EXCEED = "EB-ABLE.MONTHLY.LIMIT.EXCEED";
-    /** Overall credit/debit exceed for Customer & by & */
+    // D46: ONE parameter per message (DEV 26-Nov: a second parameter is not filled - both values landed in
+    // the first &), and separate ids for debit and credit so the message says which limit.
+    /** Daily debit limit exceeded for Customer &   (& = "<customer> by <amount over>") */
+    public static final String OVR_DAILY_DEBIT_LIMIT_EXCEED = "EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED";
+    /** Daily credit limit exceeded for Customer &  (& = "<customer> by <amount over>") */
+    public static final String OVR_DAILY_CREDIT_LIMIT_EXCEED = "EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED";
+    /** Monthly debit limit exceeded for Customer & (& = "<customer> by <amount over>") */
+    public static final String OVR_MONTHLY_DEBIT_LIMIT_EXCEED = "EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED";
+    /** Monthly credit limit exceeded for Customer & (& = "<customer> by <amount over>") */
+    public static final String OVR_MONTHLY_CREDIT_LIMIT_EXCEED = "EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED";
+    /** Overall balance limit exceeded for Customer & (& = "<customer> by <amount over>") */
     public static final String OVR_MAX_CIF_BAL_EXCEED = "EB-ABLE.MAX.CIF.BAL.EXCEED";
     /** Customer limit not defined for Customer & (no EB.ALBE.CIF.LIMITS record or a blank limit) */
     public static final String OVR_LIMIT_NOT_DEFINED = "EB-ABLE.CIF.LIMIT.NOT.DEFINED";
-    /** Exchange rate not available from & to & (transaction currency, limit currency) */
+    /** Exchange rate not available & (& = "from <currency> to <limit currency>") - max CIF only */
     public static final String OVR_EXCH_RATE_MISSING = "EB-ABLE.EXCH.RATE.MISSING";
+    /** Words joining the values into the one parameter. */
+    public static final String PARAM_BY = " by ";
+    public static final String PARAM_FROM = "from ";
+    public static final String PARAM_TO = " to ";
     /**
      * ERROR (blocks the transaction): Limit currency not defined for Customer & - the customer's
      * EB.ALBE.CIF.LIMITS has a blank CCY. EB.ERROR record.
@@ -239,9 +250,11 @@ public final class Constants {
     // -------------------------------------------------------------------------
     // Messages (HLSD text, used for logging; %s = customer id, difference)
     // -------------------------------------------------------------------------
-    public static final String MSG_DAILY_EXCEEDED = "Daily credit/debit exceed for Customer %s by %s";
-    public static final String MSG_MONTHLY_EXCEEDED = "Monthly credit/debit exceed for Customer %s by %s";
-    public static final String MSG_MAX_CIF_EXCEEDED = "Overall credit/debit exceed for Customer %s by %s";
+    public static final String MSG_DAILY_DEBIT_EXCEEDED = "Daily debit limit exceeded for Customer %s by %s";
+    public static final String MSG_DAILY_CREDIT_EXCEEDED = "Daily credit limit exceeded for Customer %s by %s";
+    public static final String MSG_MONTHLY_DEBIT_EXCEEDED = "Monthly debit limit exceeded for Customer %s by %s";
+    public static final String MSG_MONTHLY_CREDIT_EXCEEDED = "Monthly credit limit exceeded for Customer %s by %s";
+    public static final String MSG_MAX_CIF_EXCEEDED = "Overall balance limit exceeded for Customer %s by %s";
     public static final String MSG_LIMIT_NOT_DEFINED = "Customer limit not defined for Customer %s";
     public static final String MSG_EXCH_RATE_MISSING = "Exchange rate not available from %s to %s";
 

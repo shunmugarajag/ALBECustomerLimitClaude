@@ -61,7 +61,7 @@ T24 hook ──> controller ──> service ──> repository ──> T24 table
 | Utility | `util` | ValidationUtil | Common value checks shared by every layer: `isBlank`, `nvl`, `isPositive`, `toAmount` (blank/invalid = 0), `toOptionalAmount` (blank = limit not defined), `toText`, `toDate` (YYYYMMDD), `sameCurrency`. No business rules. |
 | Repository | `repository` | CustomerLimitRepository | **All** database reads / writes / selects / deletes, each logged. |
 | Model | `model` | CustomerLimitDTO, Limits, LimitBreach | Data passed between layers. |
-| View | `view` | CustomerLimitOverride | Overrides / errors on the AAA fields (`[ID,p1,p2]`). |
+| View | `view` | CustomerLimitOverride | Overrides / errors on the AAA fields (`[ID,param]`, one parameter, D46). |
 | Constants | `constants` | Constants | All constants: tables, record ids, statuses, activity keywords, field / key names, override ids, messages, date formats. The only `final` class. |
 
 ## Routines to register (EB.API)
@@ -157,18 +157,18 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 
 | Id | Message |
 |---|---|
-| EB-ABLE.DAILY.LIMIT.EXCEED | Daily credit/debit exceed for Customer & by & |
-| EB-ABLE.MONTHLY.LIMIT.EXCEED | Monthly credit/debit exceed for Customer & by & |
-| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall credit/debit exceed for Customer & by & |
+| EB-ABLE.DAILY.DEBIT.LIMIT.EXCEED / EB-ABLE.DAILY.CREDIT.LIMIT.EXCEED | Daily debit (credit) limit exceeded for Customer & |
+| EB-ABLE.MONTHLY.DEBIT.LIMIT.EXCEED / EB-ABLE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly debit (credit) limit exceeded for Customer & |
+| EB-ABLE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & |
 | EB-ABLE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
-| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available from & to & |
+| EB-ABLE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 | EB-ALBE.CUSTOMER.ACCOUNT.MISSING | **Error** (EB.ERROR, blocks, D45): No accounts found in CUSTOMER.ACCOUNT for Customer & – max CIF check with an empty CUSTOMER.ACCOUNT (no ACCOUNT SELECT fallback) |
-| EB-ALBE.EXCH.RATE.MISSING | **Error** (EB.ERROR, blocks, D44): Exchange rate not available from & to &, transaction not allowed – no LCY amount and no TXN.EXCH.RATE on the activity, or the limit is not in LCY |
+| EB-ALBE.EXCH.RATE.MISSING | **Error** (EB.ERROR, blocks, D44): Exchange rate not available &, transaction not allowed – no LCY amount and no TXN.EXCH.RATE on the activity, or the limit is not in LCY |
 
-`view.CustomerLimitOverride` raises them as `[ID,customer,difference]` (the format R25 `EB.HANDLE.OVERRIDES` reads), **each on its own AAA field** because a field keeps only one override: daily → TXN.AMOUNT, monthly → TXN.AMOUNT.LCY, max CIF → ORIG.TXN.AMT, not defined → CURRENCY, rate missing → EFFECTIVE.DATE; errors on TXN.AMOUNT (D43).
+`view.CustomerLimitOverride` raises them as `[ID,"<customer> by <amount over>"]` – **one parameter** (D46: a second `&` is not filled in DEV), **each on its own AAA field** because a field keeps only one override: daily → TXN.AMOUNT, monthly → TXN.AMOUNT.LCY, max CIF → ORIG.TXN.AMT, not defined → CURRENCY, rate missing → EFFECTIVE.DATE; errors on TXN.AMOUNT (D43).
 
 In ACTIVITY.API the checks (`ALBE.CL.DAILY.MONTHLY.VAL`, `ALBE.CL.MAX.CIF`) are attached as **Post Routines before** `ALBE.CL.DAILY.MONTHLY.UPD` – for FT-created activities only the Post Routine is called, and the override still shows on the FT screen (DEV 26-Nov). See `docs/T24_CONFIGURATION.md` §8.
 
