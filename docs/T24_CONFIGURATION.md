@@ -170,7 +170,7 @@ Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME 
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Maximum CIF balance exceeded for customer & | "<customer> by <amount over>" |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for customer & | **not raised any more (D52)** – may be reversed |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from <currency> to <limit currency>" – raised by AlbeClActivityLimit (activity LCY amount unreadable) |
-| **EB-ALBE.MAX.CIF.RATE.MISSING** *(new, D56)* | Exchange rate not available & - maximum CIF balance not checked | "from <account currency> to <limit currency>" – raised by AlbeClMaxCif only (own id, so each routine cleans only its own overrides) |
+| **EB-ALBE.MAX.CIF.RATE.MISSING** *(new, D56 – created in DEV 27-Nov, NUMERIC.ID O-17001)* | Exchange rate not available & - maximum CIF balance not checked | "from <account currency> to <limit currency>" – raised by AlbeClMaxCif only (own id, so each routine cleans only its own overrides) |
 
 **EB.ERROR** (blocks the transaction):
 
