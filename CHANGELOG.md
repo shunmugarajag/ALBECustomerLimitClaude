@@ -9,6 +9,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 - A **blank** daily / monthly / max CIF limit skips only that check, without an override; the amount is still counted.
 - Override `EB-ALBE.CIF.LIMIT.NOT.DEFINED` is no longer raised (constant removed; the DEV record may be reversed).
 - Also closes the gap where a foreign-currency amount was counted unconverted for a customer without a record.
+- No fallback to the GEN.PARAM `CUSTOMER.LIMIT` defaults (user: keep skip) – existing customers are not checked until their EB.ALBE.CIF.LIMITS records are loaded (DATA_MIGRATION M1).
 - 37 tests pass outside T24; 0 compile errors against R25. **Needs a new JAR deploy in DEV.**
 
 ### Added – DEV test results workbook (27-Nov-2026)
