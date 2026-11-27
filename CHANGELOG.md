@@ -7,7 +7,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 ### Tested – DEV retest with D54 + D55 (27-Nov-2026)
 - Limit records recreated in the new table EB.ALBE.CIF.LIMIT by OFS (100128, 100237-100241).
 - First run failed with `NoClassDefFoundError EbAlbeCifLimitRecord` on every FT: the server still had the old table JAR. Replacing the table JAR and restarting fixed it (TQ24; T24_CONFIGURATION §2, RELEASE_NOTES, GO_LIVE_CHECKLIST and SUPPORT_RUNBOOK updated).
-- Passed: smoke FT, **max CIF with the real balance (DEV-46, 1232 = 1,150 from EB.CONTRACT.BALANCES)**, no-limit-record skip, delete take-back, reversal take-back, blank daily limit (DEV-45). 27 Pass / 0 Fail / 23 Pending.
+- Passed: smoke FT, **max CIF with the real balance (DEV-46, 1232 = 1,150 from EB.CONTRACT.BALANCES)**, no-limit-record skip, delete take-back, reversal take-back, blank daily limit (DEV-45). 30 Pass / 0 Fail / 21 Pending after the one-shot block (DEV-51: all breaches with exact amounts, max CIF by 9.00; DEV-22 and DEV-39 errors).
 - New: `docs/DEV_TEST_DATA.md` and `docs/ALBE_Unit_Test_Data.docx` (test data, OFS how-to, one-shot scenario block).
 
 ### Changed – customer limit table renamed to EB.ALBE.CIF.LIMIT (27-Nov-2026, D55)
