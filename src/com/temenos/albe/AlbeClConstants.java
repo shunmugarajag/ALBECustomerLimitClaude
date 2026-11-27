@@ -24,7 +24,7 @@ public final class AlbeClConstants {
     public static final String LOG_TAG = "ALBE.CUSTOMER.LIMIT | ";
 
     // Tables
-    public static final String CIF_LIMIT_TABLE = "EB.ALBE.CIF.LIMITS";
+    public static final String CIF_LIMIT_TABLE = "EB.ALBE.CIF.LIMIT";
     public static final String GEN_PARAM_TABLE = "EB.ALBE.GEN.PARAM";
     public static final String TXN_DETAILS_TABLE = "EB.ALBE.TXN.DETAILS.LIMIT";
     public static final String ACCOUNT_TABLE = "ACCOUNT";

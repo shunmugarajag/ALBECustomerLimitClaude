@@ -18,7 +18,7 @@ For the T24 set-up steps (tables, EB.API, VERSION, ACTIVITY.API, overrides) see
 
 | # | Function | When | Result |
 |---|---|---|---|
-| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP.INPUT) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMITS `<customer>`, only if the customer has no record yet |
+| 1 | **Customer limit creation** | Customer authorised (VERSION CUSTOMER,ALBE.CORP.INPUT) | Copies the generic limits from EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT` into EB.ALBE.CIF.LIMIT `<customer>`, only if the customer has no record yet |
 | 2 | **Daily / monthly limit check** | AA credit or debit activity input | Override if today's or this month's credit (or debit) total would go over the customer's limit |
 | 3 | **Utilisation update** | Same activities: input, rejection, reversal | Keeps the daily and monthly totals in EB.ALBE.UTILISED.LIMIT correct |
 | 4 | **Maximum CIF balance check** | AA credit activity input | Override if the total balance of all the customer's accounts plus the credit would go over MAX.CIF.BALANCE |
@@ -58,7 +58,7 @@ Three T24 routines in package `com.temenos.albe`, each named after its EB.API, p
 |---|---|---|
 | `AlbeClActivityLimit` | `ActivityLifecycle.validateRecord` (Post Routine 1) | UNAUTH: mapping, amount, limits, conversion, earlier input, daily / monthly check, overrides, count; DELETE / AUTH-REV: take back; AUTH / REVERSE: nothing. Save failure → error EB-ALBE.LIMIT.UPDATE.FAILED |
 | `AlbeClMaxCif` | `ActivityLifecycle.validateRecord` (Post Routine 2, credits) | UNAUTH only: WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + credit vs MAXIMUM.OVERALL.CIF.AMOUNT; no accounts → error; counts nothing |
-| `AlbeClLimitCreate` | `RecordLifecycle.postUpdateRequest` (Auth routine) | creates EB.ALBE.CIF.LIMITS from GEN.PARAM `CUSTOMER.LIMIT` when T24 says there is no record; never overwrites |
+| `AlbeClLimitCreate` | `RecordLifecycle.postUpdateRequest` (Auth routine) | creates EB.ALBE.CIF.LIMIT from GEN.PARAM `CUSTOMER.LIMIT` when T24 says there is no record; never overwrites |
 | `AlbeClConstants` | – | all literals |
 
 ---
@@ -70,7 +70,7 @@ Three T24 routines in package `com.temenos.albe`, each named after its EB.API, p
 | Table | Record id | Written by | Read by |
 |---|---|---|---|
 | EB.ALBE.GEN.PARAM | `CUSTOMER.LIMIT` | user (one-off) | creation |
-| EB.ALBE.CIF.LIMITS | customer id | creation; user (amend via version) | all checks |
+| EB.ALBE.CIF.LIMIT | customer id | creation; user (amend via version) | all checks |
 | EB.ALBE.UTILISED.LIMIT | daily `<customer>-YYYYMMDD`, monthly `<customer>-YYYYMM` | utilisation update | daily / monthly check |
 | EB.ALBE.TXN.DETAILS.LIMIT | `<customer>-<YYYYMMDD>-<FT/AAA>-<arrangement id>` (date = the activity's ORG.SYSTEM.DATE) | utilisation update (input) | rejection / reversal / re-input |
 | ACCOUNT, CUSTOMER.ACCOUNT, COMPANY | core | – | maximum CIF check |
@@ -104,7 +104,7 @@ customer authorised
         null  -> SKIP + error log (read failed: never overwrite)
         FALSE -> read EB.ALBE.GEN.PARAM CUSTOMER.LIMIT
                    not found -> error log, nothing written
-                   found     -> write EB.ALBE.CIF.LIMITS <customer> (CCY + 5 limits)
+                   found     -> write EB.ALBE.CIF.LIMIT <customer> (CCY + 5 limits)
 ```
 
 - Runs on **every** authorisation of the customer, including amendments – the exists check makes it safe.
@@ -115,7 +115,7 @@ customer authorised
 
 ```
 build request (mapping CREDIT / DEBIT, amount, key, arrangement, date) -> isValid
-  -> EB.ALBE.CIF.LIMITS <customer> (read once)
+  -> EB.ALBE.CIF.LIMIT <customer> (read once)
         none           -> skipped: no check, no override, not counted (D52)
         CURRENCY blank -> ERROR CIF.LIMIT.CCY.MISSING, stop (not counted)
   -> amount in the limit CCY (LCY amount, else TXN.EXCH.RATE, else ERROR EXCH.RATE.MISSING, stop)
@@ -147,7 +147,7 @@ Equal to the limit is allowed; only **above** is a breach. "used - earlier" is n
 ### 5.4 Maximum CIF balance check – `AlbeClMaxCif` (input, credit only)
 
 ```
-own routine: reads the mapping, CIF.LIMITS and converts the credit itself (same rules as 5.2)
+own routine: reads the mapping, CIF.LIMIT and converts the credit itself (same rules as 5.2)
 MAXIMUM.OVERALL.CIF.AMOUNT blank -> not checked, no override (D52)
 company financial mnemonic (COMPANY)
 customer accounts: CUSTOMER.ACCOUNT <customer>; empty -> ERROR CUSTOMER.ACCOUNT.MISSING (blocks, D45)
@@ -239,7 +239,7 @@ grep -E "ALBE.CUSTOMER.LIMIT.*\| (FAILED|BLOCKED|ERROR) \|" <log> # to monitor
 |---|---|
 | EB.ALBE.TXN.DETAILS.LIMIT read **by key** (`<customer>-<date>-<FT/AAA>-<arrangement>`, date = ORG.SYSTEM.DATE); SELECT only for a take-back that finds nothing by key | done |
 | One request validation per call | done |
-| Each record read once per call and passed along (no cache): CIF.LIMITS, TXN.DETAILS, daily + monthly UTILISED; each written once (re-input = one write with used − earlier + new) | done (D47) |
+| Each record read once per call and passed along (no cache): CIF.LIMIT, TXN.DETAILS, daily + monthly UTILISED; each written once (re-input = one write with used − earlier + new) | done (D47) |
 | CUSTOMER.ACCOUNT empty → error, no ACCOUNT SELECT (D45) | done |
 | All log lines at INFO (no trace switch, D47) – keep DIAGNOSTIC.API at ERROR in production if the volume is a concern | user decision |
 | EB.ALBE.TXN.DETAILS.LIMIT grows with every counted transaction | consider a housekeeping job for old records (keep at least as long as a reversal is possible) |
@@ -250,7 +250,7 @@ grep -E "ALBE.CUSTOMER.LIMIT.*\| (FAILED|BLOCKED|ERROR) \|" <log> # to monitor
 
 | # | Decision | Reason |
 |---|---|---|
-| 1 | Limits only from EB.ALBE.CIF.LIMITS; GEN.PARAM only for creation | One source of truth per customer |
+| 1 | Limits only from EB.ALBE.CIF.LIMIT; GEN.PARAM only for creation | One source of truth per customer |
 | 2 | Missing record / blank limit -> acceptable override (not error) | Business decision |
 | 3 | Count utilisation at **input**, reverse at rejection and at reversal | Unauthorised transactions must count; accepted-override transactions count |
 | 4 | T24 date for counting = the activity's ORG.SYSTEM.DATE (D42); take-back uses the counted day from TXN.DETAILS | Day/month buckets follow when the amount was counted |
@@ -317,7 +317,7 @@ JARs the code needs (all already on the Eclipse build path except the ALBE table
 
 | Change | Where |
 |---|---|
-| New limit type | field in EB.ALBE.CIF.LIMITS + GEN.PARAM key → `AlbeClConstants.KEY_*`, copy in `AlbeClLimitCreate`, check in `AlbeClActivityLimit` (or its own routine like `AlbeClMaxCif`) |
+| New limit type | field in EB.ALBE.CIF.LIMIT + GEN.PARAM key → `AlbeClConstants.KEY_*`, copy in `AlbeClLimitCreate`, check in `AlbeClActivityLimit` (or its own routine like `AlbeClMaxCif`) |
 | New override | OVERRIDE record + `AlbeClConstants.OVR_*`, raised on its own AAA field |
 | Exchange rate for max CIF accounts (E1) | `AlbeClMaxCif` – e.g. R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount` (market and rate type to be decided) |
 | New activity (FT, TELLER, TPH, ...) | GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` line + attach the routines in ACTIVITY.API – no code change |
@@ -334,7 +334,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 | 2 | EB.API `ALBE.CL.ACTIVITY.LIMIT` / `ALBE.CL.MAX.CIF` / `ALBE.CL.LIMIT.CREATE` pointed to `com.temenos.albe` classes; remove VAL / UPD / DEF | T24 |
 | 3 | HLSD update for the deviations in section 11 | BA |
 | 4 | DEV verification of the API calls in section 12 | dev |
-| 5 | One-off creation of EB.ALBE.CIF.LIMITS for customers that already exist (separate flow) | bank / dev |
+| 5 | One-off creation of EB.ALBE.CIF.LIMIT for customers that already exist (separate flow) | bank / dev |
 | 6 | Decide the DIAGNOSTIC.API level in production (INFO = see every line) | bank / dev |
 
 ---

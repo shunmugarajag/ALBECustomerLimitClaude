@@ -4,7 +4,7 @@ What has to be loaded **once, before go-live**, so existing customers are checke
 
 | # | Load | Target | Why |
 |---|---|---|---|
-| M1 | Limit records for existing customers | EB.ALBE.CIF.LIMITS `<customer>` | the creation routine only runs when a customer is authorised; without a record every transaction of an existing customer gets "limit not defined" and **no** limit check |
+| M1 | Limit records for existing customers | EB.ALBE.CIF.LIMIT `<customer>` | the creation routine only runs when a customer is authorised; without a record every transaction of an existing customer gets "limit not defined" and **no** limit check |
 | M2 | Current month's usage from before go-live | EB.ALBE.UTILISED.LIMIT `<customer>-YYYYMM`, fields UTILISED.MIGRATED.CREDIT.LIMIT / UTILISED.MIGRATED.DEBIT.LIMIT | the monthly check adds migrated + counted; otherwise the first month starts at 0 |
 | M3 | *(optional)* today's usage | EB.ALBE.UTILISED.LIMIT `<customer>-YYYYMMDD` UTILISED.CREDIT/DEBIT.LIMIT | only if go-live is mid-day with transactions already done |
 
@@ -20,12 +20,12 @@ What has to be loaded **once, before go-live**, so existing customers are checke
 
 | Option | How | Pros / cons |
 |---|---|---|
-| A – Data load through the version (OFS / DM tool) | one OFS message per customer on `EB.ALBE.CIF.LIMITS,AMEND` (or the bank's data-migration tool) | audit fields filled, can be authorised; slower |
-| B – One-off service routine | multi-threaded job: for each customer, if EB.ALBE.CIF.LIMITS does not exist, copy GEN.PARAM `CUSTOMER.LIMIT` (same rule as the creation routine) | fast, re-runnable; records go live directly without inputter / authoriser |
+| A – Data load through the version (OFS / DM tool) | one OFS message per customer on `EB.ALBE.CIF.LIMIT,AMEND` (or the bank's data-migration tool) | audit fields filled, can be authorised; slower |
+| B – One-off service routine | multi-threaded job: for each customer, if EB.ALBE.CIF.LIMIT does not exist, copy GEN.PARAM `CUSTOMER.LIMIT` (same rule as the creation routine) | fast, re-runnable; records go live directly without inputter / authoriser |
 
 Rules for either option:
 
-- **Never overwrite** an existing EB.ALBE.CIF.LIMITS record (it may already be amended).
+- **Never overwrite** an existing EB.ALBE.CIF.LIMIT record (it may already be amended).
 - Re-runnable: running it twice creates nothing new.
 - Fields: CURRENCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAXIMUM.OVERALL.CIF.AMOUNT (filled from GEN.PARAM CCY … MAX.CIF.BALANCE).
 
@@ -33,7 +33,7 @@ Rules for either option:
 
 | Check | Expected |
 |---|---|
-| Number of customers in scope | = number of EB.ALBE.CIF.LIMITS records created + already existing |
+| Number of customers in scope | = number of EB.ALBE.CIF.LIMIT records created + already existing |
 | Sample of 20 customers | values = GEN.PARAM (or the supplied file) |
 | `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY` | one line per loaded customer |
 

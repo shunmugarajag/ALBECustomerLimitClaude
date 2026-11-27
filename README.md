@@ -49,14 +49,14 @@ Three routines in package **`com.temenos.albe`**, each named after its EB.API (t
 |---|---|---|---|
 | `ALBE.CL.ACTIVITY.LIMIT` | `AlbeClActivityLimit` | ACTIVITY.API **Post Routine 1** on every mapped activity, method `validateRecord` | daily / monthly check, overrides, count at input; take back on DELETE / AUTH-REV |
 | `ALBE.CL.MAX.CIF` | `AlbeClMaxCif` | ACTIVITY.API **Post Routine 2** on **credit** activities, method `validateRecord` | maximum CIF balance at input; counts nothing |
-| `ALBE.CL.LIMIT.CREATE` | `AlbeClLimitCreate` | VERSION CUSTOMER,ALBE.CORP.INPUT **Auth routine**, method `postUpdateRequest` | creates EB.ALBE.CIF.LIMITS from GEN.PARAM `CUSTOMER.LIMIT` if missing; never overwrites |
+| `ALBE.CL.LIMIT.CREATE` | `AlbeClLimitCreate` | VERSION CUSTOMER,ALBE.CORP.INPUT **Auth routine**, method `postUpdateRequest` | creates EB.ALBE.CIF.LIMIT from GEN.PARAM `CUSTOMER.LIMIT` if missing; never overwrites |
 | – | `AlbeClConstants` | – | all literals (tables, ids, override / error ids, log tag) |
 
 Written like the team's core Java routines: `DataAccess`, `Session` and the generated tables are used directly, one `LoggerFactory` logger (`API`), `logger.info` only.
 
 | Activity status | `AlbeClActivityLimit` | `AlbeClMaxCif` |
 |---|---|---|
-| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMITS (none → skipped: no check, not counted (D52); blank CURRENCY → error; a blank single limit skips only that check) 2. amount in the limit currency (cannot → error) 3. earlier input of the same FT (TXN.DETAILS key) 4. daily / monthly: used − earlier + this > limit → override 5. count: used − earlier + this, TXN.DETAILS written | WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit > MAXIMUM.OVERALL.CIF.AMOUNT → override; no accounts → error |
+| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMIT (none → skipped: no check, not counted (D52); blank CURRENCY → error; a blank single limit skips only that check) 2. amount in the limit currency (cannot → error) 3. earlier input of the same FT (TXN.DETAILS key) 4. daily / monthly: used − earlier + this > limit → override 5. count: used − earlier + this, TXN.DETAILS written | WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit > MAXIMUM.OVERALL.CIF.AMOUNT → override; no accounts → error |
 | DELETE / AUTH-REV | take back exactly what TXN.DETAILS shows was counted, from the counted day; nothing counted → nothing | – |
 | AUTH / REVERSE | nothing | – |
 
@@ -64,7 +64,7 @@ The count is in the same commit as the FT: a rejected override or an error (from
 
 ### Currency conversion
 
-All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMITS `CURRENCY`):
+All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMIT `CURRENCY`):
 - transaction in another currency: the activity's LCY amount, else amount × TXN.EXCH.RATE; neither, or a limit not in LCY → **error EB-ALBE.EXCH.RATE.MISSING**, not counted;
 - max CIF: balance = EB.CONTRACT.BALANCES WORKING.BALANCE (Account API); an account in another currency is converted with the T24 Currency API (EXCHRATE, CURRENCY.MARKET 1, today, D54); no rate → override EB-ALBE.EXCH.RATE.MISSING, max CIF not checked;
 - amounts rounded to 2 decimals; UTILISED.LIMIT / TXN.DETAILS hold the converted amount; a take-back never reconverts.
@@ -84,7 +84,7 @@ Create the tables with these field names so the generated getters match.
 | MONTHLY.DEBIT.LIMIT | monthly debit limit |
 | MAXIMUM.OVERALL.CIF.BALANCE | maximum CIF balance (→ CIF.LIMIT MAX.CIF.BALANCE) |
 
-**EB.ALBE.CIF.LIMITS** (id: customer id) – create EB.TABLE.DEFINITION `ALBE.CIF.LIMITS` with these field names
+**EB.ALBE.CIF.LIMIT** (id: customer id) – create EB.TABLE.DEFINITION `ALBE.CIF.LIMIT` with these field names
 
 | No | Field | Description | Type | Getter / Setter |
 |---|---|---|---|---|
@@ -139,7 +139,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | **no longer raised** (D52): no limit record → skipped; blank limit → that check skipped |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
-| EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMIT CCY is blank |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 | EB-ALBE.CUSTOMER.ACCOUNT.MISSING | **Error** (EB.ERROR, blocks, D45): No accounts found in CUSTOMER.ACCOUNT for Customer & – max CIF check with an empty CUSTOMER.ACCOUNT (no ACCOUNT SELECT fallback) |
 | EB-ALBE.EXCH.RATE.MISSING | **Error** (EB.ERROR, blocks, D44): Exchange rate not available &, transaction not allowed – no LCY amount and no TXN.EXCH.RATE on the activity, or the limit is not in LCY |

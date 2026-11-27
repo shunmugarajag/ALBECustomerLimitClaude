@@ -19,15 +19,15 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R03 | 1.1.1 Overall limit | Maximum overall balance per customer | `MaximumCifLimitService.check`, `getTotalBalance` | UT-X01…X04, #12 | Done |
 | R04 | 1.1.1 | Products and activities eligible for the validation chosen by the user | ACTIVITY.API product condition per product / activity (no parameter table – see D7) | #3 | Done / Deviation D7 |
 | R05 | 1.1.2 | EB.ALBE.GEN.CIF.LIMIT generic limits, id SYSTEM | EB.ALBE.GEN.PARAM record **`CUSTOMER.LIMIT`** (KEY.NAME / KEY.VALUE); `AlbeClLimitCreate` (reads the keys) | UT-C02 | Deviation D2 |
-| R06 | 1.1.2 | EB.ALBE.CIF.LIMITS per customer: CCY, daily / monthly deposit and withdrawal limits, maximum CIF balance | `AlbeClActivityLimit.readCifLimits` / `AlbeClMaxCif`; fields CCY, DAILY/MONTHLY.CREDIT/DEBIT.LIMIT, MAX.CIF.BALANCE | UT-D01, UT-L01 | Done |
+| R06 | 1.1.2 | EB.ALBE.CIF.LIMIT per customer: CCY, daily / monthly deposit and withdrawal limits, maximum CIF balance | `AlbeClActivityLimit.readCifLimits` / `AlbeClMaxCif`; fields CCY, DAILY/MONTHLY.CREDIT/DEBIT.LIMIT, MAX.CIF.BALANCE | UT-D01, UT-L01 | Done |
 | R07 | 1.1.2 | EB.ALBE.TXN.DETAILS.LIMIT id `Custid-YYYYMMDD-TXN.ID` | `TxnDetailsLimitRecorder.recordId` = `<cust>-<YYYYMMDD>-<root ref>-<arrangement>` | UT-U01, UT-U05 | Done |
 | R08 | 1.1.2 | TXN.DETAILS fields | approved table has ACCOUNT.NO, CREDIT.DEBIT.FLAG, EFF.DATE, TXN.AMOUNT – all written by `TxnDetailsLimitRecorder.record` | UT-U01 | Deviation D3 |
 | R09 | 1.1.2 | EB.ALBE.UTILISED.LIMIT daily `Custid-YYYYMMDD` and monthly `Custid-YYYYMM`; migrated fields only for migrated contracts | `AlbeClActivityLimit.add`; migrated fields read only | UT-U02, UT-M02 | Done / Deviation D4 |
 | R10 | 7.2.1 | Generic limit record created by the user | step 3 of T24_CONFIGURATION | – | Done (config) |
-| R11 | 7.2.1 Creation | On customer creation copy generic limits to EB.ALBE.CIF.LIMITS `<customer id>` | `AlbeClLimitCreate.postUpdateRequest` | UT-C01…C03, #1 | Done |
-| R12 | 7.2.1 Creation | User can amend a customer's limits any time; amend version on the user menu | VERSION `EB.ALBE.CIF.LIMITS,AMEND`, menu (T24_CONFIGURATION §9, §15); creation never overwrites | UT-C01, #2 | Done |
+| R11 | 7.2.1 Creation | On customer creation copy generic limits to EB.ALBE.CIF.LIMIT `<customer id>` | `AlbeClLimitCreate.postUpdateRequest` | UT-C01…C03, #1 | Done |
+| R12 | 7.2.1 Creation | User can amend a customer's limits any time; amend version on the user menu | VERSION `EB.ALBE.CIF.LIMIT,AMEND`, menu (T24_CONFIGURATION §9, §15); creation never overwrites | UT-C01, #2 | Done |
 | R13 | 7.2.1 Creation | Attached as After Unau routine on CUSTOMER,ALBE.CORP.INPUT | attached as **Auth routine** | #1 | Deviation D1 |
-| R14 | 7.2.1 Creation | Delete EB.ALBE.CIF.LIMITS when the unauthorised customer is deleted | not needed: record created only at authorisation | – | Deviation D1 |
+| R14 | 7.2.1 Creation | Delete EB.ALBE.CIF.LIMIT when the unauthorised customer is deleted | not needed: record created only at authorisation | – | Deviation D1 |
 | R15 | 7.2.1 Daily/monthly | Attached in ACTIVITY.API for the selected products and activities | `AlbeClActivityLimit.validateRecord` (Post Routine 1) + `AlbeClMaxCif` (Post Routine 2, credits) | #3 | Done |
 | R16 | 7.2.1 Daily | Credit: utilised daily credit (`custid-YYYYMMDD`, server date) + TXN amount > limit → override "Daily credit/debit exceed for Customer & by &" | `AlbeClActivityLimit.check` → override on TXN.AMOUNT | UT-D02, #4, use case 8.2 | Done |
 | R17 | 7.2.1 Daily | Debit: same with daily debit | same, debit side | UT-D04, #10, use case 8.5 | Done |
@@ -37,7 +37,7 @@ Status: **Done** = implemented and unit-tested outside T24 · **DEV** = needs co
 | R21 | 7.2.1 | If not exceeded, update the utilised limit | counted at input in `postCoreTableUpdate` (UNAUTH) – **also when the override is accepted** | UT-U01, UT-U03 | Deviation D5 |
 | R22 | 1 / 7.2.1 | Input and deletion logic to be handled | re-input replaces the earlier amount; DELETE and AUTH-REV reverse from the original day / month | UT-U03…U06, #6 #7 #9 | Done |
 | R23 | 7.2.1 Maximum | Credit: total working balance of all customer accounts + amount > MAX.CIF.BALANCE → override "Overall credit/debit exceed …" | `AlbeClMaxCif.validateRecord` | UT-X01, #12, use case 8.4 | Done |
-| R24 | 1.1.2 CCY | Limits in local currency | limits compared in EB.ALBE.CIF.LIMITS CCY; other currencies converted (`CurrencyConversionService`) | UT-F01…F04 | Done / Pending E1 |
+| R24 | 1.1.2 CCY | Limits in local currency | limits compared in EB.ALBE.CIF.LIMIT CCY; other currencies converted (`CurrencyConversionService`) | UT-F01…F04 | Done / Pending E1 |
 | R25 | 10 Assumptions | Reports not included (separate requirement) | none (three enquiries were built, then removed 26-Nov) | – | – |
 
 ## 2. HLSD use cases

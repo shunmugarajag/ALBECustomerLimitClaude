@@ -20,7 +20,7 @@ import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRe
 import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
 import com.temenos.t24.api.records.account.AccountRecord;
 import com.temenos.t24.api.records.company.CompanyRecord;
-import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
+import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
 import com.temenos.t24.api.records.ebcontractbalances.EbContractBalancesRecord;
@@ -96,7 +96,7 @@ public class AlbeClMaxCif extends ActivityLifecycle {
             String customer = arrangementRecord.getCustomer().get(0).getCustomer().getValue();
 
             // limit and its currency (missing / blank CURRENCY: raised by AlbeClActivityLimit)
-            EbAlbeCifLimitsRecord limits = readCifLimits(da, customer);
+            EbAlbeCifLimitRecord limits = readCifLimits(da, customer);
             String limitCcy = limits == null ? "" : nvl(limits.getCurrency().getValue()).trim();
             if (limits == null || limitCcy.isEmpty()) {
                 logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | " +
@@ -272,9 +272,9 @@ public class AlbeClMaxCif extends ActivityLifecycle {
         return "";
     }
 
-    private EbAlbeCifLimitsRecord readCifLimits(DataAccess da, String customer) {
+    private EbAlbeCifLimitRecord readCifLimits(DataAccess da, String customer) {
         try {
-            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
+            EbAlbeCifLimitRecord rec = new EbAlbeCifLimitRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
                     customer));
             return rec.toString().isEmpty() ? null : rec;
         } catch (Exception e) {

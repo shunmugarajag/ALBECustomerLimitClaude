@@ -8,7 +8,7 @@ For production support and business-user questions after go-live. How the module
 
 | When | Routine | What it does | What you see |
 |---|---|---|---|
-| Customer authorised (CUSTOMER,ALBE.CORP.INPUT) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMITS `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
+| Customer authorised (CUSTOMER,ALBE.CORP.INPUT) | ALBE.CL.LIMIT.CREATE | creates EB.ALBE.CIF.LIMIT `<customer>` from GEN.PARAM `CUSTOMER.LIMIT` if missing | new limit record |
 | Credit / debit activity input | ALBE.CL.ACTIVITY.LIMIT | checks daily / monthly (+ max CIF for a credit), counts the amount | overrides / errors; UTILISED.LIMIT and TXN.DETAILS records |
 | Activity deleted (unauthorised) / reversed | ALBE.CL.ACTIVITY.LIMIT | takes back what was counted, from the day and month it was counted on; deletes the TXN.DETAILS record | totals go down |
 
@@ -29,8 +29,8 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in 
 
 ### 3.1 "No limit is checked for a customer" (D52: no limit record → skipped silently)
 
-1. Check EB.ALBE.CIF.LIMITS `<customer>` exists → if not, 3.3.
-2. If it exists, check none of the five limit fields is blank (a blank field = that check is skipped, no override). Log: `no EB.ALBE.CIF.LIMITS record -> skipped` or `limit blank -> not checked`.
+1. Check EB.ALBE.CIF.LIMIT `<customer>` exists → if not, 3.3.
+2. If it exists, check none of the five limit fields is blank (a blank field = that check is skipped, no override). Log: `no EB.ALBE.CIF.LIMIT record -> skipped` or `limit blank -> not checked`.
 3. The override is acceptable – the user can accept it; the transaction is still counted.
 
 ### 3.2 "The customer gets 'Daily/Monthly … exceed' but has not used that much"
@@ -43,11 +43,11 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in 
 
 ### 3.3 Create a missing limit record
 
-Open **EB.ALBE.CIF.LIMITS,AMEND** with the customer id, enter CURRENCY and the five limits (normally the GEN.PARAM values), authorise. The creation routine never overwrites an existing record.
+Open **EB.ALBE.CIF.LIMIT,AMEND** with the customer id, enter CURRENCY and the five limits (normally the GEN.PARAM values), authorise. The creation routine never overwrites an existing record.
 
 ### 3.4 Change a customer's limits
 
-EB.ALBE.CIF.LIMITS,AMEND → amend → authorise. Effective for the next transaction. Changing GEN.PARAM `CUSTOMER.LIMIT` affects **new** customers only.
+EB.ALBE.CIF.LIMIT,AMEND → amend → authorise. Effective for the next transaction. Changing GEN.PARAM `CUSTOMER.LIMIT` affects **new** customers only.
 
 ### 3.5 Utilisation looks wrong (too high or too low)
 
@@ -66,7 +66,7 @@ The day comes from the activity's ORG.SYSTEM.DATE (D42), else T24 TODAY. The rev
 
 ### 3.7 "Exchange rate not available from X to Y"
 
-- **Error** (EB-ALBE.EXCH.RATE.MISSING, transaction blocked, D44): the transaction is in another currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE, or the customer's limit is not in EGP. Check the customer's CIF.LIMITS CURRENCY and the FT; nothing was counted.
+- **Error** (EB-ALBE.EXCH.RATE.MISSING, transaction blocked, D44): the transaction is in another currency and the activity has neither an LCY amount (TXN.AMOUNT.LCY / ORIG.TXN.AMT.LCY) nor TXN.EXCH.RATE, or the customer's limit is not in EGP. Check the customer's CIF.LIMIT CURRENCY and the FT; nothing was counted.
 - **Override** (EB-ALBE.EXCH.RATE.MISSING): max CIF only – another account of the customer is in a currency for which EXCHRATE (CURRENCY.MARKET 1) finds no rate (D54) – check the CURRENCY record; the max CIF check was skipped. Report the pair.
 
 ### 3.9 The log says INPUT … counted, but the utilisation did not change

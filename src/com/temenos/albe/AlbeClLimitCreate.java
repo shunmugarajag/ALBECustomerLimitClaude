@@ -8,17 +8,17 @@ import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.complex.eb.servicehook.TransactionData;
 import com.temenos.t24.api.complex.eb.templatehook.TransactionContext;
 import com.temenos.t24.api.hook.system.RecordLifecycle;
-import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
+import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
 import com.temenos.t24.api.system.DataAccess;
-import com.temenos.t24.api.tables.ebalbeciflimits.EbAlbeCifLimitsTable;
+import com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable;
 
 /*-----------------------------------------------------------------------------
  * Attached as : Auth Routine
  * EB.API      : ALBE.CL.LIMIT.CREATE
  * Attached to : VERSION CUSTOMER,ALBE.CORP
- * Description : When a customer is authorised, creates EB.ALBE.CIF.LIMITS <customer> from
+ * Description : When a customer is authorised, creates EB.ALBE.CIF.LIMIT <customer> from
  *               EB.ALBE.GEN.PARAM CUSTOMER.LIMIT (KEY.NAME / KEY.VALUE), only if it does not exist.
  *               An existing record (customer amended and authorised again) is never overwritten;
  *               if the read fails for any other reason than "not found", nothing is written.
@@ -71,7 +71,7 @@ public class AlbeClLimitCreate extends RecordLifecycle {
                 return;
             }
 
-            EbAlbeCifLimitsRecord limits = new EbAlbeCifLimitsRecord(this);
+            EbAlbeCifLimitRecord limits = new EbAlbeCifLimitRecord(this);
             boolean found = false;
             for (KeyNameClass k : param.getKeyName()) {
                 String key = k.getKeyName().getValue() == null ? "" : k.getKeyName().getValue().trim();
@@ -105,7 +105,7 @@ public class AlbeClLimitCreate extends RecordLifecycle {
                         + customer);
                 return;
             }
-            new EbAlbeCifLimitsTable(this).write(customer, limits);
+            new EbAlbeCifLimitTable(this).write(customer, limits);
             logger.info(AlbeClConstants.LOG_TAG + NAME + " CREATED | " +
                     AlbeClConstants.CIF_LIMIT_TABLE + ">" + customer + " from "
                     + AlbeClConstants.GEN_PARAM_LIMIT_ID);
@@ -117,7 +117,7 @@ public class AlbeClLimitCreate extends RecordLifecycle {
     /** TRUE record exists, FALSE T24 says not found, null the read failed for another reason. */
     private Boolean cifLimitExists(DataAccess da, String customer) {
         try {
-            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
+            EbAlbeCifLimitRecord rec = new EbAlbeCifLimitRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
                     customer));
             return !rec.toString().isEmpty();
         } catch (Exception e) {

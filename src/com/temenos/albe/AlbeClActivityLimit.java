@@ -17,7 +17,7 @@ import com.temenos.t24.api.records.aaaccountdetails.AaAccountDetailsRecord;
 import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
 import com.temenos.t24.api.records.aaproductcatalog.AaProductCatalogRecord;
-import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
+import com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
 import com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord;
@@ -35,7 +35,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * Description : Customer limit check, daily and monthly, HLSD 7.2.1 - 2.
  *
  *   UNAUTH (input / amendment)
- *     1. EB.ALBE.CIF.LIMITS <customer>   none -> skipped: no check, no override, not counted
+ *     1. EB.ALBE.CIF.LIMIT <customer>   none -> skipped: no check, no override, not counted
  *                                        CURRENCY blank -> ERROR, not counted
  *     2. amount in the limit currency: LCY amount, else x TXN.EXCH.RATE, else ERROR
  *     3. earlier input of this FT: EB.ALBE.TXN.DETAILS.LIMIT <cust>-<date>-<FT>-<arrangement>
@@ -148,7 +148,7 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
         List<String[]> overrides = new ArrayList<>();   // {override id, parameter, field}
 
         // 1. customer limits
-        EbAlbeCifLimitsRecord limits = readCifLimits(da, customer);
+        EbAlbeCifLimitRecord limits = readCifLimits(da, customer);
         if (limits == null) {
             logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " + result + " | no "
                     + AlbeClConstants.CIF_LIMIT_TABLE + " record -> skipped, not checked, not counted");
@@ -359,10 +359,10 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
         return null;
     }
 
-    /** EB.ALBE.CIF.LIMITS <customer>; null when there is no record. */
-    private EbAlbeCifLimitsRecord readCifLimits(DataAccess da, String customer) {
+    /** EB.ALBE.CIF.LIMIT <customer>; null when there is no record. */
+    private EbAlbeCifLimitRecord readCifLimits(DataAccess da, String customer) {
         try {
-            EbAlbeCifLimitsRecord rec = new EbAlbeCifLimitsRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
+            EbAlbeCifLimitRecord rec = new EbAlbeCifLimitRecord(da.getRecord(AlbeClConstants.CIF_LIMIT_TABLE,
                     customer));
             return rec.toString().isEmpty() ? null : rec;
         } catch (Exception e) {

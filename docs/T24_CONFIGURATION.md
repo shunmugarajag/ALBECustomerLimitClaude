@@ -16,7 +16,7 @@ For how the code works see [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md).
 | 6 | EB.API records | ☐ |
 | 7 | VERSION CUSTOMER,ALBE.CORP.INPUT (creation) | ☐ |
 | 8 | ACTIVITY.API on the AA products (checks + utilisation) | ☐ |
-| 9 | Versions for EB.ALBE.CIF.LIMITS and EB.ALBE.GEN.PARAM | ☐ |
+| 9 | Versions for EB.ALBE.CIF.LIMIT and EB.ALBE.GEN.PARAM | ☐ |
 | 10 | Logging | ☐ |
 | 11 | Data before go-live (existing customers, migrated utilisation) | ☐ |
 | 12 | Exchange rate (pending) | ☐ |
@@ -42,7 +42,7 @@ The field that holds the type in EB.TABLE.DEFINITION can differ by release **(co
 
 | Table | Suggested type | Why |
 |---|---|---|
-| EB.ALBE.CIF.LIMITS | **H** | users amend it through a version; the bank needs authorisation and a history of limit changes |
+| EB.ALBE.CIF.LIMIT | **H** | users amend it through a version; the bank needs authorisation and a history of limit changes |
 | EB.ALBE.GEN.PARAM | **H** (or U) | parameter changes should be authorised and traceable |
 | EB.ALBE.UTILISED.LIMIT | **L** | written only by the code on every transaction; no authorisation, no history (would grow huge) |
 | EB.ALBE.TXN.DETAILS.LIMIT | **L** | internal bookkeeping, one record per transaction, deleted on rejection / reversal |
@@ -56,7 +56,7 @@ The code always reads and writes the **live** file. If UTILISED.LIMIT / TXN.DETA
 | KEY.NAME | multi-value, text | paired with KEY.VALUE |
 | KEY.VALUE | multi-value, text | |
 
-### 1.2 EB.ALBE.CIF.LIMITS – one record per customer  *(create)*
+### 1.2 EB.ALBE.CIF.LIMIT – one record per customer  *(create)*
 
 ID: **customer id** (validate as CUSTOMER).
 
@@ -104,7 +104,7 @@ The code needs these classes:
 
 | Table | Record class | Table class |
 |---|---|---|
-| EB.ALBE.CIF.LIMITS | `com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord` | `com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable` |
+| EB.ALBE.CIF.LIMIT | `com.temenos.t24.api.records.ebalbeciflimit.EbAlbeCifLimitRecord` | `com.temenos.t24.api.tables.ebalbeciflimit.EbAlbeCifLimitTable` |
 | EB.ALBE.GEN.PARAM | `com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord`, `KeyNameClass` | – |
 | EB.ALBE.UTILISED.LIMIT | `com.temenos.t24.api.records.ebalbeutilisedlimit.EbAlbeUtilisedLimitRecord` | `com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable` |
 | EB.ALBE.TXN.DETAILS.LIMIT | `com.temenos.t24.api.records.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitRecord` | `com.temenos.t24.api.tables.ebalbetxndetailslimit.EbAlbeTxnDetailsLimitTable` |
@@ -133,7 +133,7 @@ Input and authorise record **`CUSTOMER.LIMIT`** – the default limits copied to
 | MAXIMUM.OVERALL.CIF.BALANCE | 10000 | MAX.CIF.BALANCE |
 
 The KEY.NAME values must be spelled exactly as above (`AlbeClConstants.KEY_*`). A misspelt CURRENCY gives new customers a blank CCY, and every transaction is then blocked (EB-ALBE.CIF.LIMIT.CCY.MISSING). Values are the DEV set-up – the bank provides the production ones.
-Changing this record later does **not** change existing customers' EB.ALBE.CIF.LIMITS records.
+Changing this record later does **not** change existing customers' EB.ALBE.CIF.LIMIT records.
 
 ### 3a. Parameter record EB.ALBE.GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` – credit / debit mapping *(mandatory, D41)*
 
@@ -170,7 +170,7 @@ Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME 
 
 | ID | MESSAGE (DEV) | Raised when |
 |---|---|---|
-| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for customer & | the customer's EB.ALBE.CIF.LIMITS has a blank CURRENCY |
+| EB-ALBE.CIF.LIMIT.CCY.MISSING | Limit currency not defined for customer & | the customer's EB.ALBE.CIF.LIMIT has a blank CURRENCY |
 | EB-ALBE.LIMIT.UPDATE.FAILED | Customer limit could not be updated - transaction cancelled | saving EB.ALBE.UTILISED.LIMIT or EB.ALBE.TXN.DETAILS.LIMIT failed (D37) |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | Activity & is not mapped in customer limit parameter | the activity is not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) – & = activity |
 | EB-ALBE.CUSTOMER.ACCOUNT.MISSING | No accounts found for customer & | max CIF check and CUSTOMER.ACCOUNT `<customer>` is empty (D45) |
@@ -246,7 +246,7 @@ EB.API fields (DEV): SOURCE.TYPE = `METHOD`, JAVA.METHOD, JAVA.CLASS, JAVA.PACKA
 | **AUTH.ROUTINE** | `ALBE.CL.LIMIT.CREATE` (with `@` prefix if your release needs it) |
 | AFTER.UNAU.RTN | **nothing** for this routine (it was After Unau in the HLSD; changed to Auth) |
 
-Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMITS `<customer>` is created from GEN.PARAM `CUSTOMER.LIMIT` – only if it does not exist. Amending and re-authorising the customer leaves the limit record unchanged.
+Result: when a customer is **authorised** through this version, EB.ALBE.CIF.LIMIT `<customer>` is created from GEN.PARAM `CUSTOMER.LIMIT` – only if it does not exist. Amending and re-authorising the customer leaves the limit record unchanged.
 
 > Customers created through **other** CUSTOMER versions will not get a limit record. Attach the same routine to those versions if they also need one.
 >
@@ -285,7 +285,7 @@ ACCOUNTS-CREDIT-ARRANGEMENT / ACCOUNTS-DEBIT-ARRANGEMENT are mapped in GEN.PARAM
 | REVERSE | `REVERSAL INPUT` | nothing, no read (taken back at AUTH-REV) |
 
 - **Prerequisite (DEV, TQ20):** T24 must call the Post Routine `validateRecord` for **DELETE and AUTH-REV** too – look for `AlbeClActivityLimit: ACTION | DELETE …` / `REVERSAL …`.
-- Reads per input (no cache, each record once): mapping, CIF.LIMITS, TXN.DETAILS (earlier input), daily + monthly UTILISED; credit with MAX.CIF filled also CUSTOMER.ACCOUNT and the customer's accounts. Writes: daily + monthly UTILISED once each, TXN.DETAILS once. A second call of the same FT with the same amount writes nothing to UTILISED (`unchanged`).
+- Reads per input (no cache, each record once): mapping, CIF.LIMIT, TXN.DETAILS (earlier input), daily + monthly UTILISED; credit with MAX.CIF filled also CUSTOMER.ACCOUNT and the customer's accounts. Writes: daily + monthly UTILISED once each, TXN.DETAILS once. A second call of the same FT with the same amount writes nothing to UTILISED (`unchanged`).
 - Re-input of an amended FT: each record = used − earlier input + new amount, in one write (no separate take-back).
 - Take-back (DELETE / AUTH-REV) only takes back what TXN.DETAILS shows was counted – a second call finds nothing and changes nothing (`NOTHING TAKEN BACK`).
 - **TQ22 (passed, DEV 26-Nov):** override declined / FT cancelled after our Post Routine – T24 rolls our writes back.
@@ -313,17 +313,17 @@ An FT, a teller transaction or any other posting on an **AA account** makes T24 
 
 ---
 
-## 9. Versions for EB.ALBE.CIF.LIMITS and EB.ALBE.GEN.PARAM
+## 9. Versions for EB.ALBE.CIF.LIMIT and EB.ALBE.GEN.PARAM
 
-HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The menu itself is step 15.
+HLSD: "Version for amending EB.ALBE.CIF.LIMIT to be added to user menu." The menu itself is step 15.
 
 | VERSION | Purpose | Fields shown | Authorisers | Notes |
 |---|---|---|---|---|
-| `EB.ALBE.CIF.LIMITS,AMEND` | amend one customer's limits | CURRENCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAXIMUM.OVERALL.CIF.AMOUNT | ≥ 1 | ID = customer id; record normally exists (created at customer authorisation) |
-| `EB.ALBE.CIF.LIMITS,VIEW` *(optional)* | look at a customer's limits | same, all no-input | – | for front-office users who must not amend |
+| `EB.ALBE.CIF.LIMIT,AMEND` | amend one customer's limits | CURRENCY, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, MAXIMUM.OVERALL.CIF.AMOUNT | ≥ 1 | ID = customer id; record normally exists (created at customer authorisation) |
+| `EB.ALBE.CIF.LIMIT,VIEW` *(optional)* | look at a customer's limits | same, all no-input | – | for front-office users who must not amend |
 | `EB.ALBE.GEN.PARAM,LIMIT` | maintain the generic limits record `CUSTOMER.LIMIT` | KEY.NAME, KEY.VALUE | ≥ 1 | restrict to parameter administrators; changes affect **new** customers only |
 
-- An amended EB.ALBE.CIF.LIMITS record is never overwritten by the creation routine.
+- An amended EB.ALBE.CIF.LIMIT record is never overwritten by the creation routine.
 - Version names are suggestions – use the team's naming standard.
 
 ---
@@ -357,7 +357,7 @@ HLSD: "Version for amending EB.ALBE.CIF.LIMITS to be added to user menu." The me
 
 | Item | What to do |
 |---|---|
-| **Existing customers** | The creation routine only runs when a customer is authorised. Existing customers need EB.ALBE.CIF.LIMITS records from a **one-off load** (separate flow – e.g. copy GEN.PARAM `CUSTOMER.LIMIT` for every customer, or the bank's own limits). Without a record every transaction gets the "limit not defined" override. |
+| **Existing customers** | The creation routine only runs when a customer is authorised. Existing customers need EB.ALBE.CIF.LIMIT records from a **one-off load** (separate flow – e.g. copy GEN.PARAM `CUSTOMER.LIMIT` for every customer, or the bank's own limits). Without a record every transaction gets the "limit not defined" override. |
 | **Migrated monthly utilisation** | If the current month's totals come from the old system, load them into UTILISED.MIGRATED.CREDIT.LIMIT / UTILISED.MIGRATED.DEBIT.LIMIT of `<customer>-YYYYMM`. The routine adds them to the monthly total and never changes them. |
 | **Reversal of transactions made before go-live** | They have no EB.ALBE.TXN.DETAILS.LIMIT record; an AUTH-REV then subtracts the amount from **today's** records (floored at 0). No action needed, just be aware. |
 
@@ -385,11 +385,11 @@ Needed only when the transaction (or an account) currency differs from the custo
 
 ## 13. DEV / SIT test cases
 
-Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000, monthly credit 15000, MAXIMUM.OVERALL.CIF.AMOUNT 100000, all in the arrangement currency.
+Set up a test customer with an EB.ALBE.CIF.LIMIT record, e.g. daily credit 5000, monthly credit 15000, MAXIMUM.OVERALL.CIF.AMOUNT 100000, all in the arrangement currency.
 
 | # | Test | Expected result | Log line to look for |
 |---|---|---|---|
-| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMITS `<customer>` = GEN.PARAM values | `AlbeClLimitCreate: CREATED \| ... created=true` |
+| 1 | Authorise a **new** customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMIT `<customer>` = GEN.PARAM values | `AlbeClLimitCreate: CREATED \| ... created=true` |
 | 2 | Amend the limit, then amend + authorise the customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| ... already exists, limits kept` |
 | 3 | Credit 3000 (input) | no override; daily + monthly UTILISED.CREDIT.LIMIT = 3000; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `RESULT \| INPUT ... -> OK`, `add \| UPDATED` |
 | 4 | Credit 4000 (input) | override EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED "... by 2000" | `RESULT \| INPUT ... -> EXCEEDED by 2,000.00` |
@@ -402,7 +402,7 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 | 10 | Debit over the daily debit limit | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| ... daily debit ... EXCEEDED` |
 | 11 | Monthly breach (with a migrated amount loaded) | EB-ALBE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED on TXN.AMOUNT.LCY; MIGRATED field unchanged | `RESULT \| ... monthly ... migrated ...` |
 | 12 | Credit that takes total balance over MAXIMUM.OVERALL.CIF.AMOUNT | EB-ALBE.MAX.CIF.BAL.EXCEED "... by <difference>" on ORIG.TXN.AMT | `RESULT \| ... max CIF ... EXCEEDED` |
-| 13 | Customer **without** EB.ALBE.CIF.LIMITS | no override, **not counted** (D52) | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
+| 13 | Customer **without** EB.ALBE.CIF.LIMIT | no override, **not counted** (D52) | `RESULT \| ... no EB.ALBE.CIF.LIMIT record ... counted` |
 | 14 | Blank DAILY.CREDIT.LIMIT | daily check skipped, no override, still counted (D52) | `RESULT \| ... is blank -> not checked` |
 | 15 | USD transaction with no LCY amount and no TXN.EXCH.RATE | ERROR EB-ALBE.EXCH.RATE.MISSING "from USD to EGP"; not counted | `convertRequest \| BLOCKED` |
 | 16 | Own-account transfer | both sides checked and counted, two TXN.DETAILS records (one per arrangement) | two `RESULT \| INPUT` lines |
@@ -412,7 +412,7 @@ Also note in the DEV log (once):
 
 - the AAA id format (test 3) – the TXN.DETAILS id must fit;
 - the override text shows the `&` value "<customer> by <amount>" (test 4);
-- the T24 "record not found" text for a missing EB.ALBE.CIF.LIMITS (test 1). If you see `AlbeClLimitCreate: FAILED | … existence unknown`, add the word from that log line to `AlbeClConstants.NOT_FOUND_MARKERS`.
+- the T24 "record not found" text for a missing EB.ALBE.CIF.LIMIT (test 1). If you see `AlbeClLimitCreate: FAILED | … existence unknown`, add the word from that log line to `AlbeClConstants.NOT_FOUND_MARKERS`.
 
 ---
 
@@ -431,15 +431,15 @@ Add a **Customer Limits** sub-menu to the relevant user menus (HELPTEXT.MENU / B
 ```
 Customer Limits
  ├─ Maintain
- │   ├─ Amend customer limits          EB.ALBE.CIF.LIMITS,AMEND   I
- │   ├─ View customer limits           EB.ALBE.CIF.LIMITS,VIEW    S      (optional)
+ │   ├─ Amend customer limits          EB.ALBE.CIF.LIMIT,AMEND   I
+ │   ├─ View customer limits           EB.ALBE.CIF.LIMIT,VIEW    S      (optional)
  │   └─ Generic limits (parameter)     EB.ALBE.GEN.PARAM,LIMIT   I      (administrators only)
 ```
 
 | Menu item | Type | Application | Function |
 |---|---|---|---|
-| Amend customer limits | version | `EB.ALBE.CIF.LIMITS,AMEND` | input (I) |
-| View customer limits | version | `EB.ALBE.CIF.LIMITS,VIEW` | see (S) |
+| Amend customer limits | version | `EB.ALBE.CIF.LIMIT,AMEND` | input (I) |
+| View customer limits | version | `EB.ALBE.CIF.LIMIT,VIEW` | see (S) |
 | Generic limits | version | `EB.ALBE.GEN.PARAM,LIMIT` | input (I), record `CUSTOMER.LIMIT` |
 
 ### 15.2 Who gets what (suggested)
@@ -448,7 +448,7 @@ Customer Limits
 |---|---|
 | Branch / front office | View customer limits |
 | Limit / risk officer | Amend customer limits |
-| Authoriser | authorise EB.ALBE.CIF.LIMITS changes |
+| Authoriser | authorise EB.ALBE.CIF.LIMIT changes |
 | Parameter administrator | Generic limits |
 | Compliance / audit | View |
 
@@ -460,4 +460,4 @@ Give access through the bank's usual user / role set-up (USER, SMS groups) so on
 |---|---|---|
 | 1 | Log in as each role | sees only its menu items |
 | 2 | Amend a limit via the menu, authorise it | new limit used by the next transaction |
-| 3 | Front-office user opens EB.ALBE.CIF.LIMITS,AMEND directly | refused by security |
+| 3 | Front-office user opens EB.ALBE.CIF.LIMIT,AMEND directly | refused by security |

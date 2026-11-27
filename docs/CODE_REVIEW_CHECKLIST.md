@@ -8,7 +8,7 @@ Tick every line before a change is merged to `main`. These are the project's sta
 - [ ] Only the approved fields are read / written (TXN.DETAILS: ACCOUNT.NO, CREDIT.DEBIT.FLAG, EFF.DATE, TXN.AMOUNT).
 - [ ] Record ids unchanged: CIF.LIMIT `<customer>`, UTILISED `<cust>-YYYYMMDD` / `<cust>-YYYYMM`, TXN.DETAILS `<cust>-<YYYYMMDD>-<root ref>-<arrangement>`, GEN.PARAM `CUSTOMER.LIMIT`.
 - [ ] UTILISED.MIGRATED.* fields are never written.
-- [ ] An existing EB.ALBE.CIF.LIMITS record is never overwritten.
+- [ ] An existing EB.ALBE.CIF.LIMIT record is never overwritten.
 
 ## 2. Structure
 

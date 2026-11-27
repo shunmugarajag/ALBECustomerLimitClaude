@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – customer limit table renamed to EB.ALBE.CIF.LIMIT (27-Nov-2026, D55)
+- The bank created the table as **ALBE.CIF.LIMIT** (EB.ALBE.CIF.LIMIT, prefix EB.ALB13) instead of ALBE.CIF.LIMITS. Same fields.
+- Code now uses `EbAlbeCifLimitRecord` / `EbAlbeCifLimitTable` (package `ebalbeciflimit`) and the table name `EB.ALBE.CIF.LIMIT`; docs updated. Tests: 39 pass.
+- DEV: regenerate the table JAR in Design Studio before building; the new table is empty, so customers are skipped (D52) until their limit records are created again (customer authorisation or data load).
+
 ### Changed – max CIF reads the real balance and converts other currencies (27-Nov-2026, D54)
 - Max CIF now takes each account's **WORKING.BALANCE from EB.CONTRACT.BALANCES**, read with the T24 **Account API** (`Account.getContractBalancesRecord()`). The ACCOUNT record is still used for the account currency. This replaces D53 and fixes G10 (balances read as 0 for AA accounts).
 - An account in **another currency** is now **converted** to the limit currency with the T24 **Currency API** (`Currency.calculateBuyAmount`, routine EXCHRATE, CURRENCY.MARKET 1, today's rate) and added to the total. Before: override "rate missing" and no check.

@@ -35,18 +35,18 @@ Details live in `docs/`; this file says **what matters, what was decided, and wh
 | Table | Id | Fields used |
 |---|---|---|
 | EB.ALBE.GEN.PARAM | **`CUSTOMER.LIMIT`** (not SYSTEM); **`CUSTOMER.LIMIT.ACTIVITY`** = ACTIVITY → CREDIT/DEBIT (D41) | KEY.NAME / KEY.VALUE (DEV record 23-Nov): **CURRENCY**, DAILY.CREDIT.LIMIT, DAILY.DEBIT.LIMIT, MONTHLY.CREDIT.LIMIT, MONTHLY.DEBIT.LIMIT, **MAXIMUM.OVERALL.CIF.BALANCE** (`Constants.PARAM_KEY_*`; CURRENCY → CIF.LIMIT CCY, MAXIMUM.OVERALL… → MAX.CIF.BALANCE) |
-| EB.ALBE.CIF.LIMITS (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`, 23-Nov) | customer id | CURRENCY + the 5 limits – same names as GEN.PARAM except CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE) |
+| EB.ALBE.CIF.LIMIT (EB.TABLE.DEFINITION `ALBE.CIF.LIMIT`, prefix EB.ALB13, 27-Nov; was ALBE.CIF.LIMITS, D55) | customer id | CURRENCY + the 5 limits – same names as GEN.PARAM except CURRENCY (= CCY) and MAXIMUM.OVERALL.CIF.AMOUNT (= MAX.CIF.BALANCE) |
 | EB.ALBE.UTILISED.LIMIT | daily `<cust>-YYYYMMDD`, monthly `<cust>-YYYYMM` | UTILISED.CREDIT/DEBIT.LIMIT (written); UTILISED.MIGRATED.CREDIT/DEBIT.LIMIT (read only, monthly) |
 | EB.ALBE.TXN.DETAILS.LIMIT | **`<cust>-<YYYYMMDD>-<root ref>-<arrangement id>`** (root ref = FT/TT behind the AAA, else AAA id; arrangement since 23-Nov, FQ6; no .CR/.DR) | ACCOUNT.NO, CREDIT.DEBIT.FLAG (CR/DR), EFF.DATE, TXN.AMOUNT – nothing else |
 
-Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` – generated in Design Studio (DStablejar workspace) and kept in `lib/l3-tables`: `ALBE_CUSTOMER_LIMIT_TABLE.jar` (CIF.LIMITS, UTILISED.LIMIT, TXN.DETAILS.LIMIT – name as in pom.xml), `ALBE_GEN_PARAM_TABLE.jar`, `ALBE_COMM_REGOFF_TABLE.jar`; all three on `.classpath`.
+Generated API classes: `com.temenos.t24.api.records.ebalbe…` / `com.temenos.t24.api.tables.ebalbe…` – generated in Design Studio (DStablejar workspace) and kept in `lib/l3-tables`: `ALBE_CUSTOMER_LIMIT_TABLE.jar` (CIF.LIMIT, UTILISED.LIMIT, TXN.DETAILS.LIMIT – name as in pom.xml), `ALBE_GEN_PARAM_TABLE.jar`, `ALBE_COMM_REGOFF_TABLE.jar`; all three on `.classpath`.
 
 ## 4. How it works (one screen)
 
 | Function | Routine (EB.API → class) | Flow |
 |---|---|---|
-| **Limit creation** | `ALBE.CL.LIMIT.CREATE` → `AlbeClLimitCreate` – VERSION CUSTOMER,ALBE.CORP.INPUT **Auth routine**, `postUpdateRequest` | at customer authorisation: CIF.LIMITS record missing → copy GEN.PARAM `CUSTOMER.LIMIT` (direct write). Exists (amendment) or read failed → **never overwrite**. Review findings 1–6 (not-found marker, write result, blank CURRENCY, number check, reversal auth, unknown keys) await the user. |
-| **Daily / monthly** | `ALBE.CL.ACTIVITY.LIMIT` → `AlbeClActivityLimit` – **Post Routine 1** per mapped activity, `validateRecord` | UNAUTH: direction (GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`, unmapped → error) → amount → CIF.LIMITS → convert → earlier TXN.DETAILS → check daily + monthly → count (used − earlier + new) → write TXN.DETAILS → overrides. DELETE / AUTH-REV: take back what TXN.DETAILS shows (by key, else SELECT for the counted date; nothing → nothing). AUTH / REVERSE: nothing. Save failure → error LIMIT.UPDATE.FAILED. |
+| **Limit creation** | `ALBE.CL.LIMIT.CREATE` → `AlbeClLimitCreate` – VERSION CUSTOMER,ALBE.CORP.INPUT **Auth routine**, `postUpdateRequest` | at customer authorisation: CIF.LIMIT record missing → copy GEN.PARAM `CUSTOMER.LIMIT` (direct write). Exists (amendment) or read failed → **never overwrite**. Review findings 1–6 (not-found marker, write result, blank CURRENCY, number check, reversal auth, unknown keys) await the user. |
+| **Daily / monthly** | `ALBE.CL.ACTIVITY.LIMIT` → `AlbeClActivityLimit` – **Post Routine 1** per mapped activity, `validateRecord` | UNAUTH: direction (GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY`, unmapped → error) → amount → CIF.LIMIT → convert → earlier TXN.DETAILS → check daily + monthly → count (used − earlier + new) → write TXN.DETAILS → overrides. DELETE / AUTH-REV: take back what TXN.DETAILS shows (by key, else SELECT for the counted date; nothing → nothing). AUTH / REVERSE: nothing. Save failure → error LIMIT.UPDATE.FAILED. |
 | **Maximum CIF** | `ALBE.CL.MAX.CIF` → `AlbeClMaxCif` – **Post Routine 2 on credit activities** (D49) | UNAUTH credit only: CUSTOMER.ACCOUNT → each EB.CONTRACT.BALANCES WORKING.BALANCE (Account API, D54) converted to the limit CCY (Currency API, market 1) + credit vs MAXIMUM.OVERALL.CIF.AMOUNT → override; empty CUSTOMER.ACCOUNT → error; no rate → rate override, not checked; counts nothing. Not attached → not checked. |
 | **FT / TT / other** | no routine – postings on AA accounts arrive as activities | key = root of TXN.CONTRACT.ID + arrangement; own transfer counted on both sides (D39); no non-AA accounts (D34) |
 | **Overrides** | inside the routines | text **`[ID,param]` – one parameter** (D46), e.g. "100128 by 12000.00"; debit / credit ids EB-ALBE.DAILY\|MONTHLY.DEBIT\|CREDIT.LIMIT.EXCEED; one override per AAA field (daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate EFFECTIVE.DATE; errors TXN.AMOUNT) |
@@ -59,7 +59,7 @@ Key rules: counted = amount (ORIG.TXN.AMT else TXN.AMOUNT) + ACTIVITY mapped CRE
 src/com/temenos/albe/
   AlbeClActivityLimit   ALBE.CL.ACTIVITY.LIMIT  daily / monthly check, count, take back
   AlbeClMaxCif          ALBE.CL.MAX.CIF         maximum CIF balance check (credits)
-  AlbeClLimitCreate     ALBE.CL.LIMIT.CREATE    CIF.LIMITS creation at customer authorisation
+  AlbeClLimitCreate     ALBE.CL.LIMIT.CREATE    CIF.LIMIT creation at customer authorisation
   AlbeClConstants       all literals (the only final class)
 ```
 
@@ -75,7 +75,7 @@ src/com/temenos/albe/
 | Creation as **Auth** routine (HLSD says After Unau) | no delete flow needed; amendment never overwrites (`cifLimitExists` TRUE/FALSE/null) |
 | GEN.PARAM record id **`CUSTOMER.LIMIT`** | user; was SYSTEM |
 | CIF.LIMIT created by **direct write** (no OFS); only VERSION **CUSTOMER,ALBE.CORP.INPUT** | user 23-Nov (FQ10 / FQ16) |
-| Customer limit table is **EB.ALBE.CIF.LIMITS** (23-Nov) | user created `ALBE.CIF.LIMITS` and generated the JAR; record class `EbAlbeCifLimitsRecord`, getters `getCurrency` / `getMaximumOverallCifAmount` replace `getCcy` / `getMaxCifBalance` |
+| Customer limit table is **EB.ALBE.CIF.LIMIT** (23-Nov) | user created `ALBE.CIF.LIMIT` and generated the JAR; record class `EbAlbeCifLimitRecord`, getters `getCurrency` / `getMaximumOverallCifAmount` replace `getCcy` / `getMaxCifBalance` |
 | Currency conversion to the limit CCY; txn CCY = AAA CURRENCY (else AA.ARRANGEMENT); limit CCY = LCY → AAA TXN.AMOUNT.LCY | user; rate source still pending for foreign-CCY limits and max CIF accounts (E1) |
 | **LogUtil INFO only** (D47, 26-Nov); events ACTIVITY / ACTION / RESULT tell the outcome, FAILED / BLOCKED the problems; redundant READ / WRITE / START trace lines dropped | user: "no log util - go with just info logs" → chose "keep LogUtil, info only". DIAGNOSTIC.API at ERROR shows nothing |
 | Strict date/month parsing | Java's default turned 20261131 into 30-Nov |
@@ -94,6 +94,7 @@ src/com/temenos/albe/
 | **No limit record → skip** (D52, 27-Nov) | user: "if customer record not there for limit can we skip validation"; chose skip fully (no override, no count, no TXN.DETAILS) and, for a blank limit, skip that check only (still counted). EB-ALBE.CIF.LIMIT.NOT.DEFINED no longer raised (constant removed). No fallback to GEN.PARAM defaults – user confirmed "keep skip" (existing customers unchecked until the data load). Tests T22 / E04 / M01 updated, 37 pass |
 | **Max CIF balance = ACCOUNT record only** (D53, 27-Nov) | DEV: AA account ACCOUNT record has no WORKING.BALANCE (balance only in EB.CONTRACT.BALANCES) → max CIF reads 0 for every account. Proposed EB.CONTRACT.BALANCES / Account API; user: "do not refer EB.CONTRACT.BALANCES only ACCOUNT" and chose "ACCOUNT record only". Open item G10 |
 | **Max CIF = EB.CONTRACT.BALANCES + conversion** (D54, 27-Nov, supersedes D53) | user: "go ahead with Account API used contract balance and convert using exchange rate"; chose T24 standard rate (Currency API `calculateBuyAmount`, market 1, today) and "no rate → override, skip check". Account currency still from ACCOUNT. G10 fixed. Tests E06 / E07 added (39 pass). Open: jar name of `EbContractBalancesRecord` (not in the uploaded R25 libs) for pom.xml and the real-lib compile |
+| **Customer limit table renamed to EB.ALBE.CIF.LIMIT** (D55, 27-Nov) | user created EB.TABLE.DEFINITION `ALBE.CIF.LIMIT` (same fields, prefix EB.ALB13) in place of `ALBE.CIF.LIMITS`: package `ebalbeciflimit`, classes `EbAlbeCifLimitRecord` / `EbAlbeCifLimitTable`, `CIF_LIMIT_TABLE = EB.ALBE.CIF.LIMIT`. The table JAR must be regenerated in Design Studio; the new table starts empty → existing customers skipped (D52) until their records are created again |
 | **Reports removed** (26-Nov) | user: "remove report sources" – the 3 NOFILE enquiries, their service / rows / view / validator, report-only repository reads and constants, REPORTS.md deleted (Git history keeps them; D28 had parked them) |
 | Bank decides where the routines are attached; code generic; direction = ACTIVITY.CLASS action **for now** | user 21-Nov; FT/TT source/destination account reading discussed, not chosen; other actions (APPLYPAYMENT…) and deposit payouts: decide later (GAPS A7/A8) |
 

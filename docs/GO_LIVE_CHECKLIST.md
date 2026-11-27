@@ -71,7 +71,7 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | Done | Table | Type | Check |
 |---|---|---|---|
 | [ ] | EB.ALBE.GEN.PARAM (exists) | H (or U) | FILE.CONTROL ok |
-| [ ] | EB.ALBE.CIF.LIMITS (EB.TABLE.DEFINITION `ALBE.CIF.LIMITS`) – CURRENCY, DAILY/MONTHLY CREDIT/DEBIT.LIMIT, MAXIMUM.OVERALL.CIF.AMOUNT | H | FILE.CONTROL ok |
+| [ ] | EB.ALBE.CIF.LIMIT (EB.TABLE.DEFINITION `ALBE.CIF.LIMIT`) – CURRENCY, DAILY/MONTHLY CREDIT/DEBIT.LIMIT, MAXIMUM.OVERALL.CIF.AMOUNT | H | FILE.CONTROL ok |
 | [ ] | EB.ALBE.UTILISED.LIMIT (exists) | L | FILE.CONTROL ok |
 | [ ] | EB.ALBE.TXN.DETAILS.LIMIT (exists, no change) | L | FILE.CONTROL ok |
 | [ ] | Structure = approved structure – **no new fields** | – | compared |
@@ -80,7 +80,7 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 
 | Done | Id | Raised when |
 |---|---|---|
-| [ ] | EB-ALBE.CIF.LIMIT.CCY.MISSING | customer's CIF.LIMITS CURRENCY blank |
+| [ ] | EB-ALBE.CIF.LIMIT.CCY.MISSING | customer's CIF.LIMIT CURRENCY blank |
 | [ ] | EB-ALBE.LIMIT.UPDATE.FAILED | utilisation / TXN.DETAILS save failed (D37) |
 | [ ] | EB-ALBE.ACTIVITY.NOT.MAPPED | activity not in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
 | [ ] | **EB-ALBE.CUSTOMER.ACCOUNT.MISSING** *(new, D45)* | "No accounts found in CUSTOMER.ACCOUNT for Customer &, transaction not allowed" – max CIF check with an empty CUSTOMER.ACCOUNT |
@@ -124,8 +124,8 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 
 | Done | Object | Check |
 |---|---|---|
-| [ ] | VERSION EB.ALBE.CIF.LIMITS,AMEND (≥ 1 authoriser) | opens |
-| [ ] | VERSION EB.ALBE.CIF.LIMITS,VIEW (optional) | opens, no input |
+| [ ] | VERSION EB.ALBE.CIF.LIMIT,AMEND (≥ 1 authoriser) | opens |
+| [ ] | VERSION EB.ALBE.CIF.LIMIT,VIEW (optional) | opens, no input |
 | [ ] | VERSION EB.ALBE.GEN.PARAM,LIMIT (administrators only) | opens |
 | [ ] | Menu "Customer Limits" (Maintain) | visible for the roles |
 | [ ] | Security / role access (§15.2; role list OPEN) | front office cannot open ,AMEND |
@@ -164,7 +164,7 @@ Changing `CUSTOMER.LIMIT` later affects **new** customers only.
 | Done | # | Step | Reconciliation |
 |---|---|---|---|
 | [ ] | 1 | Install everything up to 2.7 – **routines not attached yet** | – |
-| [ ] | 2 | **M1** – EB.ALBE.CIF.LIMITS for existing customers (scope, values, method OPEN – section 1.1). Never overwrite an existing record; re-runnable | customers in scope = created + already existing; sample of 20 = GEN.PARAM / file; `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY` one line per customer |
+| [ ] | 2 | **M1** – EB.ALBE.CIF.LIMIT for existing customers (scope, values, method OPEN – section 1.1). Never overwrite an existing record; re-runnable | customers in scope = created + already existing; sample of 20 = GEN.PARAM / file; `ENQ ALBE.CUSTOMER.LIMIT.SUMMARY` one line per customer |
 | [ ] | 3 | **M2** – go-live month record `<customer>-YYYYMM`: UTILISED.MIGRATED.CREDIT.LIMIT / UTILISED.MIGRATED.DEBIT.LIMIT (limit currency). Leave UTILISED.CREDIT/DEBIT.LIMIT empty (source / cut-off OPEN) | sum = source totals; `ENQ ALBE.CUSTOMER.LIMIT.PERIOD MONTH.FROM EQ <go-live month>` |
 | [ ] | 4 | Attach routines: 2.8 ACTIVITY.API, then 2.9 CUSTOMER,ALBE.CORP.INPUT | – |
 | [ ] | 5 | **M3** (optional) – only if transactions were done on go-live day before step 4: load today's daily record + add to monthly UTILISED fields | – |
@@ -180,7 +180,7 @@ Needs DIAGNOSTIC.API at INFO to see ACTION / RESULT lines. Find one transaction:
 
 | Done | # | Test | Expected | api.log line to look for |
 |---|---|---|---|---|
-| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMITS created with the GEN.PARAM values | `AlbeClLimitCreate: CREATED` |
+| [ ] | 1 | Authorise a new test customer via CUSTOMER,ALBE.CORP.INPUT | EB.ALBE.CIF.LIMIT created with the GEN.PARAM values | `AlbeClLimitCreate: CREATED` |
 | [ ] | 2 | Amend + re-authorise that customer | limit record unchanged | `AlbeClLimitCreate: SKIP \| … already exists` |
 | [ ] | 3 | Credit below the limit (FT on an AA account) | no override; daily + monthly used updated; TXN.DETAILS `<cust>-<date>-<FT>-<arrangement>` | `AlbeClActivityLimit: \| ACTION \| INPUT`, then `RESULT \| COUNTED …` |
 | [ ] | 4 | Credit above the daily limit | "Daily credit limit exceeded for Customer <id> by <amount>" (one `&`, filled) | `RESULT \| CHECK daily/monthly … EXCEEDED by …`, `OVERRIDE \| … sent=…` |
@@ -216,7 +216,7 @@ Remove the routines first so nothing new is counted. Data already written does n
 | [ ] | 3 | Remove menu entries and role access |
 | [ ] | 4 | Reverse the release package (EB.API, versions, OVERRIDE, EB.ERROR) |
 | [ ] | 5 | JAR: **do not just delete `ALBE_CustomerLimit.jar`** – module.xml loads it by name and a missing JAR takes down all T24 deployments. Put back the previous JAR under the same name (or have module.xml changed first), then restart |
-| [ ] | 6 | *(optional)* tables: UTILISED.LIMIT / TXN.DETAILS = bookkeeping only; keep EB.ALBE.CIF.LIMITS if a re-install is planned |
+| [ ] | 6 | *(optional)* tables: UTILISED.LIMIT / TXN.DETAILS = bookkeeping only; keep EB.ALBE.CIF.LIMIT if a re-install is planned |
 
 ---
 
