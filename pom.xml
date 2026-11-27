@@ -95,7 +95,7 @@
         <!-- D54: max CIF balance (Account API -> EB.CONTRACT.BALANCES) and conversion (Currency API) -->
         <dependency><groupId>com.temenos.t24</groupId><artifactId>AC_AccountApi</artifactId><version>R25</version><scope>system</scope><systemPath>${t24.lib}/AC_AccountApi.jar</systemPath></dependency>
         <dependency><groupId>com.temenos.t24</groupId><artifactId>ST_CurrencyApi</artifactId><version>R25</version><scope>system</scope><systemPath>${t24.lib}/ST_CurrencyApi.jar</systemPath></dependency>
-        <!-- TODO D54: add the t24lib jar holding com.temenos.t24.api.records.ebcontractbalances.EbContractBalancesRecord (name to be confirmed on the server) -->
+        <dependency><groupId>com.temenos.t24</groupId><artifactId>BF_ConBalanceUpdates</artifactId><version>R25</version><scope>system</scope><systemPath>${t24.lib}/BF_ConBalanceUpdates.jar</systemPath></dependency>
         <!-- generated ALBE table APIs (Design Studio) -->
         <dependency><groupId>com.temenos.ALBE</groupId><artifactId>ALBE_CUSTOMER_LIMIT_TABLE</artifactId><version>1.0</version><scope>system</scope><systemPath>${l3.tables.dir}/${l3.table.customerlimit.jar}</systemPath></dependency>
         <dependency><groupId>com.temenos.ALBE</groupId><artifactId>ALBE_GEN_PARAM_TABLE</artifactId><version>1.0</version><scope>system</scope><systemPath>${l3.tables.dir}/${l3.table.genparam.jar}</systemPath></dependency>

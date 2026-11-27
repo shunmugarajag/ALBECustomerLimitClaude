@@ -13,7 +13,7 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 - Max CIF now takes each account's **WORKING.BALANCE from EB.CONTRACT.BALANCES**, read with the T24 **Account API** (`Account.getContractBalancesRecord()`). The ACCOUNT record is still used for the account currency. This replaces D53 and fixes G10 (balances read as 0 for AA accounts).
 - An account in **another currency** is now **converted** to the limit currency with the T24 **Currency API** (`Currency.calculateBuyAmount`, routine EXCHRATE, CURRENCY.MARKET 1, today's rate) and added to the total. Before: override "rate missing" and no check.
 - No rate found / conversion fails → still override **EB-ALBE.EXCH.RATE.MISSING** and max CIF is not checked (user choice).
-- pom.xml: AC_AccountApi.jar and ST_CurrencyApi.jar added; the jar holding `EbContractBalancesRecord` still to be named (not in the uploaded R25 libs).
+- pom.xml: AC_AccountApi.jar and ST_CurrencyApi.jar added; BF_ConBalanceUpdates.jar added for `EbContractBalancesRecord`.
 - Tests: E03 (no rate) kept, E06 / E07 added (converted balance over / within the maximum) – 39 pass.
 
 ### Decided – max CIF balance stays on the ACCOUNT record (27-Nov-2026, D53) – superseded by D54
