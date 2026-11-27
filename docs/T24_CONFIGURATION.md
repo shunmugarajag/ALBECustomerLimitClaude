@@ -169,7 +169,8 @@ Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME 
 | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED | Monthly debit limit exceeded for customer & | "<customer> by <amount over>" |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Maximum CIF balance exceeded for customer & | "<customer> by <amount over>" |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for customer & | **not raised any more (D52)** – may be reversed |
-| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from <currency> to <limit currency>" |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from <currency> to <limit currency>" – raised by AlbeClActivityLimit (activity LCY amount unreadable) |
+| **EB-ALBE.MAX.CIF.RATE.MISSING** *(new, D56)* | Exchange rate not available & - maximum CIF balance not checked | "from <account currency> to <limit currency>" – raised by AlbeClMaxCif only (own id, so each routine cleans only its own overrides) |
 
 **EB.ERROR** (blocks the transaction):
 
@@ -192,8 +193,18 @@ Each override goes on its **own AAA field** – a field keeps only one override 
 | EB-ALBE.MONTHLY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT.LCY |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
 | ~~EB-ALBE.CIF.LIMIT.NOT.DEFINED~~ (D52: not raised) | – |
-| EB-ALBE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
+| EB-ALBE.EXCH.RATE.MISSING (ActivityLimit) / EB-ALBE.MAX.CIF.RATE.MISSING (MaxCif) | EFFECTIVE.DATE |
 | errors (EB-ALBE.*) | TXN.AMOUNT |
+
+**Re-validation (D56, 27-Nov):** on input each routine first removes **its own** old overrides from the activity's OVERRIDE list, then raises the ones true for the current data – `AlbeClActivityLimit`: the 4 daily / monthly ids + EXCH.RATE.MISSING; `AlbeClMaxCif`: MAX.CIF.BAL.EXCEED + MAX.CIF.RATE.MISSING (`AlbeClConstants.ACTIVITY_LIMIT_OVERRIDES` / `MAX_CIF_OVERRIDES`). Works whether a product has one routine or both, in any order. Other modules' overrides and authorisation are not touched. DEV before: FT26093000F5 showed old and new overrides together.
+
+OFS to create the new override (input RAJA1, authorise AUTHOR):
+```
+tRun tSS GCS <<'EOF'
+OVERRIDE,/I/PROCESS,RAJA1/***/EG0010001,EB-ALBE.MAX.CIF.RATE.MISSING,MESSAGE:1:1=Exchange rate not available & - maximum CIF balance not checked,TYPE:1:1=Warning
+OVERRIDE,/A/PROCESS,AUTHOR/***/EG0010001,EB-ALBE.MAX.CIF.RATE.MISSING
+EOF
+```
 
 ---
 

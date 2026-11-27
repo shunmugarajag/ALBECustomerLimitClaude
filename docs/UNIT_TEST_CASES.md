@@ -95,4 +95,7 @@ DEV run of 26/27-Nov-2026 (44 cases incl. 13 multi-currency and 3 browser-only, 
 |---|---|---|---|
 | O01 | Re-validate within the limit; the activity still holds old EB-ALBE daily / max CIF overrides and a T24 minimum-balance override | old EB-ALBE overrides removed, minimum-balance override kept, no new override | Pass (outside T24) |
 | O02 | Authorise an activity that holds an accepted EB-ALBE override | override list untouched | Pass (outside T24) |
+| O03 | Only AlbeClActivityLimit attached; activity holds old daily and max CIF overrides | daily removed, max CIF (other routine's) kept | Pass (outside T24) |
+| O04 | Only AlbeClMaxCif attached (or first); old daily, max CIF and max CIF rate overrides | max CIF ones removed, daily (other routine's) kept | Pass (outside T24) |
+| E03 (changed) | Account in USD, no rate | override now **EB-ALBE.MAX.CIF.RATE.MISSING** | Pass (outside T24) |
 | DEV-53 | DEV: FT breaching daily credit, change amount under the limit, validate again | only T24's own overrides remain; log `OVERRIDES \| ... removed` | Pending (after deploy) |

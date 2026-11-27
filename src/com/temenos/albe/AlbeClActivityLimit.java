@@ -57,7 +57,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  * 27-Nov-2026   Development      No limit record -> skipped; blank limit -> that check skipped, no override (user, D52)
  * 27-Nov-2026   Development      Old EB-ALBE overrides removed from the activity before each new check on input
- *                                (re-validate / amendment showed old and new overrides together, FT26093000F5) (user, D56)
+ *                                (re-validate showed old + new, FT26093000F5); each routine only its own ids (user, D56)
  *-----------------------------------------------------------------------------
  */
 public class AlbeClActivityLimit extends ActivityLifecycle {
@@ -79,10 +79,10 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
             String key = ft.isEmpty() ? nvl(arrangementContext.getArrangementActivityId()).trim() : ft;
             String arrangement = nvl(aaaRec.getArrangement().getValue()).trim();
             int removed = AlbeClConstants.STATUS_UNAUTH.equals(status)
-                    ? removeOldOverrides(aaaRec, AlbeClConstants.OVR_PREFIX) : 0;
+                    ? removeOldOverrides(aaaRec, AlbeClConstants.ACTIVITY_LIMIT_OVERRIDES) : 0;
             if (removed > 0) {
                 logger.info(AlbeClConstants.LOG_TAG + NAME + " OVERRIDES | " + key + " removed " + removed +
-                        " old " + AlbeClConstants.OVR_PREFIX + "* override(s) before the new check");
+                        " old daily / monthly override(s) before the new check");
             }
             logger.info(AlbeClConstants.LOG_TAG + NAME + " ACTION | " +
                     actionOf(status) + " " + key + " (" + activity + ") arrangement " + arrangement
@@ -494,18 +494,24 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
     }
 
     /**
-     * Removes this module's overrides left on the activity by an earlier validation (re-validate, amendment),
-     * so only the overrides of the current check are shown (D56). Other modules' overrides are kept.
+     * Removes this routine's own overrides left on the activity by an earlier validation (re-validate, amendment),
+     * so only the overrides of the current check are shown (D56). Only the ids passed in are removed: overrides of
+     * the other ALBE routine and of other modules are kept, so the result does not depend on which routines are
+     * attached or in which order.
      */
-    private static int removeOldOverrides(AaArrangementActivityRecord aaaRec, String prefix) {
+    private static int removeOldOverrides(AaArrangementActivityRecord aaaRec, String[] ownIds) {
         int removed = 0;
         try {
             List<TField> list = aaaRec.getOverride();
             for (int i = list.size() - 1; i >= 0; i--) {
                 TField entry = list.get(i);
-                if (entry != null && nvl(entry.getValue()).trim().startsWith(prefix)) {
-                    aaaRec.removeOverride(i);
-                    removed++;
+                String value = entry == null ? "" : nvl(entry.getValue()).trim();
+                for (String id : ownIds) {
+                    if (value.equals(id) || value.startsWith(id + AlbeClConstants.OVR_TEXT_SEPARATOR)) {
+                        aaaRec.removeOverride(i);
+                        removed++;
+                        break;
+                    }
                 }
             }
         } catch (Exception e) {

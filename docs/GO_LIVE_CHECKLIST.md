@@ -96,7 +96,8 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | [ ] | EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED – "Monthly credit limit exceeded for Customer &" | TXN.AMOUNT.LCY |
 | [ ] | EB-ALBE.MAX.CIF.BAL.EXCEED – "Overall balance limit exceeded for Customer &" | ORIG.TXN.AMT |
 | – | EB-ALBE.CIF.LIMIT.NOT.DEFINED – not raised since D52 (optional to install) | – |
-| [ ] | EB-ALBE.EXCH.RATE.MISSING – "Exchange rate not available &" (max CIF only) | EFFECTIVE.DATE |
+| [ ] | EB-ALBE.EXCH.RATE.MISSING – "Exchange rate not available &" (activity amount) | EFFECTIVE.DATE |
+| [ ] | **EB-ALBE.MAX.CIF.RATE.MISSING** *(new, D56)* – "Exchange rate not available & - maximum CIF balance not checked" (max CIF account balance) | EFFECTIVE.DATE |
 
 Note: override ids are **EB-ALBE.*** (as created in DEV, D40); error ids are **EB-ALBE.***.
 

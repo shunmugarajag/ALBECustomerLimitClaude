@@ -81,8 +81,15 @@ public final class AlbeClConstants {
     public static final String OVR_MONTHLY_DEBIT = "EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED";
     public static final String OVR_MAX_CIF = "EB-ALBE.MAX.CIF.BAL.EXCEED";
     public static final String OVR_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
-    /** Start of every override id of this module: old ones are removed before each new check (D56). */
-    public static final String OVR_PREFIX = "EB-ALBE.";
+    /** Max CIF only: an account balance could not be converted (own id so each routine cleans only its own, D56). */
+    /** Separator between the override id and its text in the activity OVERRIDE list ("ID}text{param"). */
+    public static final String OVR_TEXT_SEPARATOR = "}";
+    public static final String OVR_MAX_CIF_RATE_MISSING = "EB-ALBE.MAX.CIF.RATE.MISSING";
+    /** Overrides owned by AlbeClActivityLimit - removed before its new check on input (D56). */
+    public static final String[] ACTIVITY_LIMIT_OVERRIDES = { OVR_DAILY_CREDIT, OVR_DAILY_DEBIT, OVR_MONTHLY_CREDIT,
+        OVR_MONTHLY_DEBIT, OVR_RATE_MISSING };
+    /** Overrides owned by AlbeClMaxCif - removed before its new check on input (D56). */
+    public static final String[] MAX_CIF_OVERRIDES = { OVR_MAX_CIF, OVR_MAX_CIF_RATE_MISSING };
 
     // Errors (transaction blocked)
     public static final String ERR_NOT_MAPPED = "EB-ALBE.ACTIVITY.NOT.MAPPED";

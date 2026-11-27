@@ -137,7 +137,8 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED / EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly debit (credit) limit exceeded for Customer & |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & |
 | EB-ALBE.CIF.LIMIT.NOT.DEFINED | **no longer raised** (D52): no limit record → skipped; blank limit → that check skipped |
-| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
+| EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & (activity amount unreadable) |
+| EB-ALBE.MAX.CIF.RATE.MISSING | Exchange rate not available & - maximum CIF balance not checked (D56) |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMIT CCY is blank |
 | EB-ALBE.ACTIVITY.NOT.MAPPED | **Error** (EB.ERROR, blocks): Activity & not defined in customer limit parameter – activity missing in GEN.PARAM `CUSTOMER.LIMIT.ACTIVITY` (D41) |
