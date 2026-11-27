@@ -4,6 +4,10 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Decided – max CIF balance stays on the ACCOUNT record (27-Nov-2026, D53)
+- DEV showed that the ACCOUNT record of an AA account holds no balance (the money is only in EB.CONTRACT.BALANCES), so max CIF reads 0 for every account and only compares the new credit with the maximum.
+- User decision: keep reading only the ACCOUNT record – no code change. Logged as open item G10 with the options if it is revisited.
+
 ### Changed – no limit record: skipped (27-Nov-2026, D52)
 - A customer **without** an EB.ALBE.CIF.LIMITS record is now **skipped**: no check, no override, nothing counted, no TXN.DETAILS (one log line `no EB.ALBE.CIF.LIMITS record -> skipped`). Before: override "limit not defined" and counted.
 - A **blank** daily / monthly / max CIF limit skips only that check, without an override; the amount is still counted.

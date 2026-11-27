@@ -195,3 +195,13 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 2. **E1** – as soon as the bank answers the five questions.
 3. **G2, G3** – after the team decision (lock API, fail vs. let through).
 4. **G7, G8** – after the confirmations listed (G9 done).
+
+
+## G10 – Max CIF reads 0 balances for AA accounts (27-Nov-2026, D53)
+
+| | |
+|---|---|
+| **What** | `AlbeClMaxCif` adds ACCOUNT.WORKING.BALANCE of every account in CUSTOMER.ACCOUNT. In DEV (R26) the ACCOUNT record of an AA account holds **no balance** – e.g. 1000001232: empty on ACCOUNT, while EB.CONTRACT.BALANCES shows ONLINE.ACTUAL.BAL 2,000 / WORKING.BALANCE 1,300. |
+| **Effect** | Every balance is 0 → max CIF only checks "this credit > maximum"; existing balances are ignored. |
+| **Decision** | User 27-Nov: read only the ACCOUNT record (no EB.CONTRACT.BALANCES, no Account API). |
+| **Options if revisited** | (a) EB.CONTRACT.BALANCES WORKING.BALANCE via `com.temenos.t24.api.party.Account.getContractBalancesRecord()` (needs AC_AccountApi.jar + the EB.CONTRACT.BALANCES record jar); (b) Account API balance methods (`getAvailableBalance()`, `getOpenActualBalance()`); (c) bank confirms ACCOUNT.WORKING.BALANCE is filled in PROD. |
