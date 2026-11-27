@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+import com.temenos.api.TField;
 import com.temenos.api.TNumber;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
@@ -57,6 +58,8 @@ import com.temenos.t24.api.system.Session;
  * 26-Nov-2026   Development      Initial Version (max CIF as its own routine, user)
  * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  * 27-Nov-2026   Development      Blank MAXIMUM.OVERALL.CIF.AMOUNT -> not checked, no override (user, D52)
+ * 27-Nov-2026   Development      Old EB-ALBE overrides removed before each new check on input (re-validate /
+ *                                amendment showed old and new overrides together, FT26093000F5) (user, D56)
  * 27-Nov-2026   Development      Balance from EB.CONTRACT.BALANCES via the Account API; other-currency
  *                                accounts converted with the Currency API, no rate -> override (user, D54)
  *-----------------------------------------------------------------------------
@@ -80,6 +83,11 @@ public class AlbeClMaxCif extends ActivityLifecycle {
             String activity = nvl(aaaRec.getActivity().getValue()).trim();
             String ft = rootReference(aaaRec.getTxnContractId().getValue());
             String key = ft.isEmpty() ? nvl(arrangementContext.getArrangementActivityId()).trim() : ft;
+            int removed = removeOldOverrides(aaaRec, AlbeClConstants.OVR_MAX_CIF);
+            if (removed > 0) {
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " OVERRIDES | " + key + " removed " + removed +
+                        " old " + AlbeClConstants.OVR_MAX_CIF + " override(s) before the new check");
+            }
 
             DataAccess da = new DataAccess(this);
             Session ss = new Session(this);
@@ -290,6 +298,27 @@ public class AlbeClMaxCif extends ActivityLifecycle {
             logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | company mnemonic " + e);
             return "";
         }
+    }
+
+    /**
+     * Removes this module's overrides left on the activity by an earlier validation (re-validate, amendment),
+     * so only the overrides of the current check are shown (D56). Other modules' overrides are kept.
+     */
+    private static int removeOldOverrides(AaArrangementActivityRecord aaaRec, String prefix) {
+        int removed = 0;
+        try {
+            List<TField> list = aaaRec.getOverride();
+            for (int i = list.size() - 1; i >= 0; i--) {
+                TField entry = list.get(i);
+                if (entry != null && nvl(entry.getValue()).trim().startsWith(prefix)) {
+                    aaaRec.removeOverride(i);
+                    removed++;
+                }
+            }
+        } catch (Exception e) {
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | removing old overrides " + e);
+        }
+        return removed;
     }
 
     private static String text(String id, String param) {

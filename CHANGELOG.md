@@ -4,6 +4,11 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – old overrides removed on re-validation (27-Nov-2026, D56)
+- DEV FT26093000F5: after changing the amount and validating again, the screen showed the old overrides next to the new ones.
+- Now, on input, the routines first remove their own old `EB-ALBE.*` overrides from the activity, then raise only the overrides of the current check. Overrides of other modules (overdraft, minimum balance, charges) are not touched; authorisation is not touched. Log line `OVERRIDES | <FT> removed n old EB-ALBE.* override(s)`.
+- Tests O01 / O02 added (41 pass). DEV retest: re-validate FT with a lower amount.
+
 ### Tested – DEV retest with D54 + D55 (27-Nov-2026)
 - Limit records recreated in the new table EB.ALBE.CIF.LIMIT by OFS (100128, 100237-100241).
 - First run failed with `NoClassDefFoundError EbAlbeCifLimitRecord` on every FT: the server still had the old table JAR. Replacing the table JAR and restarting fixed it (TQ24; T24_CONFIGURATION §2, RELEASE_NOTES, GO_LIVE_CHECKLIST and SUPPORT_RUNBOOK updated).

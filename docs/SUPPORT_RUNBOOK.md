@@ -81,6 +81,7 @@ Error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked): the max CIF check 
 
 | Log line contains | Meaning | Action |
 |---|---|---|
+| `OVERRIDES \| <FT> removed n old EB-ALBE.* override(s)` | normal: the FT was validated again (amendment / re-validate); old limit overrides were cleared and the current ones raised | none |
 | FT / activity rejected with `NoClassDefFoundError com.temenos.t24.api.records.ebalbe…` | the table JAR on the server does not match the routine JAR (e.g. old `ebalbeciflimits` after D55) – **every** activity of the product fails | deploy the matching table JAR, restart JBoss ([T24_CONFIGURATION §2](T24_CONFIGURATION.md)) |
 | `writeUtilisedLimit \| FAILED` / `add \| FAILED` | a utilisation total was not written – the transaction was blocked (EB-ALBE.LIMIT.UPDATE.FAILED) | check the cause; normally nothing to correct (T24 rolled back) |
 | `writeTxnDetails \| FAILED` / `record \| FAILED` / `deleteTxnDetails \| FAILED` | a TXN.DETAILS save failed – the transaction was blocked (EB-ALBE.LIMIT.UPDATE.FAILED) | check the cause; normally nothing to correct (T24 rolled back) |

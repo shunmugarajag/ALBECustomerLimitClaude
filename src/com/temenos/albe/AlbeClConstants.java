@@ -81,6 +81,8 @@ public final class AlbeClConstants {
     public static final String OVR_MONTHLY_DEBIT = "EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED";
     public static final String OVR_MAX_CIF = "EB-ALBE.MAX.CIF.BAL.EXCEED";
     public static final String OVR_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
+    /** Start of every override id of this module: old ones are removed before each new check (D56). */
+    public static final String OVR_PREFIX = "EB-ALBE.";
 
     // Errors (transaction blocked)
     public static final String ERR_NOT_MAPPED = "EB-ALBE.ACTIVITY.NOT.MAPPED";

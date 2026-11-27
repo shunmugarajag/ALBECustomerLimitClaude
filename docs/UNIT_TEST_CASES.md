@@ -88,3 +88,11 @@ DEV run of 26/27-Nov-2026 (44 cases incl. 13 multi-currency and 3 browser-only, 
 | UT-DEV4 | `AlbeClLimitCreate` on CUSTOMER,ALBE.CORP.INPUT creates the record; "record not found" text recognised | §13 #1, #2 |
 | UT-DEV5 | ORG.SYSTEM.DATE, ORIG.TXN.AMT, TXN.AMOUNT.LCY, TXN.EXCH.RATE filled at UNAUTH (TQ21) | GAPS A1, A4, A5 |
 | UT-DEV6 | `AlbeClMaxCif` reads the real WORKING.BALANCE (DEV showed 0.00 with the MVC version) | §13 #12 |
+
+## Added 27-Nov (D56)
+
+| Id | Case | Expected | Result |
+|---|---|---|---|
+| O01 | Re-validate within the limit; the activity still holds old EB-ALBE daily / max CIF overrides and a T24 minimum-balance override | old EB-ALBE overrides removed, minimum-balance override kept, no new override | Pass (outside T24) |
+| O02 | Authorise an activity that holds an accepted EB-ALBE override | override list untouched | Pass (outside T24) |
+| DEV-53 | DEV: FT breaching daily credit, change amount under the limit, validate again | only T24's own overrides remain; log `OVERRIDES \| ... removed` | Pending (after deploy) |
