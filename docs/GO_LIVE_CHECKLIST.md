@@ -62,7 +62,7 @@ Rule: **routines are attached last** (rows 2.8 and 2.9), so nothing runs before 
 | [ ] | **JAR name is exactly `ALBE_CustomerLimit.jar`** – JBoss `modules/com/temenos/t24/main/module.xml` loads `./localLib/ALBE_CustomerLimit.jar` by name. Missing / renamed JAR = **all T24 deployments fail** (DEV outage 25-Nov) | name checked |
 | [ ] | Confirm the production target folder (pom default `deploy.dir` = `/srv/Temenos/T24/bnk/ALBElib`, `deploy.host` = DEV) and that it is the folder module.xml loads from | folder: ______ |
 | [ ] | Deploy (`mvn clean deploy` or the bank's production process): copy as `.jar.new`, then rename – the JAR is never missing; old `ALBECustomerLimit*.jar` copies removed | `ls -l` shows the new JAR |
-| [ ] | Generated table JARs on the runtime classpath: `ALBE_CustomerLimitTable.jar`, `ALBE_GEN_PARAM_TABLE.jar` (+ `ALBE_COMM_REGOFF_TABLE.jar`) [§2] | no class-not-found |
+| [ ] | Generated table JARs on the runtime classpath, **same version as the build**: `ALBE_CUSTOMER_LIMIT_TABLE.jar` (must contain `ebalbeciflimit/EbAlbeCifLimitRecord`, D55), `ALBE_GEN_PARAM_TABLE.jar` (+ `ALBE_COMM_REGOFF_TABLE.jar`) [§2] | no `NoClassDefFoundError` on an FT |
 | [ ] | Restart T24 / JBoss (`mvn antrun:run@restart-t24` in DEV: kill -15, start `standalone.sh -c Transact.xml`, wait for `WFLYSRV0025`) | started; no `.failed` deployments |
 | [ ] | On the server change **no file except the JAR** | – |
 

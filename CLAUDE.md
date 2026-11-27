@@ -109,7 +109,8 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 - **G3 fixed** (23-Nov, D37): utilisation / TXN.DETAILS save failure → `AlbeClActivityLimit` raises EB.ERROR `EB-ALBE.LIMIT.UPDATE.FAILED` (transaction cancelled). DEV: TQ18
 - **G4 / G5 closed** (26-Nov, D42: no REMARKS tag)
 - **G6 fixed** (22-Nov): blank CIF.LIMIT CCY → **error** EB-ALBE.CIF.LIMIT.CCY.MISSING (EB.ERROR), transaction blocked (user)
-- **G10 fixed** (D54): max CIF reads EB.CONTRACT.BALANCES WORKING.BALANCE via the Account API and converts other currencies (Currency API, market 1); DEV retest DEV-46 / DEV-42 open
+- **G10 fixed** (D54): max CIF reads EB.CONTRACT.BALANCES WORKING.BALANCE via the Account API and converts other currencies (Currency API, market 1); **DEV-46 passed 27-Nov** (log `1000001232 1150 EGP`); DEV-42 (USD account) open
+- **DEV status 27-Nov (D54 + D55 JAR):** 27 Pass / 0 Fail / 23 Pending of 50 (`docs/DEV_TEST_RESULTS.xlsx`). Limit records recreated in EB.ALBE.CIF.LIMIT (100128, 100237-100241; 100242 none on purpose). Server table JAR replaced after `NoClassDefFoundError` (TQ24). Test data + one-shot OFS: `docs/DEV_TEST_DATA.md`. Pending: one-shot scenario block (breaches, max CIF, DEV-22 / DEV-39), browser cases DEV-18/43/44, DEV-23, USD cases (product EGP only - needs 4 USD conditions or SIT)
 - **G7** accounts in other companies (G9 fixed: credit/debit by ACTIVITY.CLASS)
 - AAA findings **A1–A7** implemented (GAPS.md). DEV checks left: ORG.SYSTEM.DATE stable on re-input/DELETE/AUTH-REV (then drop the REMARKS tag + G5), COB UNAUTH.PROCESS decision, ORIG.TXN.AMT / TXN.AMOUNT.LCY filled at UNAUTH, `!TODAY` via Session. Waiting for a DEV credit/debit AAA from the user (user's Edge is granted read-only for screenshots).
 - **Compile-verified against the real R25 libs** (21-Nov-2026, user's `C:\Temenos\R25\TAFJ\lib`, `TAFJ\ext`, `T24\bnk\t24lib`): 0 errors – all core hook signatures and API calls exist (`docs/TECHNICAL_REFERENCE.md` §12). **ALBE table JARs generated** (laptop `lib/l3-tables`: ALBE_CustomerLimitTable.jar, ALBE_GEN_PARAM_TABLE.jar) – merged code compiles with 0 errors against them + R25 libs (23-Nov, TQ1 closed). `.classpath` is kept local (absolute C:/Temenos paths), not on GitHub. Still open: DEV behaviour (REMARKS kept for DELETE/AUTH-REV, override value format, `$NAU` read, "record not found" text: **TQ13 closed 24-Nov** – R25 says `EB-INTERNAL.ERROR … Record does not exist`, in `RECORD_NOT_FOUND_MARKERS`). Logs: logger `API` → server `TAFJ/log/api.log` via ALERT.API (errors) / DIAGNOSTIC.API (info, level ERROR by default – set INFO in DEV to see them).
@@ -137,7 +138,7 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/TECHNICAL_REFERENCE.md` | architecture, classes, flows, decisions, HLSD deviations, APIs to verify, testing |
 | `docs/T24_CONFIGURATION.md` | T24 set-up steps 1–15 (tables, JARs, GEN.PARAM, OVERRIDE, EB.API, VERSION, ACTIVITY.API, versions, logging, go-live data, exchange rate, tests, **menu & access**) |
 | `docs/GAPS.md` | known gaps, fixes without table change, exchange-rate questions |
-| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ20 (bank/BA), technical queries TQ1–TQ23 (DEV), decisions D1–D54, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
+| `docs/QUERIES_AND_GAPS.md` | **register**: functional queries FQ1–FQ20 (bank/BA), technical queries TQ1–TQ24 (DEV), decisions D1–D55, customer-routine gaps C1–C4, daily/monthly gaps DM1–DM2, gaps raised/solved – keep it short; update when a query is answered |
 | `docs/TRACEABILITY.md` | HLSD 7.2.1 / use cases → code → tests; deviations D1–D8 |
 | `docs/UNIT_TEST_CASES.md` | 43 cases after D50 (37 pass outside T24, 6 DEV only) – add a case for every new behaviour |
 | `docs/RELEASE_NOTES.md` | release 1.0 objects, installation order, smoke test, rollback |
@@ -145,6 +146,8 @@ HLSD deviations to be reflected by the BA: creation as Auth routine, GEN.PARAM i
 | `docs/DATA_MIGRATION.md` | M1 limits for existing customers, M2 migrated monthly usage, cut-over |
 | `docs/SUPPORT_RUNBOOK.md` | monitoring, common cases, error lines, FAQ |
 | `docs/CODE_REVIEW_CHECKLIST.md` | standards as tick-boxes – use before every merge |
+| `docs/DEV_TEST_DATA.md` | DEV test customers / accounts, standard limits, how to run OFS (heredoc, `C` lines, RAJA1 / AUTHOR), one-shot scenario block, follow-up flows (Word copy `docs/ALBE_Unit_Test_Data.docx`) |
+| `docs/DEV_TEST_RESULTS.xlsx` | DEV results per case (Pass / Pending), T24 components, test data, FTs, messages – built by a script outside the repo |
 | `CHANGELOG.md` | plain-language history – add an entry for every change |
 
 When code changes, keep these docs in step (README class/routine tables, TECHNICAL_REFERENCE change history, T24_CONFIGURATION set-up, TRACEABILITY, UNIT_TEST_CASES, CHANGELOG) and update this file's decisions/open items.

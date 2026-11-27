@@ -29,7 +29,7 @@ Known limitations: [GAPS.md](GAPS.md) (G1–G9, E1).
 | Object | Content |
 |---|---|
 | `ALBE_CustomerLimit.jar` | package `com.temenos.albe` – 4 classes: `AlbeClActivityLimit`, `AlbeClMaxCif`, `AlbeClLimitCreate` (one per EB.API), `AlbeClConstants` |
-| Generated table JARs | Java API of EB.ALBE.CIF.LIMIT, EB.ALBE.GEN.PARAM, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT (step 2) |
+| Generated table JARs | `ALBE_CUSTOMER_LIMIT_TABLE.jar` (EB.ALBE.CIF.LIMIT – package `ebalbeciflimit` since D55 –, EB.ALBE.UTILISED.LIMIT, EB.ALBE.TXN.DETAILS.LIMIT) and `ALBE_GEN_PARAM_TABLE.jar` (step 2). **Deploy them with the routine JAR**: an old table JAR on the server gives `NoClassDefFoundError` on every activity (DEV 27-Nov) |
 
 Logging: every line is INFO (D47) – DIAGNOSTIC.API must be at INFO to see any line, including FAILED / BLOCKED.
 

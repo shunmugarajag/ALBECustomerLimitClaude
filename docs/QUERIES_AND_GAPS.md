@@ -53,6 +53,7 @@ Details: [GAPS.md](GAPS.md)
 | TQ21 | TXN.EXCH.RATE meaning on a USD FT: 1 USD = rate EGP (multiply)? | 🔴 |
 | TQ22 | ✅ **passed (DEV 26-Nov, FT26093B7DNL committed 3x without accepting: 'used' stayed 22,000)** – count kept only if the FT is committed (user rule: "do not count until validation passed" = committed). Single routine counts inside validateRecord: user declines the override / cancels, or T24 stops the FT later (e.g. insufficient funds) – are the UTILISED.LIMIT / TXN.DETAILS writes rolled back? (check UTILISED.LIMIT unchanged) – if not, keep VAL + UPD | 🔴 |
 | TQ23 | Same commit: a TXN.DETAILS record written earlier is now found (Table read, D46) – e.g. FT re-committed after the override screen counts once | 🔴 |
+| TQ24 | ✅ **27-Nov (D55)**: after the table rename, are the routines found at run time? First run: `NoClassDefFoundError EbAlbeCifLimitRecord` on every FT (old table JAR on the server). Table JAR replaced + restart → FT26093Q0XTY / T3HT4 / DZT9W accepted. Lesson in T24_CONFIGURATION §2 / RELEASE_NOTES | ✅ |
 | TQ19 | Daily + monthly breach on one FT: both overrides shown (one AAA field each, D43)? "by" amount = used + this − limit (FT26093GZC6N showed 13,000 for an expected 12,750 – check the log) | 🔴 |
 | TQ17 | Zero-auth FT and a COB posting: does the activity pass UNAUTH (input stage)? If not, it is not counted (D35) | 🔴 |
 

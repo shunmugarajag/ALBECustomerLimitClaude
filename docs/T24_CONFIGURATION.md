@@ -113,7 +113,12 @@ Then:
 
 1. Add the generated JARs to the **Eclipse build path** (Project → Properties → Java Build Path → Libraries), next to the TAFJ / T24 API JARs.
 2. Check the Eclipse **Problems** view (Window → Show View → Problems, filter "All errors on workspace"): it should show **0 errors**.
-3. Make sure the same JARs are on the **TAFJ runtime classpath**.
+3. Make sure the same JARs are on the **TAFJ runtime classpath** (server).
+4. **Whenever a table definition changes or is renamed, regenerate the JAR and replace it on the server too** – not only in `lib/l3-tables`. DEV 27-Nov (D55): the routine JAR expected `ebalbeciflimit.EbAlbeCifLimitRecord` but the server still had the old table JAR (`ebalbeciflimits`) → `NoClassDefFoundError` on **every** activity of the product (all FTs rejected) until the table JAR was replaced and JBoss restarted. Find the server copy (read-only):
+   `find /srv/Temenos -name '*.jar' | while read j; do unzip -l "$j" | grep -q 'ebalbeciflimit/EbAlbeCifLimitRecord' && echo "$j"; done`
+5. Check that the table JAR holds all three record classes: `ebalbeciflimit`, `ebalbeutilisedlimit`, `ebalbetxndetailslimit`.
+
+Compile-only T24 JARs added for max CIF (D54, `pom.xml`): `AC_AccountApi.jar` (Account API), `ST_CurrencyApi.jar` (Currency API) and `BF_ConBalanceUpdates.jar` (holds `EbContractBalancesRecord`, returned by `Account.getContractBalancesRecord()`), all in `T24/bnk/t24lib`. They are already on the server; nothing to deploy.
 
 Core API JARs also needed (from the TAFJ installation): `com.temenos.api` (TField, TStructure, TValidationResponse), `com.temenos.t24.api` (hooks, DataAccess, Session, AA / ACCOUNT / COMPANY records), `com.temenos.logging.facade`.
 
