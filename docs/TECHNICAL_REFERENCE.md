@@ -151,7 +151,7 @@ own routine: reads the mapping, CIF.LIMITS and converts the credit itself (same 
 MAXIMUM.OVERALL.CIF.AMOUNT blank -> not checked, no override (D52)
 company financial mnemonic (COMPANY)
 customer accounts: CUSTOMER.ACCOUNT <customer>; empty -> ERROR CUSTOMER.ACCOUNT.MISSING (blocks, D45)
-for each account: WORKING.BALANCE converted from ACCOUNT CURRENCY (no rate -> "rate missing" override, stop)
+for each account: EB.CONTRACT.BALANCES WORKING.BALANCE (Account API, D54), converted from ACCOUNT CURRENCY with Currency.calculateBuyAmount (market 1, today; no rate -> "rate missing" override, stop)
 total + credit > MAXIMUM.OVERALL.CIF.AMOUNT -> breach (difference)
 ```
 
@@ -343,6 +343,7 @@ Known code gaps with proposed fixes (no table change) and the exchange-rate ques
 
 | Date | Change |
 |---|---|
+| 27-Nov-2026 | D54: max CIF balance = EB.CONTRACT.BALANCES WORKING.BALANCE via `Account.getContractBalancesRecord()`; other-currency accounts converted with `Currency.calculateBuyAmount` (market 1, today); no rate → override EB-ALBE.EXCH.RATE.MISSING, not checked; supersedes D53, fixes G10 |
 | 20-Nov-2026 | Initial implementation (creation, daily/monthly, utilisation, maximum CIF, overrides) |
 | 20-Nov-2026 | Repository layer, MVC, Constants, LimitBreach model |
 | 20-Nov-2026 | Currency conversion |

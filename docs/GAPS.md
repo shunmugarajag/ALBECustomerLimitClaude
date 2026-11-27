@@ -14,7 +14,7 @@ All queries and gaps in one register (raised / solved): [QUERIES_AND_GAPS.md](QU
 | G7 | Accounts in other companies count as 0 (maximum CIF) | Low | multi-company set-up (confirm) | open |
 | G8 | Slow fallback SELECT on ACCOUNT | Low | confirm CUSTOMER.ACCOUNT | **closed (26-Nov)** – SELECT removed; CUSTOMER.ACCOUNT empty → error EB-ALBE.CUSTOMER.ACCOUNT.MISSING (user) |
 | G9 | Credit / debit decided by the activity name | Low | code only | **fixed 21-Nov-2026** (ACTIVITY.CLASS) |
-| E1 | Exchange rate lookup not connected | Low (was High) | bank answers (section E1) | **narrowed (D44, 26-Nov)** – transaction amount from the activity (LCY amount, else TXN.EXCH.RATE, else blocked; non-LCY limit blocked); only max CIF accounts in other currencies still need a rate (parked) |
+| E1 | Exchange rate lookup not connected | Low (was High) | bank to confirm market 1 / rate type | **connected for max CIF (D54, 27-Nov)**: Currency API EXCHRATE, market 1, today; no rate → override. **narrowed (D44, 26-Nov)** – transaction amount from the activity (LCY amount, else TXN.EXCH.RATE, else blocked; non-LCY limit blocked); only max CIF accounts in other currencies still need a rate (parked) |
 
 Already fine (checked): no shared state between calls (no static data, session per call); reversals use the stored amount (no new conversion); totals never below 0; validation and counting use the same REMARKS date even across midnight; enquiries never write.
 
@@ -197,7 +197,10 @@ Ready: conversion of the transaction and of account balances, 2-decimal rounding
 4. **G7, G8** – after the confirmations listed (G9 done).
 
 
-## G10 – Max CIF reads 0 balances for AA accounts (27-Nov-2026, D53)
+## G10 – Max CIF reads 0 balances for AA accounts (27-Nov-2026, D53) – **fixed by D54**
+
+**Fixed 27-Nov-2026 (D54, user):** balance = EB.CONTRACT.BALANCES WORKING.BALANCE via the Account API; accounts in other currencies converted with the Currency API (market 1); no rate → override EB-ALBE.EXCH.RATE.MISSING, not checked. DEV retest: DEV-46 / DEV-42.
+
 
 | | |
 |---|---|

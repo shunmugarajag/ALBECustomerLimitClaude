@@ -379,7 +379,7 @@ Needed only when the transaction (or an account) currency differs from the custo
 **Max CIF – other accounts in another currency (parked):**
 1. Bank to confirm the exchange-rate table, record id and rate field (rate for 1 unit of *from* currency in *to* currency).
 2. Developer converts each account balance in `AlbeClMaxCif` (candidate: R25 `com.temenos.t24.api.rates.Currency.calculateBuyAmount`, EXCHRATE).
-3. Until then: the **EB-ALBE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
+3. Max CIF (D54): other-currency account balances are converted with the Currency API (EXCHRATE, CURRENCY.MARKET **1**, today) – the CURRENCY records of all account currencies need market-1 rates; no rate → **EB-ALBE.EXCH.RATE.MISSING** override and the max CIF check is skipped.
 
 ---
 

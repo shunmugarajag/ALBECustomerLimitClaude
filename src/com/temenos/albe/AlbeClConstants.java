@@ -28,6 +28,9 @@ public final class AlbeClConstants {
     public static final String GEN_PARAM_TABLE = "EB.ALBE.GEN.PARAM";
     public static final String TXN_DETAILS_TABLE = "EB.ALBE.TXN.DETAILS.LIMIT";
     public static final String ACCOUNT_TABLE = "ACCOUNT";
+    public static final String CONTRACT_BALANCES_TABLE = "EB.CONTRACT.BALANCES";
+    /** CURRENCY.MARKET used to convert account balances (T24 standard market 1, user 27-Nov, D54). */
+    public static final String CURRENCY_MARKET = "1";
     public static final String CUSTOMER_ACCOUNT_FILE = "CUSTOMER.ACCOUNT";
     public static final String COMPANY_TABLE = "COMPANY";
 

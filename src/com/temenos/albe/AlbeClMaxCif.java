@@ -4,12 +4,16 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+import com.temenos.api.TNumber;
 import com.temenos.api.TStructure;
 import com.temenos.api.TValidationResponse;
 import com.temenos.logging.facade.Logger;
 import com.temenos.logging.facade.LoggerFactory;
 import com.temenos.t24.api.complex.aa.activityhook.ArrangementContext;
+import com.temenos.t24.api.complex.st.currencyapi.ExchangeAmount;
 import com.temenos.t24.api.hook.arrangement.ActivityLifecycle;
+import com.temenos.t24.api.party.Account;
+import com.temenos.t24.api.rates.Currency;
 import com.temenos.t24.api.records.aaaccountdetails.AaAccountDetailsRecord;
 import com.temenos.t24.api.records.aaarrangement.AaArrangementRecord;
 import com.temenos.t24.api.records.aaarrangementactivity.AaArrangementActivityRecord;
@@ -19,6 +23,7 @@ import com.temenos.t24.api.records.company.CompanyRecord;
 import com.temenos.t24.api.records.ebalbeciflimits.EbAlbeCifLimitsRecord;
 import com.temenos.t24.api.records.ebalbegenparam.EbAlbeGenParamRecord;
 import com.temenos.t24.api.records.ebalbegenparam.KeyNameClass;
+import com.temenos.t24.api.records.ebcontractbalances.EbContractBalancesRecord;
 import com.temenos.t24.api.system.DataAccess;
 import com.temenos.t24.api.system.Session;
 
@@ -33,8 +38,13 @@ import com.temenos.t24.api.system.Session;
  *   WORKING.BALANCE of every account in CUSTOMER.ACCOUNT <customer> (in the limit currency)
  *   + this credit (in the limit currency)  > MAXIMUM.OVERALL.CIF.AMOUNT -> override, by the excess
  *
+ *   balance  : EB.CONTRACT.BALANCES WORKING.BALANCE, read with the Account API (the ACCOUNT record
+ *              of an AA account holds no balance, D54); account currency from the ACCOUNT record
+ *   currency : account in another currency -> converted with the T24 Currency API (EXCHRATE,
+ *              CURRENCY.MARKET 1, today's rate)
+ *
  *   no CUSTOMER.ACCOUNT accounts      -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked)
- *   account in another currency       -> override EB-ALBE.EXCH.RATE.MISSING, not checked (no rate yet)
+ *   no rate / conversion failed       -> override EB-ALBE.EXCH.RATE.MISSING, not checked
  *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> not checked, no override (D52)
  *   no limit record / blank CURRENCY / amount not convertible / debit / not mapped
  *                                     -> nothing here (AlbeClActivityLimit raises those)
@@ -47,6 +57,8 @@ import com.temenos.t24.api.system.Session;
  * 26-Nov-2026   Development      Initial Version (max CIF as its own routine, user)
  * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
  * 27-Nov-2026   Development      Blank MAXIMUM.OVERALL.CIF.AMOUNT -> not checked, no override (user, D52)
+ * 27-Nov-2026   Development      Balance from EB.CONTRACT.BALANCES via the Account API; other-currency
+ *                                accounts converted with the Currency API, no rate -> override (user, D54)
  *-----------------------------------------------------------------------------
  */
 public class AlbeClMaxCif extends ActivityLifecycle {
@@ -130,21 +142,26 @@ public class AlbeClMaxCif extends ActivityLifecycle {
                     AccountRecord account = new AccountRecord(da.getRecord(mnemonic,
                             AlbeClConstants.ACCOUNT_TABLE, "", accountId));
                     String ccy = nvl(account.getCurrency().getValue()).trim();
-                    BigDecimal balance = toAmount(account.getWorkingBalance().getValue());
+                    BigDecimal balance = workingBalance(accountId);
                     result.append(" | ").append(accountId).append(' ').append(balance).append(' ').append(ccy);
                     if (!ccy.isEmpty() && !ccy.equalsIgnoreCase(limitCcy)) {
-                        String fromTo = AlbeClConstants.FROM + ccy + AlbeClConstants.TO + limitCcy;
-                        aaaRec.getEffectiveDate().setOverride(text(AlbeClConstants.OVR_RATE_MISSING, fromTo));
-                        logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " +
-                                result + " | account in " + ccy + ", no rate -> not checked, raised "
-                                + AlbeClConstants.OVR_RATE_MISSING);
-                        return aaaRec.getValidationResponse();
+                        BigDecimal converted = convert(balance, ccy, limitCcy);
+                        if (converted == null) {
+                            String fromTo = AlbeClConstants.FROM + ccy + AlbeClConstants.TO + limitCcy;
+                            aaaRec.getEffectiveDate().setOverride(text(AlbeClConstants.OVR_RATE_MISSING, fromTo));
+                            logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " +
+                                    result + " | no rate " + fromTo + " -> not checked, raised "
+                                    + AlbeClConstants.OVR_RATE_MISSING);
+                            return aaaRec.getValidationResponse();
+                        }
+                        result.append(" = ").append(converted).append(' ').append(limitCcy);
+                        balance = converted;
                     }
                     total = total.add(balance);
                 } catch (Exception e) {
                     result.append(" | ").append(accountId).append(" not readable, 0");
-                    logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " +
-                            AlbeClConstants.ACCOUNT_TABLE + ">" + accountId + " " + e);
+                    logger.info(AlbeClConstants.LOG_TAG + NAME + " NOT FOUND | " + AlbeClConstants.ACCOUNT_TABLE
+                            + " / " + AlbeClConstants.CONTRACT_BALANCES_TABLE + ">" + accountId + " " + e);
                 }
             }
 
@@ -194,6 +211,48 @@ public class AlbeClMaxCif extends ActivityLifecycle {
         BigDecimal rate = toAmount(aaaRec.getTxnExchRate().getValue());
         return rate.signum() > 0 ? credit.multiply(rate).setScale(AlbeClConstants.AMOUNT_SCALE,
                 RoundingMode.HALF_UP) : null;
+    }
+
+    /**
+     * WORKING.BALANCE of EB.CONTRACT.BALANCES for the account (Account API); 0 when blank.
+     * A read failure is thrown to the caller (account logged as not readable, counted as 0).
+     */
+    private BigDecimal workingBalance(String accountId) {
+        Account accountApi = new Account(this);
+        accountApi.setAccountId(accountId);
+        EbContractBalancesRecord balances = accountApi.getContractBalancesRecord();
+        return balances == null ? BigDecimal.ZERO : toAmount(balances.getWorkingBalance().getValue());
+    }
+
+    /**
+     * Balance in the limit currency with the T24 Currency API (EXCHRATE): buy = limit currency,
+     * sell = account currency, CURRENCY.MARKET 1, today's rate. Zero stays zero; the sign is kept
+     * (overdrawn account). null when no rate is found or the call fails.
+     */
+    private BigDecimal convert(BigDecimal balance, String accountCcy, String limitCcy) {
+        if (balance.signum() == 0) {
+            return BigDecimal.ZERO.setScale(AlbeClConstants.AMOUNT_SCALE);
+        }
+        try {
+            Currency currency = new Currency(this);
+            currency.setCurrencyId(accountCcy);
+            ExchangeAmount exchange = currency.calculateBuyAmount(limitCcy, accountCcy,
+                    new TNumber(balance.abs().toPlainString()), AlbeClConstants.CURRENCY_MARKET, null, null);
+            BigDecimal value = exchange == null || exchange.getDealAmount() == null
+                    || exchange.getDealAmount().getValue() == null ? BigDecimal.ZERO
+                    : toAmount(exchange.getDealAmount().getValue().get());
+            if (value.signum() <= 0) {
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | rate " + accountCcy + " to " + limitCcy
+                        + " market " + AlbeClConstants.CURRENCY_MARKET + " gave no amount");
+                return null;
+            }
+            value = value.setScale(AlbeClConstants.AMOUNT_SCALE, RoundingMode.HALF_UP);
+            return balance.signum() < 0 ? value.negate() : value;
+        } catch (Exception e) {
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " FAILED | rate " + accountCcy + " to " + limitCcy
+                    + " " + e);
+            return null;
+        }
     }
 
     private String readDirection(DataAccess da, String activity) {

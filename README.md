@@ -66,7 +66,7 @@ The count is in the same commit as the FT: a rejected override or an error (from
 
 All checks and utilisation use the **limit currency** (EB.ALBE.CIF.LIMITS `CURRENCY`):
 - transaction in another currency: the activity's LCY amount, else amount × TXN.EXCH.RATE; neither, or a limit not in LCY → **error EB-ALBE.EXCH.RATE.MISSING**, not counted;
-- max CIF: an account in another currency → override EB-ALBE.EXCH.RATE.MISSING, max CIF not checked (no rate source yet, E1);
+- max CIF: balance = EB.CONTRACT.BALANCES WORKING.BALANCE (Account API); an account in another currency is converted with the T24 Currency API (EXCHRATE, CURRENCY.MARKET 1, today, D54); no rate → override EB-ALBE.EXCH.RATE.MISSING, max CIF not checked;
 - amounts rounded to 2 decimals; UTILISED.LIMIT / TXN.DETAILS hold the converted amount; a take-back never reconverts.
 
 ## Local table field names assumed by the code
