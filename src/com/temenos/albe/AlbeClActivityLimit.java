@@ -35,12 +35,13 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * Description : Customer limit check, daily and monthly, HLSD 7.2.1 - 2.
  *
  *   UNAUTH (input / amendment)
- *     1. EB.ALBE.CIF.LIMITS <customer>   none -> override "not defined", still counted
+ *     1. EB.ALBE.CIF.LIMITS <customer>   none -> skipped: no check, no override, not counted
  *                                        CURRENCY blank -> ERROR, not counted
  *     2. amount in the limit currency: LCY amount, else x TXN.EXCH.RATE, else ERROR
  *     3. earlier input of this FT: EB.ALBE.TXN.DETAILS.LIMIT <cust>-<date>-<FT>-<arrangement>
  *     4. daily   : used today - earlier + this            > DAILY.<CR|DR>.LIMIT   -> override
  *        monthly : migrated + used month - earlier + this  > MONTHLY.<CR|DR>.LIMIT -> override
+ *        a blank limit skips only that check (no override); the amount is still counted
  *        (maximum CIF balance: separate routine AlbeClMaxCif, 2nd Post Routine on credits)
  *     5. count   : daily / monthly = used - earlier + this; TXN.DETAILS written
  *   DELETE / AUTH-REV : take back what TXN.DETAILS shows was counted, from the counted day
@@ -54,6 +55,7 @@ import com.temenos.t24.api.tables.ebalbeutilisedlimit.EbAlbeUtilisedLimitTable;
  * 26-Nov-2026   Development      Initial Version
  * 26-Nov-2026   Development      Max CIF moved to its own routine AlbeClMaxCif (user)
  * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
+ * 27-Nov-2026   Development      No limit record -> skipped; blank limit -> that check skipped, no override (user, D52)
  *-----------------------------------------------------------------------------
  */
 public class AlbeClActivityLimit extends ActivityLifecycle {
@@ -147,8 +149,13 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
 
         // 1. customer limits
         EbAlbeCifLimitsRecord limits = readCifLimits(da, customer);
-        String limitCcy = limits == null ? "" : nvl(limits.getCurrency().getValue()).trim();
-        if (limits != null && limitCcy.isEmpty()) {
+        if (limits == null) {
+            logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " + result + " | no "
+                    + AlbeClConstants.CIF_LIMIT_TABLE + " record -> skipped, not checked, not counted");
+            return;
+        }
+        String limitCcy = nvl(limits.getCurrency().getValue()).trim();
+        if (limitCcy.isEmpty()) {
             aaaRec.getTxnAmount().setError(text(AlbeClConstants.ERR_CCY_MISSING, customer));
             logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | " +
                     result + " | BLOCKED: limit CURRENCY blank, not counted");
@@ -161,7 +168,7 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
         if (txnCcy.isEmpty()) {
             txnCcy = nvl(arrangementRecord.getCurrency().getValue()).trim();
         }
-        if (limits != null && !txnCcy.isEmpty() && !txnCcy.equalsIgnoreCase(limitCcy)) {
+        if (!txnCcy.isEmpty() && !txnCcy.equalsIgnoreCase(limitCcy)) {
             String fromTo = AlbeClConstants.FROM + txnCcy + AlbeClConstants.TO + limitCcy;
             String lcy = nvl(ss.getLocalCurrency()).trim();
             if (lcy.isEmpty()) {
@@ -208,24 +215,16 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
         EbAlbeUtilisedLimitRecord dailyRec = readUtilised(utilTable, dailyId);
         EbAlbeUtilisedLimitRecord monthlyRec = readUtilised(utilTable, monthlyId);
 
-        boolean notDefined = limits == null;
-        if (limits == null) {
-            result.append(" | no ").append(AlbeClConstants.CIF_LIMIT_TABLE).append(" record -> not checked");
-        } else {
-            BigDecimal usedDay = used(dailyRec, credit).subtract(earlier).max(BigDecimal.ZERO);
-            BigDecimal usedMonth = used(monthlyRec, credit).subtract(earlier).max(BigDecimal.ZERO)
-                    .add(migrated(monthlyRec, credit));
-            notDefined |= check(result, overrides, "daily", customer, usedDay, amount,
-                    credit ? limits.getDailyCreditLimit().getValue() : limits.getDailyDebitLimit().getValue(),
-                    credit ? AlbeClConstants.OVR_DAILY_CREDIT : AlbeClConstants.OVR_DAILY_DEBIT, "TXN.AMOUNT");
-            notDefined |= check(result, overrides, "monthly", customer, usedMonth, amount,
-                    credit ? limits.getMonthlyCreditLimit().getValue() : limits.getMonthlyDebitLimit().getValue(),
-                    credit ? AlbeClConstants.OVR_MONTHLY_CREDIT : AlbeClConstants.OVR_MONTHLY_DEBIT,
-                    "TXN.AMOUNT.LCY");
-        }
-        if (notDefined) {
-            overrides.add(new String[] { AlbeClConstants.OVR_NOT_DEFINED, customer, "CURRENCY" });
-        }
+        BigDecimal usedDay = used(dailyRec, credit).subtract(earlier).max(BigDecimal.ZERO);
+        BigDecimal usedMonth = used(monthlyRec, credit).subtract(earlier).max(BigDecimal.ZERO)
+                .add(migrated(monthlyRec, credit));
+        check(result, overrides, "daily", customer, usedDay, amount,
+                credit ? limits.getDailyCreditLimit().getValue() : limits.getDailyDebitLimit().getValue(),
+                credit ? AlbeClConstants.OVR_DAILY_CREDIT : AlbeClConstants.OVR_DAILY_DEBIT, "TXN.AMOUNT");
+        check(result, overrides, "monthly", customer, usedMonth, amount,
+                credit ? limits.getMonthlyCreditLimit().getValue() : limits.getMonthlyDebitLimit().getValue(),
+                credit ? AlbeClConstants.OVR_MONTHLY_CREDIT : AlbeClConstants.OVR_MONTHLY_DEBIT,
+                "TXN.AMOUNT.LCY");
 
         // 5. count: used - earlier + this, each record written once
         BigDecimal deltaCr = (credit ? amount : BigDecimal.ZERO).subtract(earlierCr);
@@ -245,14 +244,14 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
     }
 
     /**
-     * used + this > limit -> override "<customer> by <excess>"; equal is allowed.
-     * @return true when the limit is blank (not defined)
+     * used + this > limit -> override "<customer> by <excess>"; equal is allowed;
+     * a blank limit is not checked (no override).
      */
-    private boolean check(StringBuilder result, List<String[]> overrides, String label, String customer,
+    private void check(StringBuilder result, List<String[]> overrides, String label, String customer,
             BigDecimal used, BigDecimal amount, String limitText, String overrideId, String field) {
         if (isBlank(limitText)) {
             result.append(" | ").append(label).append(": limit blank -> not checked");
-            return true;
+            return;
         }
         BigDecimal limit = toAmount(limitText);
         BigDecimal total = used.add(amount);
@@ -265,7 +264,6 @@ public class AlbeClActivityLimit extends ActivityLifecycle {
         } else {
             result.append(" <= ").append(limit).append(" OK");
         }
-        return false;
     }
 
     // =========================================================================

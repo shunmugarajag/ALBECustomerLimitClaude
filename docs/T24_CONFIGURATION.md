@@ -69,7 +69,7 @@ ID: **customer id** (validate as CUSTOMER).
 | 5 | MONTHLY.DEBIT.LIMIT | Monthly debit limit | Amount |
 | 6 | MAXIMUM.OVERALL.CIF.AMOUNT | Maximum overall CIF balance | Amount |
 
-A blank limit field means "not defined": the transaction gets the EB-ALBE.CIF.LIMIT.NOT.DEFINED override.
+A blank limit field skips that check only (no override, amount still counted); a customer without a record is skipped completely (D52).
 
 ### 1.3 EB.ALBE.UTILISED.LIMIT – daily and monthly totals  *(exists)*
 
@@ -163,7 +163,7 @@ Tells the routines whether an activity is a **credit** or a **debit**. KEY.NAME 
 | EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly credit limit exceeded for customer & | "<customer> by <amount over>" |
 | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED | Monthly debit limit exceeded for customer & | "<customer> by <amount over>" |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Maximum CIF balance exceeded for customer & | "<customer> by <amount over>" |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for customer & | customer id |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for customer & | **not raised any more (D52)** – may be reversed |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from <currency> to <limit currency>" |
 
 **EB.ERROR** (blocks the transaction):
@@ -186,7 +186,7 @@ Each override goes on its **own AAA field** – a field keeps only one override 
 | EB-ALBE.DAILY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT |
 | EB-ALBE.MONTHLY.DEBIT / CREDIT.LIMIT.EXCEED | TXN.AMOUNT.LCY |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | ORIG.TXN.AMT |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | CURRENCY |
+| ~~EB-ALBE.CIF.LIMIT.NOT.DEFINED~~ (D52: not raised) | – |
 | EB-ALBE.EXCH.RATE.MISSING | EFFECTIVE.DATE |
 | errors (EB-ALBE.*) | TXN.AMOUNT |
 
@@ -402,8 +402,8 @@ Set up a test customer with an EB.ALBE.CIF.LIMITS record, e.g. daily credit 5000
 | 10 | Debit over the daily debit limit | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED | `RESULT \| ... daily debit ... EXCEEDED` |
 | 11 | Monthly breach (with a migrated amount loaded) | EB-ALBE.MONTHLY.CREDIT (or DEBIT).LIMIT.EXCEED on TXN.AMOUNT.LCY; MIGRATED field unchanged | `RESULT \| ... monthly ... migrated ...` |
 | 12 | Credit that takes total balance over MAXIMUM.OVERALL.CIF.AMOUNT | EB-ALBE.MAX.CIF.BAL.EXCEED "... by <difference>" on ORIG.TXN.AMT | `RESULT \| ... max CIF ... EXCEEDED` |
-| 13 | Customer **without** EB.ALBE.CIF.LIMITS | EB-ALBE.CIF.LIMIT.NOT.DEFINED; still counted | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
-| 14 | Blank DAILY.CREDIT.LIMIT | EB-ALBE.CIF.LIMIT.NOT.DEFINED (once) | `RESULT \| ... is blank -> not checked` |
+| 13 | Customer **without** EB.ALBE.CIF.LIMITS | no override, **not counted** (D52) | `RESULT \| ... no EB.ALBE.CIF.LIMITS record ... counted` |
+| 14 | Blank DAILY.CREDIT.LIMIT | daily check skipped, no override, still counted (D52) | `RESULT \| ... is blank -> not checked` |
 | 15 | USD transaction with no LCY amount and no TXN.EXCH.RATE | ERROR EB-ALBE.EXCH.RATE.MISSING "from USD to EGP"; not counted | `convertRequest \| BLOCKED` |
 | 16 | Own-account transfer | both sides checked and counted, two TXN.DETAILS records (one per arrangement) | two `RESULT \| INPUT` lines |
 | 17 | Any test | no `FAILED` / unexpected `BLOCKED` lines | `grep "\| FAILED \|\|\| BLOCKED \|"` |

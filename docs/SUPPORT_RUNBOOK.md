@@ -27,10 +27,10 @@ Every module log line starts with `ALBE.CUSTOMER.LIMIT |`. **One transaction in 
 
 ## 3. Common cases
 
-### 3.1 "The customer gets 'Customer limit not defined'"
+### 3.1 "No limit is checked for a customer" (D52: no limit record → skipped silently)
 
 1. Check EB.ALBE.CIF.LIMITS `<customer>` exists → if not, 3.3.
-2. If it exists, check none of the five limit fields is blank (a blank field = not defined).
+2. If it exists, check none of the five limit fields is blank (a blank field = that check is skipped, no override). Log: `no EB.ALBE.CIF.LIMITS record -> skipped` or `limit blank -> not checked`.
 3. The override is acceptable – the user can accept it; the transaction is still counted.
 
 ### 3.2 "The customer gets 'Daily/Monthly … exceed' but has not used that much"

@@ -35,7 +35,7 @@ import com.temenos.t24.api.system.Session;
  *
  *   no CUSTOMER.ACCOUNT accounts      -> ERROR EB-ALBE.CUSTOMER.ACCOUNT.MISSING (transaction blocked)
  *   account in another currency       -> override EB-ALBE.EXCH.RATE.MISSING, not checked (no rate yet)
- *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> override EB-ALBE.CIF.LIMIT.NOT.DEFINED
+ *   MAXIMUM.OVERALL.CIF.AMOUNT blank  -> not checked, no override (D52)
  *   no limit record / blank CURRENCY / amount not convertible / debit / not mapped
  *                                     -> nothing here (AlbeClActivityLimit raises those)
  *
@@ -46,6 +46,7 @@ import com.temenos.t24.api.system.Session;
  *-----------------------------------------------------------------------------
  * 26-Nov-2026   Development      Initial Version (max CIF as its own routine, user)
  * 26-Nov-2026   Development      Package com.temenos.albe, class named after the EB.API (MVC version removed)
+ * 27-Nov-2026   Development      Blank MAXIMUM.OVERALL.CIF.AMOUNT -> not checked, no override (user, D52)
  *-----------------------------------------------------------------------------
  */
 public class AlbeClMaxCif extends ActivityLifecycle {
@@ -92,10 +93,8 @@ public class AlbeClMaxCif extends ActivityLifecycle {
             }
             String maxText = limits.getMaximumOverallCifAmount().getValue();
             if (isBlank(maxText)) {
-                aaaRec.getCurrency().setOverride(text(AlbeClConstants.OVR_NOT_DEFINED, customer));
-                logger.info(AlbeClConstants.LOG_TAG + NAME + " RESULT | MAX CIF " + key + " customer " + customer + " | " +
-                        AlbeClConstants.FIELD_MAX_CIF
-                        + " blank -> not checked, raised " + AlbeClConstants.OVR_NOT_DEFINED);
+                logger.info(AlbeClConstants.LOG_TAG + NAME + " SKIP | MAX CIF " + key + " customer " + customer + " | " +
+                        AlbeClConstants.FIELD_MAX_CIF + " blank -> not checked");
                 return aaaRec.getValidationResponse();
             }
 

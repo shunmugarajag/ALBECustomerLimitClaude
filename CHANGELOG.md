@@ -4,6 +4,13 @@ Plain-language history of changes. Newest first. Commit ids refer to `shunmugara
 
 ## [1.0] – 21-Nov-2026 – first delivery to SIT
 
+### Changed – no limit record: skipped (27-Nov-2026, D52)
+- A customer **without** an EB.ALBE.CIF.LIMITS record is now **skipped**: no check, no override, nothing counted, no TXN.DETAILS (one log line `no EB.ALBE.CIF.LIMITS record -> skipped`). Before: override "limit not defined" and counted.
+- A **blank** daily / monthly / max CIF limit skips only that check, without an override; the amount is still counted.
+- Override `EB-ALBE.CIF.LIMIT.NOT.DEFINED` is no longer raised (constant removed; the DEV record may be reversed).
+- Also closes the gap where a foreign-currency amount was counted unconverted for a customer without a record.
+- 37 tests pass outside T24; 0 compile errors against R25. **Needs a new JAR deploy in DEV.**
+
 ### Added – DEV test results workbook (27-Nov-2026)
 - `docs/DEV_TEST_RESULTS.xlsx`: first DEV run of the new JAR (OFS source GCS, T24 date 03-APR-2026). **20 passed, 0 failed, 24 pending** (27-Nov: AUTH-REV take-back, amendment of an existing customer, own-account transfer and debit breach on a new customer passed) (44 cases; column "How to test": OFS, Browser, data change, outside T24).
 - Passed: limit creation for 5 new customers; credit / debit counting; daily and monthly breach (credit and debit) with the right "by" amounts; max CIF OK and breach; two overrides on one FT; rollback when T24 rejects the FT; delete take-back; authorise (no double count); amendment (T24 sends DELETE + INPUT); override accepted.

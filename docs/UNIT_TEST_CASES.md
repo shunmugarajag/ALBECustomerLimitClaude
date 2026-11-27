@@ -43,7 +43,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 | UT-T19 | no conversion info | Pass |
 | UT-T20 | limit CCY blank | Pass |
 | UT-T21 | activity not mapped | Pass |
-| UT-T22 | no limit record | Pass |
+| UT-T22 | no limit record: skipped, not counted (D52) | Pass |
 | UT-T23 | no CUSTOMER.ACCOUNT (max CIF routine blocks; the count of routine 1 is rolled back by T24 with the FT) | Pass |
 | UT-T24 | declined override: writes in the same commit (T24 rolls back) | Pass |
 | UT-T25 | UTILISED save fails | Pass |
@@ -56,14 +56,14 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 | UT-E01 | debit equal to daily limit | Pass |
 | UT-E02 | monthly with migrated | Pass |
 | UT-E03 | account in USD: rate override, counted | Pass |
-| UT-E04 | blank daily limit | Pass |
+| UT-E04 | blank daily limit: check skipped, no override, counted (D52) | Pass |
 | UT-E05 | own transfer both sides | Pass |
 
 ## Max CIF routine
 
 | Id | Case | Result |
 |---|---|---|
-| UT-M01 | MAX.CIF blank: not-defined override, counted | Pass |
+| UT-M01 | MAX.CIF blank: not checked, no override, counted (D52) | Pass |
 | UT-M02 | debit: max CIF not checked | Pass |
 | UT-M03 | only routine 1 attached: no max CIF check | Pass |
 
@@ -77,7 +77,7 @@ Traceability to the HLSD: [TRACEABILITY.md](TRACEABILITY.md). Earlier cases (MVC
 
 ## DEV only
 
-DEV run of 26/27-Nov-2026 (44 cases incl. 13 multi-currency and 3 browser-only, 20 pass, 0 fail, 24 pending) with data and evidence: [DEV_TEST_RESULTS.xlsx](DEV_TEST_RESULTS.xlsx).
+DEV run of 26/27-Nov-2026 (44 cases incl. 13 multi-currency and 3 browser-only, 20 pass, 0 fail, 25 pending; 45 cases) with data and evidence: [DEV_TEST_RESULTS.xlsx](DEV_TEST_RESULTS.xlsx).
 
 
 | Id | What | Where tested |

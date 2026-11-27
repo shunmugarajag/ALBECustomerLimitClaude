@@ -56,7 +56,7 @@ Written like the team's core Java routines: `DataAccess`, `Session` and the gene
 
 | Activity status | `AlbeClActivityLimit` | `AlbeClMaxCif` |
 |---|---|---|
-| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMITS (none → override "not defined", still counted; blank CURRENCY → error) 2. amount in the limit currency (cannot → error) 3. earlier input of the same FT (TXN.DETAILS key) 4. daily / monthly: used − earlier + this > limit → override 5. count: used − earlier + this, TXN.DETAILS written | WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit > MAXIMUM.OVERALL.CIF.AMOUNT → override; no accounts → error |
+| UNAUTH (input / amendment) | 1. EB.ALBE.CIF.LIMITS (none → skipped: no check, not counted (D52); blank CURRENCY → error; a blank single limit skips only that check) 2. amount in the limit currency (cannot → error) 3. earlier input of the same FT (TXN.DETAILS key) 4. daily / monthly: used − earlier + this > limit → override 5. count: used − earlier + this, TXN.DETAILS written | WORKING.BALANCE of all CUSTOMER.ACCOUNT accounts + this credit > MAXIMUM.OVERALL.CIF.AMOUNT → override; no accounts → error |
 | DELETE / AUTH-REV | take back exactly what TXN.DETAILS shows was counted, from the counted day; nothing counted → nothing | – |
 | AUTH / REVERSE | nothing | – |
 
@@ -136,7 +136,7 @@ Validation on re-input leaves out the AAA's own earlier input amount.
 | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED / EB-ALBE.DAILY.CREDIT.LIMIT.EXCEED | Daily debit (credit) limit exceeded for Customer & |
 | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED / EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED | Monthly debit (credit) limit exceeded for Customer & |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | **no longer raised** (D52): no limit record → skipped; blank limit → that check skipped |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & (max CIF only) |
 | EB-ALBE.LIMIT.UPDATE.FAILED | **Error** (EB.ERROR, blocks): Customer limit could not be updated, transaction cancelled – saving the utilisation (UTILISED.LIMIT / TXN.DETAILS) failed (D37) |
 | EB-ALBE.CIF.LIMIT.CCY.MISSING | **Error** (EB.ERROR, blocks): Limit currency not defined for Customer & – the customer's EB.ALBE.CIF.LIMITS CCY is blank |

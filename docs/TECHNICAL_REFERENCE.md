@@ -116,14 +116,14 @@ customer authorised
 ```
 build request (mapping CREDIT / DEBIT, amount, key, arrangement, date) -> isValid
   -> EB.ALBE.CIF.LIMITS <customer> (read once)
-        none           -> "limit not defined" override; still counted (amount as it is)
+        none           -> skipped: no check, no override, not counted (D52)
         CURRENCY blank -> ERROR CIF.LIMIT.CCY.MISSING, stop (not counted)
   -> amount in the limit CCY (LCY amount, else TXN.EXCH.RATE, else ERROR EXCH.RATE.MISSING, stop)
   -> earlier input of the same FT: TXN.DETAILS <cust>-<date>-<FT>-<arrangement> (direct read)
   -> daily record <cust>-YYYYMMDD and monthly record <cust>-YYYYMM (read once)
   -> daily:   used - earlier + amount               > DAILY.<CR|DR>.LIMIT   -> override (excess)
   -> monthly: migrated + used - earlier + amount    > MONTHLY.<CR|DR>.LIMIT -> override (excess)
-  -> blank limit field -> "limit not defined" (once)
+  -> blank limit field -> that check skipped, no override (D52)
   -> not blocked: daily / monthly = used - earlier + amount (one write each), TXN.DETAILS written
   -> view raises the overrides / errors, one per AAA field
 ```
@@ -148,7 +148,7 @@ Equal to the limit is allowed; only **above** is a breach. "used - earlier" is n
 
 ```
 own routine: reads the mapping, CIF.LIMITS and converts the credit itself (same rules as 5.2)
-MAXIMUM.OVERALL.CIF.AMOUNT blank -> "limit not defined"
+MAXIMUM.OVERALL.CIF.AMOUNT blank -> not checked, no override (D52)
 company financial mnemonic (COMPANY)
 customer accounts: CUSTOMER.ACCOUNT <customer>; empty -> ERROR CUSTOMER.ACCOUNT.MISSING (blocks, D45)
 for each account: WORKING.BALANCE converted from ACCOUNT CURRENCY (no rate -> "rate missing" override, stop)
@@ -181,7 +181,7 @@ The three NOFILE reports (summary, period, transactions) and their classes were 
 | EB-ALBE.DAILY.DEBIT.LIMIT.EXCEED / .DAILY.CREDIT. | Daily debit (credit) limit exceeded for Customer & | "customer by difference" | daily breach |
 | EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED / .MONTHLY.CREDIT. | Monthly debit (credit) limit exceeded for Customer & | "customer by difference" | monthly breach |
 | EB-ALBE.MAX.CIF.BAL.EXCEED | Overall balance limit exceeded for Customer & | "customer by difference" | maximum CIF breach |
-| EB-ALBE.CIF.LIMIT.NOT.DEFINED | Customer limit not defined for Customer & | customer | no CIF.LIMIT record or a blank limit (once per transaction) |
+| EB-ALBE.CIF.LIMIT.NOT.DEFINED | (not raised since D52) | – | was: no CIF.LIMIT record or a blank limit (once per transaction) |
 | EB-ALBE.EXCH.RATE.MISSING | Exchange rate not available & | "from CCY to CCY" | no rate (max CIF accounts) |
 
 Raised by `AlbeClActivityLimit` / `AlbeClMaxCif` as `TField.setOverride("[ID,param]")` with **one** parameter (D46 – DEV showed a second `&` is not filled) – R25 `EB.HANDLE.OVERRIDES` takes part 1 as the id and fills the `&` with the other parts (anything not starting with `[` is used raw). `TField.setOverride` **replaces** the field's one override value, so each override goes on its own AAA field (`fieldFor`): daily TXN.AMOUNT, monthly TXN.AMOUNT.LCY, max CIF ORIG.TXN.AMT, not defined CURRENCY, rate missing EFFECTIVE.DATE; errors (`setError`, same format, `EB.HANDLE.ERRORS`) on TXN.AMOUNT. D43.

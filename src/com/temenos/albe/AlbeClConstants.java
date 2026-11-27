@@ -77,7 +77,6 @@ public final class AlbeClConstants {
     public static final String OVR_MONTHLY_CREDIT = "EB-ALBE.MONTHLY.CREDIT.LIMIT.EXCEED";
     public static final String OVR_MONTHLY_DEBIT = "EB-ALBE.MONTHLY.DEBIT.LIMIT.EXCEED";
     public static final String OVR_MAX_CIF = "EB-ALBE.MAX.CIF.BAL.EXCEED";
-    public static final String OVR_NOT_DEFINED = "EB-ALBE.CIF.LIMIT.NOT.DEFINED";
     public static final String OVR_RATE_MISSING = "EB-ALBE.EXCH.RATE.MISSING";
 
     // Errors (transaction blocked)
